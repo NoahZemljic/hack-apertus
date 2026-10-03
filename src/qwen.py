@@ -5,7 +5,8 @@ from typing import Any, Callable
 from .decoding import SchemaConstrainedDecoder
 from .perception import PerceptionGenerationError, PerceptionModel
 from .prompting import PERCEPTION_RELATION_RULES, append_validation_feedback, prepare_perception_messages
-from .schemas import load_scene_graph_schema
+from .scene_graph import derive_support_relations
+from .schemas import load_perception_schema
 from .validation import validate_scene_graph
 
 class QwenSceneGraphGenerator(PerceptionModel):
@@ -90,7 +91,7 @@ class QwenSceneGraphGenerator(PerceptionModel):
         ).to(self.device)
 
         # Create fresh schema-parser state for this attempt while reusing cached tokenizer data
-        token_filter = self.decoder.build_token_filter(load_scene_graph_schema())
+        token_filter = self.decoder.build_token_filter(load_perception_schema())
 
         # Generate greedily while restricting each next token to the schema's allowed continuations
         generated_ids = self.model.generate(
@@ -137,6 +138,10 @@ class QwenSceneGraphGenerator(PerceptionModel):
             try:
                 # Require the complete response; never accept a nested fragment of truncated JSON
                 graph = json.loads(response)
+                validate_scene_graph(graph, width, height, require_supports=False)
+
+                # Generate inverse relationships in code, never by a second model prediction
+                graph = derive_support_relations(graph)
                 return validate_scene_graph(graph, width, height), responses
             except ValueError as error:
                 last_error = error

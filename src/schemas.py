@@ -11,8 +11,19 @@ def load_schema(filename: str) -> dict:
 
 
 def load_scene_graph_schema() -> dict:
-    """Load the contract supplied to the perception model"""
+    """Load the complete scene-graph contract consumed by the planner"""
     return load_schema("scene_graph.schema.json")
+
+
+def load_perception_schema() -> dict:
+    """Derive the model-output contract by excluding code-generated support lists"""
+    schema = load_scene_graph_schema()
+    schema["title"] = "Perception observations before support derivation"
+    schema["$id"] = "see-it-say-it-pick-it/perception.schema.json"
+    relations = schema["$defs"]["object"]["properties"]["relations"]
+    relations["required"].remove("supports")
+    del relations["properties"]["supports"]
+    return schema
 
 
 def load_plan_schema() -> dict:

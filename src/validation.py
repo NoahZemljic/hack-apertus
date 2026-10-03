@@ -46,8 +46,8 @@ def validate_pixel(value, name: str, width: int, height: int, length: int) -> li
     return value
 
 
-def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
-    """Validate scene-graph fields, coordinates, IDs, and relationships"""
+def validate_scene_graph(graph: dict, width: int, height: int, *, require_supports: bool = True) -> dict:
+    """Validate a full graph or raw perception observations before support derivation"""
     # Reject missing and invented top-level fields before inspecting objects
     validate_fields(graph, {"image", "objects"}, "scene_graph")
 
@@ -88,17 +88,18 @@ def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
             raise ValueError(f"{prefix}.confidence must be between 0 and 1")
 
         relations = obj["relations"]
-        validate_fields(relations, RELATION_KEYS, f"{prefix}.relations")
+        expected_relations = RELATION_KEYS if require_supports else RELATION_KEYS - {"supports"}
+        validate_fields(relations, expected_relations, f"{prefix}.relations")
         if relations["inside"] is not None and not isinstance(relations["inside"], str):
             raise ValueError(f"{prefix}.relations.inside must be a string or null")
         if relations["on_top_of"] is not None and not isinstance(relations["on_top_of"], str):
             raise ValueError(f"{prefix}.relations.on_top_of must be a string or null")
         if (
-            not isinstance(relations["supports"], list)
-            or not all(isinstance(value, str) for value in relations["supports"])
+            not isinstance(relations.get("supports", []), list)
+            or not all(isinstance(value, str) for value in relations.get("supports", []))
         ):
             raise ValueError(f"{prefix}.relations.supports must be a list of IDs")
-        if len(set(relations["supports"])) != len(relations["supports"]):
+        if len(set(relations.get("supports", []))) != len(relations.get("supports", [])):
             raise ValueError(f"{prefix}.relations.supports contains duplicate IDs")
         for field in ("held_by_human", "partially_occluded"):
             if not isinstance(relations[field], bool):
@@ -114,7 +115,7 @@ def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
     errors = []
     for obj in objects:
         refs = [(field, obj["relations"][field]) for field in ("inside", "on_top_of")]
-        refs.extend((f"supports[{index}]", ref) for index, ref in enumerate(obj["relations"]["supports"]))
+        refs.extend((f"supports[{index}]", ref) for index, ref in enumerate(obj["relations"].get("supports", [])))
         for field, ref in refs:
             if ref is None:
                 continue
@@ -130,7 +131,8 @@ def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
                     "An object cannot contain or support itself; correct the reference from the image"
                 )
 
-    for obj in objects:
+    # Only complete graphs have inverse fields to cross-check
+    for obj in objects if require_supports else []:
         object_id = obj["id"]
         on_top_of = obj["relations"]["on_top_of"]
         if on_top_of in by_id and object_id not in by_id[on_top_of]["relations"]["supports"]:
@@ -156,25 +158,31 @@ def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
                     "that would reverse the physical support direction"
                 )
 
-    # Even reciprocal fields must not describe a circular support stack
-    reported_cycles = set()
-    for object_id in ids:
-        chain = []
-        current = object_id
-        while current in by_id:
-            if current in chain:
-                cycle = chain[chain.index(current):]
-                key = frozenset(cycle)
-                if key not in reported_cycles:
-                    reported_cycles.add(key)
-                    errors.append(
-                        f"Circular on_top_of chain: {' -> '.join(cycle + [current])}. "
-                        "Reinspect the image and remove or correct the false support edges and their "
-                        "inverse supports entries; objects cannot form a circular support stack"
-                    )
-                break
-            chain.append(current)
-            current = by_id[current]["relations"]["on_top_of"]
+    # Both containment and physical support must be acyclic, even before derivation
+    for field in ("inside", "on_top_of"):
+        reported_cycles = set()
+        for object_id in ids:
+            chain = []
+            current = object_id
+            while current in by_id:
+                if current in chain:
+                    cycle = chain[chain.index(current):]
+                    key = frozenset(cycle)
+                    if key not in reported_cycles:
+                        reported_cycles.add(key)
+                        assignments = ", ".join(
+                            f"{paths[node]}.{field} = {json.dumps(by_id[node]['relations'][field])}"
+                            for node in cycle
+                        )
+                        errors.append(
+                            f"Circular {field} chain: {' -> '.join(cycle + [current])}. "
+                            f"Conflicting fields: {assignments}. Reinspect the image and correct the "
+                            f"false {field} references, using null only when no such detected object exists. "
+                            "Do not mirror the relationship in the opposite direction"
+                        )
+                    break
+                chain.append(current)
+                current = by_id[current]["relations"][field]
 
     if errors:
         raise ValueError("Scene relationship validation failed:\n" + "\n".join(

@@ -52,6 +52,8 @@ uv run --extra vision run.py --attention flash_attention_2
 
 The scene graph format is defined in `schema/scene_graph.schema.json`. Model output is also checked in Python for image bounds, unique IDs, valid relationship references, and pick points inside their bounding boxes.
 
+The perception-output contract is derived from that schema by excluding `supports`. Qwen predicts `inside`, `on_top_of`, `held_by_human`, and `partially_occluded` only. Both its prompt and token filter use this reduced contract. Raw observations are validated, including containment and support cycle checks, before code builds inverse `supports` lists from `on_top_of`. Containment alone does not create support edges. The completed graph is validated again before caching or planning, so the final scene-graph format and Apertus inputs remain unchanged. Failed raw replies contain no derived support lists.
+
 Qwen uses LM Format Enforcer through Transformers' `prefix_allowed_tokens_fn` to constrain generated JSON structure, required fields, types, and enums. The tokenizer data is cached once, while each generation attempt gets a fresh schema parser. There is no automatic unconstrained fallback. Missing decoding dependencies stop generation with an error.
 
 Constraints do not guarantee correct perception, valid object references, or every JSON Schema keyword. The validator remains responsible for bounds and relationship consistency. A token limit can still truncate JSON; Qwen rejects incomplete responses rather than extracting a nested fragment. Validation feedback reports exact missing and unexpected fields, and failed attempts are saved in `outputs/scene_graphs/<scene>.failure.json` (or the configured graph directory) before the pipeline stops.
@@ -67,9 +69,9 @@ All modules live directly under `src/`:
 | Module | Responsibility |
 | --- | --- |
 | `prompting.py` | Perception and planning prompts, spatial calculations, image messages, and validation feedback |
-| `schemas.py` | Loading the three JSON contracts from `schema/` |
+| `schemas.py` | Loading JSON contracts and deriving the reduced perception schema |
 | `validation.py` | Pixel, scene-graph, and plan validation |
-| `scene_graph.py` | Object lookup shared by validation and result formatting |
+| `scene_graph.py` | Object lookup and deterministic inverse support derivation |
 | `results.py` | Converting plans to submission entries and writing result files |
 | `json_tools.py` | Extracting JSON objects from model responses |
 | `visualization.py` | Scene inspection overlays |

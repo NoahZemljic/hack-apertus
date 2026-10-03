@@ -2,27 +2,29 @@ import json
 import math
 from pathlib import Path
 
-from .schemas import load_scene_graph_schema
+from .schemas import load_perception_schema
 
 PERCEPTION_RELATION_RULES = """Relationship semantics:
-- A.on_top_of = B means A rests directly on B; B.supports must then contain A
-- B.supports containing A means the same contact, not the reverse contact
+- A.on_top_of = B means A rests directly on B, not that B rests on A
+- Output only inside, on_top_of, held_by_human, and partially_occluded in relations
+- Do not output supports; code derives that inverse relationship from on_top_of
 - Support is directional, never symmetric, and must not form cycles
-- A.inside = B means containment only; it does not establish physical support
+- A.inside = B means A is contained in B, not that B is inside A; containment must not form cycles
+- Containment alone does not establish physical support
 - An object may be both inside a tray and resting directly on its base
 - Only claim contacts supported by the image; use null for an unrepresented support such as the table
-When repairing a contact, update both on_top_of and supports consistently. Recheck all affected objects.
+When repairing a relationship, correct inside or on_top_of using the image. Recheck all affected objects.
 Do not remove true contacts or invent contacts. Preserve unrelated correct detections,
 IDs, boxes, and pick points unless the image or a reported error gives a reason to change them."""
 
 def prepare_perception_prompt(width: int, height: int) -> str:
     """Builds the Qwen prompt for grounded scene-graph extraction"""
-    schema = json.dumps(load_scene_graph_schema(), separators=(",", ":"))
+    schema = json.dumps(load_perception_schema(), separators=(",", ":"))
     return f"""Analyze this overhead robot-workspace image and construct a complete 2D scene graph.
 
 The original image is {width} x {height} pixels. Coordinates are [u, v], where u increases rightward and v increases downward. Return all coordinates in this original image space.
 
-Detect every movable object, grey or black tray, plate, saucer, mug, and visible human hand. Classify trays as container, plates and saucers as surface, hands as human, and graspable objects including mugs as movable. For repeated objects, create unique snake_case IDs numbered from left to right. A pick_point_2d must lie on a visible solid part of the object's top surface, never in a gear hole, empty bounding-box area, or an occluding object. For containers and surfaces, choose a representative interior point. Use on_top_of and supports only for contact between detected objects; omit the table relation by using null. Use inside for membership in a tray or other container.
+Detect every movable object, grey or black tray, plate, saucer, mug, and visible human hand. Classify trays as container, plates and saucers as surface, hands as human, and graspable objects including mugs as movable. For repeated objects, create unique snake_case IDs numbered from left to right. A pick_point_2d must lie on a visible solid part of the object's top surface, never in a gear hole, empty bounding-box area, or an occluding object. For containers and surfaces, choose a representative interior point. Use on_top_of only for direct contact with a supporting detected object; omit the table relation by using null. Use inside for membership in a tray or other container.
 
 Object identification: this is a workspace containing physical parts, not a collection of pictograms. A circular mechanical part with regularly spaced teeth around its rim is a gear (cogwheel), not a sun, star, or flower. Gears may have a solid raised cylindrical hub, a central bore, or neither visible; a central hole is NOT required. A toothed part with a solid raised hub is still a gear. Identify it by its mechanical shape, not color alone. When these mechanical features are visible, use label "gear", kind "movable", and IDs such as "gear_1"; record its color separately. Do not assume a gear is present without visual evidence. Place its pick_point_2d on visible solid material, such as the top of a solid hub; avoid a central hole only if one is actually present.
 
