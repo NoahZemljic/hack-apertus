@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "steps", "question", "reason"],
+  "properties": {
+    "decision": {"enum": ["plan", "ask_user", "refuse"]},
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "object_id"],
+        "properties": {
+          "action": {"enum": ["pick", "place"]},
+          "object_id": {"type": "string"}
+        }
+      }
+    },
+    "question": {"type": ["string", "null"]},
+    "reason": {"type": ["string", "null"]}
+  }
+}

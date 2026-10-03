@@ -9,5 +9,11 @@ dependencies = [
     "opencv-python>=4.10,<5",
 ]
 
+[project.optional-dependencies]
+vision = [
+    "qwen-vl-utils>=0.0.8,<1",
+    "transformers>=4.49,<6",
+]
+
 [tool.uv]
 package = false
