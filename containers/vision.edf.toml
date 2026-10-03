@@ -1,0 +1,4 @@
+# Example environment definition file for launching a VLM server of your choice.
+
+# Example launch command on Clariden:
+# srun -A <project_account> --partition=debug --environment=./containers/vision.edf.toml --pty bash

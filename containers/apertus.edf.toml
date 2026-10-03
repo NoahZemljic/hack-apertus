@@ -1,0 +1,14 @@
+image = "ghcr.io#swiss-ai/vllm_apertus_1.5_release:latest-arm64"
+
+mounts = [
+  "${HOME}:${HOME}",
+  "${SCRATCH}:${SCRATCH}"
+]
+
+workdir = "${HOME}/hack-apertus"
+
+entrypoint = true
+writable = true
+
+# Launch on Clariden with: 
+# srun -A <project_account> --partition=debug --environment=./containers/apertus.edf.toml --pty bash
