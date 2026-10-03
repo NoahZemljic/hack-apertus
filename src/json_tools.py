@@ -1,6 +1,5 @@
 import json
 
-
 def extract_json_object(text: str) -> dict:
     """Extract the first complete JSON object from a model response"""
     cleaned = text.replace("```json", "").replace("```", "")

@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-
 SCHEMA_DIRECTORY = Path(__file__).resolve().parents[1] / "schema"
 
 

@@ -1,11 +1,10 @@
 import json
 from pathlib import Path
 
-from .perception import PerceptionModel
+from .perception import PerceptionGenerationError, PerceptionModel
 from .results import plan_to_result
 from .validation import validate_scene_graph
 from .visualization import write_scene_overlay
-
 
 class RoboticsPipeline:
     def __init__(
@@ -30,10 +29,21 @@ class RoboticsPipeline:
             graph = validate_scene_graph(json.loads(cache_path.read_text()), *scene.size)
             replies = ["loaded from cache"]
         else:
-            graph, replies = self.perception.generate_scene_graph(
-                scene_dir / "rgb.png",
-                *scene.size,
-            )
+            try:
+                graph, replies = self.perception.generate_scene_graph(
+                    scene_dir / "rgb.png",
+                    *scene.size,
+                )
+            except PerceptionGenerationError as error:
+                # Save rejected outputs separately so they can never become cached graphs
+                self.scene_graph_dir.mkdir(parents=True, exist_ok=True)
+                failure_path = self.scene_graph_dir / f"{scene.name}.failure.json"
+                failure_path.write_text(json.dumps({
+                    "scene": scene.name,
+                    "replies": error.replies,
+                    "errors": error.errors,
+                }, indent=2) + "\n")
+                raise
 
         self.scene_graph_dir.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(json.dumps(graph, indent=2) + "\n")

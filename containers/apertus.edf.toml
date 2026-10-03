@@ -10,5 +10,5 @@ workdir = "${HOME}/hack-apertus"
 entrypoint = true
 writable = true
 
-# Launch on Clariden with: 
-# srun -A <project_account> --partition=debug --environment=./containers/apertus.edf.toml --pty bash
+# Launch on Clariden with:
+# srun -A <project_account> --partition=debug --environment=./containers/apertus.edf.toml --pty bashv

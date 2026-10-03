@@ -52,6 +52,12 @@ uv run --extra vision run.py --attention flash_attention_2
 
 The scene graph format is defined in `schema/scene_graph.schema.json`. Model output is also checked in Python for image bounds, unique IDs, valid relationship references, and pick points inside their bounding boxes.
 
+Qwen uses LM Format Enforcer through Transformers' `prefix_allowed_tokens_fn` to constrain generated JSON structure, required fields, types, and enums. The tokenizer data is cached once, while each generation attempt gets a fresh schema parser. There is no automatic unconstrained fallback. Missing decoding dependencies stop generation with an error.
+
+Constraints do not guarantee correct perception, valid object references, or every JSON Schema keyword. The validator remains responsible for bounds and relationship consistency. A token limit can still truncate JSON; Qwen rejects incomplete responses rather than extracting a nested fragment. Validation feedback reports exact missing and unexpected fields, and failed attempts are saved in `outputs/scene_graphs/<scene>.failure.json` (or the configured graph directory) before the pipeline stops.
+
+Other Transformers-based generative VLMs can reuse `SchemaConstrainedDecoder` with their tokenizer and pass its token filter to `generate`. Detection/segmentation backends such as Grounding DINO + SAM construct graphs in code and use validation; they do not perform JSON token decoding.
+
 Apertus's intermediate output contract is defined in `schema/plan.schema.json` and loaded for constrained decoding. The final submission contract is defined in `schema/result.schema.json`.
 
 ## Code organization
@@ -68,6 +74,7 @@ All modules live directly under `src/`:
 | `json_tools.py` | Extracting JSON objects from model responses |
 | `visualization.py` | Scene inspection overlays |
 | `perception.py` | Shared abstract interface for scene-graph generation |
+| `decoding.py` | Reusable JSON-schema token filtering for Transformers-based VLMs |
 | `qwen.py` | Accelerator selection, Qwen model loading, inference, and validated perception |
 | `apertus.py` | Apertus requests and validated reasoning |
 | `pipeline.py` | Executing perception and planning across scenes |

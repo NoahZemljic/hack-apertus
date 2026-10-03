@@ -10,6 +10,20 @@ OBJECT_KEYS = {
 RELATION_KEYS = {"inside", "on_top_of", "supports", "held_by_human", "partially_occluded"}
 
 
+def validate_fields(value, expected: set[str], path: str) -> None:
+    """Report the exact missing and unexpected keys at a JSON object path"""
+    if not isinstance(value, dict):
+        raise ValueError(f"{path}: expected an object with fields {sorted(expected)}, got {value!r}")
+
+    missing = sorted(expected - value.keys())
+    unexpected = sorted(value.keys() - expected)
+    if missing or unexpected:
+        raise ValueError(
+            f"{path}: missing fields {missing}; unexpected fields {unexpected}; "
+            f"required fields {sorted(expected)}. Include every required field and remove unexpected fields"
+        )
+
+
 def is_integer(value) -> bool:
     """Return whether a value is an integer but not a boolean"""
     return isinstance(value, int) and not isinstance(value, bool)
@@ -18,21 +32,23 @@ def is_integer(value) -> bool:
 def validate_pixel(value, name: str, width: int, height: int, length: int) -> list[int]:
     """Validate one pixel point or bounding box against the image bounds"""
     if not isinstance(value, list) or len(value) != length or not all(is_integer(v) for v in value):
-        raise ValueError(f"{name} must contain {length} integers")
+        raise ValueError(f"{name}: expected {length} integers, got {value!r}")
     if any(v < 0 for v in value):
         raise ValueError(f"{name} cannot contain negative coordinates")
     if length == 2 and not (value[0] < width and value[1] < height):
-        raise ValueError(f"{name} is outside the {width}x{height} image")
+        raise ValueError(f"{name}: got {value!r}; require 0 <= x < {width} and 0 <= y < {height}")
     if length == 4 and not (value[0] < value[2] < width and value[1] < value[3] < height):
-        raise ValueError(f"{name} must be an ordered in-bounds [x1, y1, x2, y2] box")
+        raise ValueError(
+            f"{name}: got {value!r}; require 0 <= x1 < x2 < {width} "
+            f"and 0 <= y1 < y2 < {height} in [x1, y1, x2, y2] order"
+        )
     return value
 
 
 def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
     """Validate scene-graph fields, coordinates, IDs, and relationships"""
     # Reject missing and invented top-level fields before inspecting objects
-    if not isinstance(graph, dict) or set(graph) != {"image", "objects"}:
-        raise ValueError("scene graph must contain exactly image and objects")
+    validate_fields(graph, {"image", "objects"}, "scene_graph")
 
     image = graph["image"]
     if image != {"width": width, "height": height}:
@@ -46,13 +62,12 @@ def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
     ids = []
     for index, obj in enumerate(objects):
         prefix = f"objects[{index}]"
-        if not isinstance(obj, dict) or set(obj) != OBJECT_KEYS:
-            raise ValueError(f"{prefix} has missing or unknown fields")
+        validate_fields(obj, OBJECT_KEYS, prefix)
         object_id = obj["id"]
         if not isinstance(object_id, str) or re.fullmatch(r"[a-z][a-z0-9_]*", object_id) is None:
             raise ValueError(f"{prefix}.id must be a lowercase snake_case identifier")
-        if obj["kind"] not in ALLOWED_KINDS:
-            raise ValueError(f"{prefix}.kind is invalid")
+        if not isinstance(obj["kind"], str) or obj["kind"] not in ALLOWED_KINDS:
+            raise ValueError(f"{prefix}.kind: expected one of {sorted(ALLOWED_KINDS)}, got {obj['kind']!r}")
         if not isinstance(obj["label"], str) or not obj["label"].strip():
             raise ValueError(f"{prefix}.label must be a non-empty string")
         if obj["color"] is not None and not isinstance(obj["color"], str):
@@ -72,8 +87,7 @@ def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
             raise ValueError(f"{prefix}.confidence must be between 0 and 1")
 
         relations = obj["relations"]
-        if not isinstance(relations, dict) or set(relations) != RELATION_KEYS:
-            raise ValueError(f"{prefix}.relations has missing or unknown fields")
+        validate_fields(relations, RELATION_KEYS, f"{prefix}.relations")
         if relations["inside"] is not None and not isinstance(relations["inside"], str):
             raise ValueError(f"{prefix}.relations.inside must be a string or null")
         if relations["on_top_of"] is not None and not isinstance(relations["on_top_of"], str):
@@ -99,7 +113,7 @@ def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
         refs = [obj["relations"]["inside"], obj["relations"]["on_top_of"], *obj["relations"]["supports"]]
         for ref in (value for value in refs if value is not None):
             if ref not in known:
-                raise ValueError(f"{obj['id']} references unknown object {ref}")
+                raise ValueError(f"{obj['id']}.relations: unknown object {ref!r}; valid IDs are {sorted(known)}")
             if ref == obj["id"]:
                 raise ValueError(f"{obj['id']} cannot reference itself")
 
@@ -118,11 +132,10 @@ def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
 
 def validate_plan(plan: dict, graph: dict) -> dict:
     """Validate a proposed decision and its physical action sequence"""
-    if not isinstance(plan, dict) or set(plan) != {"decision", "steps", "question", "reason"}:
-        raise ValueError("plan must contain exactly decision, steps, question, and reason")
+    validate_fields(plan, {"decision", "steps", "question", "reason"}, "plan")
     decision = plan["decision"]
-    if decision not in {"plan", "ask_user", "refuse"}:
-        raise ValueError("decision is invalid")
+    if not isinstance(decision, str) or decision not in {"plan", "ask_user", "refuse"}:
+        raise ValueError(f"plan.decision: expected plan, ask_user, or refuse; got {decision!r}")
     if not isinstance(plan["steps"], list):
         raise ValueError("steps must be a list")
 
@@ -135,10 +148,13 @@ def validate_plan(plan: dict, graph: dict) -> dict:
         # Track gripper state so every place follows a valid pick
         holding = False
         for index, step in enumerate(plan["steps"]):
-            if not isinstance(step, dict) or set(step) != {"action", "object_id"}:
-                raise ValueError(f"steps[{index}] is malformed")
-            if step["action"] not in {"pick", "place"} or step["object_id"] not in known:
-                raise ValueError(f"steps[{index}] has an invalid action or object_id")
+            validate_fields(step, {"action", "object_id"}, f"steps[{index}]")
+            if not isinstance(step["action"], str) or step["action"] not in {"pick", "place"}:
+                raise ValueError(f"steps[{index}].action: expected pick or place, got {step['action']!r}")
+            if not isinstance(step["object_id"], str) or step["object_id"] not in known:
+                raise ValueError(
+                    f"steps[{index}].object_id: got {step['object_id']!r}; valid IDs are {sorted(known)}"
+                )
 
             obj = known[step["object_id"]]
             if step["action"] == "pick":

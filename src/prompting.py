@@ -4,7 +4,6 @@ from pathlib import Path
 
 from .schemas import load_scene_graph_schema
 
-
 def prepare_perception_prompt(width: int, height: int) -> str:
     """Builds the Qwen prompt for grounded scene-graph extraction"""
     schema = json.dumps(load_scene_graph_schema(), separators=(",", ":"))

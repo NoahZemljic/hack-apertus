@@ -1,6 +1,13 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+class PerceptionGenerationError(ValueError):
+    def __init__(self, message: str, replies: list[str], errors: list[str]) -> None:
+        """Preserve model replies and validation errors when perception fails"""
+        super().__init__(message)
+        self.replies = replies
+        self.errors = errors
+
 
 class PerceptionModel(ABC):
     @abstractmethod

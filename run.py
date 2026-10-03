@@ -8,7 +8,6 @@ from src.pipeline import RoboticsPipeline
 from src.qwen import QwenSceneGraphGenerator
 from src.results import write_submission_files
 
-
 def create_parser() -> argparse.ArgumentParser:
     """Define command-line options for the perception and reasoning pipeline"""
     parser = argparse.ArgumentParser(description="Run Qwen perception followed by Apertus robot planning")
@@ -20,7 +19,11 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--attention", choices=("sdpa", "flash_attention_2"), default="sdpa")
     parser.add_argument("--scene-graph-dir", type=Path)
     parser.add_argument("--reuse-scene-graphs", action="store_true")
-    parser.add_argument("--no-constrained-decoding", action="store_true")
+    parser.add_argument(
+        "--no-constrained-decoding",
+        action="store_true",
+        help="Disable Apertus constrained decoding only; Qwen always uses schema constraints",
+    )
     parser.add_argument("--timeout", type=float, default=180)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--team", default="hack-apertus")

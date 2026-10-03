@@ -3,7 +3,6 @@ from pathlib import Path
 
 from .scene_graph import graph_objects_by_id
 
-
 def plan_to_result(instruction_id: str, plan: dict, graph: dict) -> dict:
     """Convert an internal plan into the challenge submission format"""
     if plan["decision"] == "ask_user":
