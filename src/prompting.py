@@ -12,7 +12,7 @@ PERCEPTION_RELATION_RULES = """Relationship semantics:
 - An object may be both inside a tray and resting directly on its base
 - Only claim contacts supported by the image; use null for an unrepresented support such as the table
 When repairing a contact, update both on_top_of and supports consistently. Recheck all affected objects.
-Do not remove true contacts or invent contacts just to pass validation. Preserve unrelated correct detections,
+Do not remove true contacts or invent contacts. Preserve unrelated correct detections,
 IDs, boxes, and pick points unless the image or a reported error gives a reason to change them."""
 
 def prepare_perception_prompt(width: int, height: int) -> str:
@@ -23,6 +23,8 @@ def prepare_perception_prompt(width: int, height: int) -> str:
 The original image is {width} x {height} pixels. Coordinates are [u, v], where u increases rightward and v increases downward. Return all coordinates in this original image space.
 
 Detect every movable object, grey or black tray, plate, saucer, mug, and visible human hand. Classify trays as container, plates and saucers as surface, hands as human, and graspable objects including mugs as movable. For repeated objects, create unique snake_case IDs numbered from left to right. A pick_point_2d must lie on a visible solid part of the object's top surface, never in a gear hole, empty bounding-box area, or an occluding object. For containers and surfaces, choose a representative interior point. Use on_top_of and supports only for contact between detected objects; omit the table relation by using null. Use inside for membership in a tray or other container.
+
+Object identification: this is a workspace containing physical parts, not a collection of pictograms. A circular mechanical part with regularly spaced teeth around its rim is a gear (cogwheel), not a sun, star, or flower. Gears may have a solid raised cylindrical hub, a central bore, or neither visible; a central hole is NOT required. A toothed part with a solid raised hub is still a gear. Identify it by its mechanical shape, not color alone. When these mechanical features are visible, use label "gear", kind "movable", and IDs such as "gear_1"; record its color separately. Do not assume a gear is present without visual evidence. Place its pick_point_2d on visible solid material, such as the top of a solid hub; avoid a central hole only if one is actually present.
 
 {PERCEPTION_RELATION_RULES}
 
