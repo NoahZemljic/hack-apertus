@@ -4,6 +4,17 @@ from pathlib import Path
 
 from .schemas import load_scene_graph_schema
 
+PERCEPTION_RELATION_RULES = """Relationship semantics:
+- A.on_top_of = B means A rests directly on B; B.supports must then contain A
+- B.supports containing A means the same contact, not the reverse contact
+- Support is directional, never symmetric, and must not form cycles
+- A.inside = B means containment only; it does not establish physical support
+- An object may be both inside a tray and resting directly on its base
+- Only claim contacts supported by the image; use null for an unrepresented support such as the table
+When repairing a contact, update both on_top_of and supports consistently. Recheck all affected objects.
+Do not remove true contacts or invent contacts just to pass validation. Preserve unrelated correct detections,
+IDs, boxes, and pick points unless the image or a reported error gives a reason to change them."""
+
 def prepare_perception_prompt(width: int, height: int) -> str:
     """Builds the Qwen prompt for grounded scene-graph extraction"""
     schema = json.dumps(load_scene_graph_schema(), separators=(",", ":"))
@@ -12,6 +23,8 @@ def prepare_perception_prompt(width: int, height: int) -> str:
 The original image is {width} x {height} pixels. Coordinates are [u, v], where u increases rightward and v increases downward. Return all coordinates in this original image space.
 
 Detect every movable object, grey or black tray, plate, saucer, mug, and visible human hand. Classify trays as container, plates and saucers as surface, hands as human, and graspable objects including mugs as movable. For repeated objects, create unique snake_case IDs numbered from left to right. A pick_point_2d must lie on a visible solid part of the object's top surface, never in a gear hole, empty bounding-box area, or an occluding object. For containers and surfaces, choose a representative interior point. Use on_top_of and supports only for contact between detected objects; omit the table relation by using null. Use inside for membership in a tray or other container.
+
+{PERCEPTION_RELATION_RULES}
 
 Report observations only. Do not plan actions, infer an instruction, or invent absent objects. Use null, [], false, or "unknown" rather than omitting a required field. Return exactly one JSON object matching this JSON Schema:
 {schema}"""
@@ -54,14 +67,22 @@ def prepare_perception_messages(image_path: Path, width: int, height: int) -> li
     }]
 
 
-def append_validation_feedback(messages: list[dict], response: str, error: ValueError) -> None:
+def append_validation_feedback(
+    messages: list[dict], response: str, error: ValueError, guidance: str = ""
+) -> None:
     """Append a failed response and correction request to an existing conversation"""
     # Preserve the conversation so either model can repair its previous response
     messages.extend([
         {"role": "assistant", "content": response},
         {
             "role": "user",
-            "content": f"The JSON is invalid: {error}. Return a corrected complete JSON object only.",
+            "content": (
+                f"The previous response failed validation:\n{error}\n\n"
+                f"{guidance}\n\n"
+                "Resolve every listed issue using the original input as evidence. "
+                "Return the complete corrected JSON object, not a patch or explanation. "
+                "Keep all required fields and recheck consistency across the entire response"
+            ),
         },
     ])
 

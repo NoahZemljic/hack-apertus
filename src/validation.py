@@ -1,3 +1,4 @@
+import json
 import re
 
 from .scene_graph import graph_objects_by_id
@@ -107,25 +108,78 @@ def validate_scene_graph(graph: dict, width: int, height: int) -> dict:
     if len(ids) != len(set(ids)):
         raise ValueError("object IDs must be unique")
 
-    # Second pass validates references now that every object ID is known
-    known = set(ids)
-    for obj in objects:
-        refs = [obj["relations"]["inside"], obj["relations"]["on_top_of"], *obj["relations"]["supports"]]
-        for ref in (value for value in refs if value is not None):
-            if ref not in known:
-                raise ValueError(f"{obj['id']}.relations: unknown object {ref!r}; valid IDs are {sorted(known)}")
-            if ref == obj["id"]:
-                raise ValueError(f"{obj['id']} cannot reference itself")
-
-    # on_top_of and supports must describe both sides of the same contact
+    # Collect relationship problems together so a retry can repair the whole graph
     by_id = graph_objects_by_id(graph)
+    paths = {obj["id"]: f"objects[{index}] ({obj['id']}).relations" for index, obj in enumerate(objects)}
+    errors = []
     for obj in objects:
+        refs = [(field, obj["relations"][field]) for field in ("inside", "on_top_of")]
+        refs.extend((f"supports[{index}]", ref) for index, ref in enumerate(obj["relations"]["supports"]))
+        for field, ref in refs:
+            if ref is None:
+                continue
+            if ref not in by_id:
+                errors.append(
+                    f"{paths[obj['id']]}.{field} = {json.dumps(ref)} references an unknown object. "
+                    f"Use an existing ID from {json.dumps(ids)} only if supported by the image; "
+                    "otherwise use null for inside/on_top_of or remove the supports entry"
+                )
+            if ref == obj["id"]:
+                errors.append(
+                    f"{paths[obj['id']]}.{field} references itself. "
+                    "An object cannot contain or support itself; correct the reference from the image"
+                )
+
+    for obj in objects:
+        object_id = obj["id"]
         on_top_of = obj["relations"]["on_top_of"]
-        if on_top_of is not None and obj["id"] not in by_id[on_top_of]["relations"]["supports"]:
-            raise ValueError(f"{obj['id']} and {on_top_of} have inconsistent support relations")
+        if on_top_of in by_id and object_id not in by_id[on_top_of]["relations"]["supports"]:
+            errors.append(
+                f"{paths[object_id]}.on_top_of = {json.dumps(on_top_of)}, but "
+                f"{paths[on_top_of]}.supports = {json.dumps(by_id[on_top_of]['relations']['supports'])}. "
+                f"If {object_id} rests directly on {on_top_of}, add {json.dumps(object_id)} to "
+                f"{paths[on_top_of]}.supports. Otherwise correct {paths[object_id]}.on_top_of "
+                "and its inverse to match the image"
+            )
         for supported in obj["relations"]["supports"]:
-            if by_id[supported]["relations"]["on_top_of"] != obj["id"]:
-                raise ValueError(f"{obj['id']} and {supported} have inconsistent support relations")
+            if supported not in by_id:
+                continue
+            actual = by_id[supported]["relations"]["on_top_of"]
+            if actual != object_id:
+                errors.append(
+                    f"{paths[object_id]}.supports contains {json.dumps(supported)}, but "
+                    f"{paths[supported]}.on_top_of = {json.dumps(actual)}. "
+                    f"If {object_id} directly supports {supported}, set {paths[supported]}.on_top_of "
+                    f"to {json.dumps(object_id)} and reconcile any previous support claim. "
+                    f"Otherwise remove {json.dumps(supported)} from {paths[object_id]}.supports. "
+                    f"Do not add {json.dumps(object_id)} to {paths[supported]}.supports to mirror this edge: "
+                    "that would reverse the physical support direction"
+                )
+
+    # Even reciprocal fields must not describe a circular support stack
+    reported_cycles = set()
+    for object_id in ids:
+        chain = []
+        current = object_id
+        while current in by_id:
+            if current in chain:
+                cycle = chain[chain.index(current):]
+                key = frozenset(cycle)
+                if key not in reported_cycles:
+                    reported_cycles.add(key)
+                    errors.append(
+                        f"Circular on_top_of chain: {' -> '.join(cycle + [current])}. "
+                        "Reinspect the image and remove or correct the false support edges and their "
+                        "inverse supports entries; objects cannot form a circular support stack"
+                    )
+                break
+            chain.append(current)
+            current = by_id[current]["relations"]["on_top_of"]
+
+    if errors:
+        raise ValueError("Scene relationship validation failed:\n" + "\n".join(
+            f"{index}. {error}" for index, error in enumerate(errors, start=1)
+        ))
 
     return graph
 

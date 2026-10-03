@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 from .decoding import SchemaConstrainedDecoder
 from .perception import PerceptionGenerationError, PerceptionModel
-from .prompting import append_validation_feedback, prepare_perception_messages
+from .prompting import PERCEPTION_RELATION_RULES, append_validation_feedback, prepare_perception_messages
 from .schemas import load_scene_graph_schema
 from .validation import validate_scene_graph
 
@@ -148,7 +148,7 @@ class QwenSceneGraphGenerator(PerceptionModel):
                 errors.append(str(last_error))
 
                 if attempt < self.validation_retries:
-                    append_validation_feedback(messages, response, last_error)
+                    append_validation_feedback(messages, response, last_error, PERCEPTION_RELATION_RULES)
 
         raise PerceptionGenerationError(
             f"Qwen did not return a valid scene graph: {last_error}", responses, errors
