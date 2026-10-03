@@ -1,0 +1,112 @@
+{
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_pixel", "actions"],
+      "properties": {
+        "target_pixel": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "prefixItems": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["action", "object"],
+              "properties": {
+                "action": {
+                  "const": "pick"
+                },
+                "object": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "object"],
+            "properties": {
+              "action": {
+                "enum": ["pick", "place"]
+              },
+              "object": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_pixel", "actions"],
+      "properties": {
+        "target_pixel": {
+          "type": "null"
+        },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "question"],
+            "properties": {
+              "action": {
+                "const": "ask_user"
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_pixel", "actions"],
+      "properties": {
+        "target_pixel": {
+          "type": "null"
+        },
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "reason"],
+            "properties": {
+              "action": {
+                "const": "refuse"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
