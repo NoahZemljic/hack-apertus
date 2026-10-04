@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ObjectExtraction",
+  "type": "object",
+  "properties": {
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["objects"],
+  "additionalProperties": false
+}
