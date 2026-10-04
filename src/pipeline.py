@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from .json_tools import parse_json_object
 from .perception import PerceptionGenerationError, PerceptionModel
 from .results import plan_to_result
 from .validation import validate_scene_graph
@@ -26,24 +27,33 @@ class RoboticsPipeline:
 
         # Reusing a graph avoids repeating perception inference during prompt work
         if self.reuse_scene_graphs and cache_path.exists():
-            graph = validate_scene_graph(json.loads(cache_path.read_text()), *scene.size)
+            graph = validate_scene_graph(parse_json_object(cache_path.read_text()), *scene.size)
             replies = ["loaded from cache"]
         else:
+            replies = []
             try:
                 graph, replies = self.perception.generate_scene_graph(
                     scene_dir / "rgb.png",
                     *scene.size,
                 )
-            except PerceptionGenerationError as error:
+
+                # Enforce the same boundary for every backend, even if it skipped its own validation
+                validate_scene_graph(graph, *scene.size)
+            except ValueError as error:
+                failure = error if isinstance(error, PerceptionGenerationError) else PerceptionGenerationError(
+                    f"Perception did not return a valid scene graph: {error}", replies, [str(error)]
+                )
                 # Save rejected outputs separately so they can never become cached graphs
                 self.scene_graph_dir.mkdir(parents=True, exist_ok=True)
                 failure_path = self.scene_graph_dir / f"{scene.name}.failure.json"
                 failure_path.write_text(json.dumps({
                     "scene": scene.name,
-                    "replies": error.replies,
-                    "errors": error.errors,
+                    "replies": failure.replies,
+                    "errors": failure.errors,
                 }, indent=2) + "\n")
-                raise
+                if failure is error:
+                    raise
+                raise failure from error
 
         self.scene_graph_dir.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(json.dumps(graph, indent=2) + "\n")

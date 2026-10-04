@@ -17,18 +17,20 @@
     },
     "objects": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "items": {"$ref": "#/$defs/object"}
     }
   },
   "$defs": {
     "pixel": {
+      "description": "Integer pixel indices [u, v]; 0 <= u < image.width and 0 <= v < image.height",
       "type": "array",
       "items": {"type": "integer", "minimum": 0},
       "minItems": 2,
       "maxItems": 2
     },
     "bbox": {
+      "description": "Half-open [x1, y1, x2, y2]; 0 <= x1 < x2 <= image.width and 0 <= y1 < y2 <= image.height",
       "type": "array",
       "items": {"type": "integer", "minimum": 0},
       "minItems": 4,
@@ -50,7 +52,7 @@
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
         "kind": {"enum": ["movable", "container", "surface", "human"]},
-        "label": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "pattern": "^[a-z]+(?:[ -][a-z]+)*$", "description": "Lowercase physical object category, e.g. gear, mug, tray; color is a separate field; exclude the background table"},
         "color": {"type": ["string", "null"]},
         "bbox_2d": {"$ref": "#/$defs/bbox"},
         "pick_point_2d": {"$ref": "#/$defs/pixel"},
@@ -60,8 +62,8 @@
           "additionalProperties": false,
           "required": ["inside", "on_top_of", "supports", "held_by_human", "partially_occluded"],
           "properties": {
-            "inside": {"type": ["string", "null"]},
-            "on_top_of": {"type": ["string", "null"]},
+            "inside": {"type": ["string", "null"], "description": "ID of the immediate enclosing receptacle, not its contents; null when none is visible"},
+            "on_top_of": {"type": ["string", "null"], "description": "ID of the object directly supporting this object from below; null for the unrepresented table or no visible support"},
             "supports": {
               "type": "array",
               "items": {"type": "string"},

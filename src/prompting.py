@@ -10,19 +10,29 @@ PERCEPTION_RELATION_RULES = """Relationship semantics:
 - Do not output supports; code derives that inverse relationship from on_top_of
 - Support is directional, never symmetric, and must not form cycles
 - A.inside = B means A is contained in B, not that B is inside A; containment must not form cycles
+- Following any combination of inside and on_top_of must never lead back to the starting object
 - Containment alone does not establish physical support
 - An object may be both inside a tray and resting directly on its base
-- Only claim contacts supported by the image; use null for an unrepresented support such as the table
+- Use the immediate enclosing receptacle for inside; a mug can be movable and still contain another object
+- Objects inside a mug must fit its visible extent; a large surrounding tray is not inside a smaller mug
+- The background table/floor is excluded from objects entirely; use null for support by that background
+- Detect actual trays, including black trays; do not confuse a tray with the background table
+- Overlapping bounding boxes alone do not prove containment or physical contact
+Generic example: if part_a rests in receptacle_b, part_a has inside=receptacle_b and
+on_top_of=receptacle_b; receptacle_b does NOT have inside=part_a or on_top_of=part_a.
+Only use that example when both enclosure and direct support are visible in the actual image.
 When repairing a relationship, correct inside or on_top_of using the image. Recheck all affected objects.
 Do not remove true contacts or invent contacts. Preserve unrelated correct detections,
 IDs, boxes, and pick points unless the image or a reported error gives a reason to change them."""
 
 def prepare_perception_prompt(width: int, height: int) -> str:
     """Builds the Qwen prompt for grounded scene-graph extraction"""
-    schema = json.dumps(load_perception_schema(), separators=(",", ":"))
+    schema = json.dumps(load_perception_schema(width, height), separators=(",", ":"))
     return f"""Analyze this overhead robot-workspace image and construct a complete 2D scene graph.
 
 The original image is {width} x {height} pixels. Coordinates are [u, v], where u increases rightward and v increases downward. Return all coordinates in this original image space.
+
+Bounding boxes use half-open edges: [x1, y1, x2, y2], with 0 <= x1 < x2 <= {width} and 0 <= y1 < y2 <= {height}. The right and bottom edges may equal the image dimensions. Pick points are actual integer pixels: 0 <= u < {width}, 0 <= v < {height}, and x1 <= u < x2, y1 <= v < y2. Never use width or height itself as a pick-point index.
 
 Detect every movable object, grey or black tray, plate, saucer, mug, and visible human hand. Classify trays as container, plates and saucers as surface, hands as human, and graspable objects including mugs as movable. For repeated objects, create unique snake_case IDs numbered from left to right. A pick_point_2d must lie on a visible solid part of the object's top surface, never in a gear hole, empty bounding-box area, or an occluding object. For containers and surfaces, choose a representative interior point. Use on_top_of only for direct contact with a supporting detected object; omit the table relation by using null. Use inside for membership in a tray or other container.
 
@@ -30,7 +40,7 @@ Object identification: this is a workspace containing physical parts, not a coll
 
 {PERCEPTION_RELATION_RULES}
 
-Report observations only. Do not plan actions, infer an instruction, or invent absent objects. Use null, [], false, or "unknown" rather than omitting a required field. Return exactly one JSON object matching this JSON Schema:
+Report observations only. Do not plan actions, infer an instruction, or invent absent objects. Use a lowercase physical category as label (for example "gear" rather than "yellow sun") and put color in its separate field. Do not infer a category merely because an example names it. If there are no visible in-scope objects, return an empty objects list rather than inventing one. Output all required fields. inside/on_top_of must be an existing object ID or null, never "unknown". Booleans must describe the visible evidence, not arbitrary defaults. A graph passing validation is not proof of a safe grasp. Return exactly one JSON object matching this JSON Schema:
 {schema}"""
 
 

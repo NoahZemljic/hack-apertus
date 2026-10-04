@@ -5,6 +5,7 @@ description = "Hack Apertus 2026 ZHAW robotics challenge"
 requires-python = ">=3.11,<3.14"
 license = "Apache-2.0"
 dependencies = [
+    "jsonschema>=4.23,<5",
     "numpy>=2,<3",
     "opencv-python-headless>=4.10,<5",
 ]

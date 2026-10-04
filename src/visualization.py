@@ -23,7 +23,8 @@ def write_scene_overlay(rgb, graph: dict, path: Path) -> None:
         x1, y1, x2, y2 = obj["bbox_2d"]
         u, v = obj["pick_point_2d"]
 
-        cv2.rectangle(canvas, (x1, y1), (x2, y2), color, thickness)
+        # OpenCV draws inclusive endpoints; scene boxes use exclusive right/bottom edges
+        cv2.rectangle(canvas, (x1, y1), (x2 - 1, y2 - 1), color, thickness)
         cv2.drawMarker(canvas, (u, v), color, cv2.MARKER_CROSS, round(18 * scale), thickness)
         cv2.putText(canvas, obj["id"], (x1, max(20, y1 - 8)), cv2.FONT_HERSHEY_SIMPLEX,
                     font_scale, color, thickness, cv2.LINE_AA)

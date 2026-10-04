@@ -1,15 +1,21 @@
 import json
-import re
+import math
+from collections import Counter
+
+from jsonschema import Draft202012Validator
 
 from .scene_graph import graph_objects_by_id
+from .schemas import load_perception_schema, load_scene_graph_schema
 
-ALLOWED_KINDS = {"movable", "container", "surface", "human"}
-OBJECT_KEYS = {
-    "id", "kind", "label", "color", "bbox_2d", "pick_point_2d",
-    "confidence", "relations",
+# These categories describe manipulation roles, not whether an object is hollow
+CATEGORY_KINDS = {
+    "tray": "container", "plate": "surface", "saucer": "surface",
+    "hand": "human", "mug": "movable", "cup": "movable", "bowl": "movable",
+    "gear": "movable", "cube": "movable", "banana": "movable", "mandarin": "movable",
 }
-RELATION_KEYS = {"inside", "on_top_of", "supports", "held_by_human", "partially_occluded"}
-
+RECEPTACLE_LABELS = {"mug", "cup", "bowl"}
+BACKGROUND_LABELS = {"table", "tabletop", "floor", "background", "workbench"}
+CONTAINMENT_MARGIN_FRACTION = 0.02
 
 def validate_fields(value, expected: set[str], path: str) -> None:
     """Report the exact missing and unexpected keys at a JSON object path"""
@@ -26,169 +32,258 @@ def validate_fields(value, expected: set[str], path: str) -> None:
 
 
 def is_integer(value) -> bool:
-    """Return whether a value is an integer but not a boolean"""
+    """Check for an actual integer rather than a boolean or integral float"""
     return isinstance(value, int) and not isinstance(value, bool)
 
 
 def validate_pixel(value, name: str, width: int, height: int, length: int) -> list[int]:
-    """Validate one pixel point or bounding box against the image bounds"""
+    """Validate pixel indices or half-open bounding-box edges"""
     if not isinstance(value, list) or len(value) != length or not all(is_integer(v) for v in value):
         raise ValueError(f"{name}: expected {length} integers, got {value!r}")
-    if any(v < 0 for v in value):
-        raise ValueError(f"{name} cannot contain negative coordinates")
-    if length == 2 and not (value[0] < width and value[1] < height):
-        raise ValueError(f"{name}: got {value!r}; require 0 <= x < {width} and 0 <= y < {height}")
-    if length == 4 and not (value[0] < value[2] < width and value[1] < value[3] < height):
+    if length == 2 and not (0 <= value[0] < width and 0 <= value[1] < height):
+        raise ValueError(f"{name}: got {value!r}; require 0 <= u < {width} and 0 <= v < {height}")
+    if length == 4 and not (0 <= value[0] < value[2] <= width and 0 <= value[1] < value[3] <= height):
         raise ValueError(
-            f"{name}: got {value!r}; require 0 <= x1 < x2 < {width} "
-            f"and 0 <= y1 < y2 < {height} in [x1, y1, x2, y2] order"
+            f"{name}: got {value!r}; use half-open [x1, y1, x2, y2] with "
+            f"0 <= x1 < x2 <= {width} and 0 <= y1 < y2 <= {height}"
         )
     return value
 
 
-def validate_scene_graph(graph: dict, width: int, height: int, *, require_supports: bool = True) -> dict:
-    """Validate a full graph or raw perception observations before support derivation"""
-    # Reject missing and invented top-level fields before inspecting objects
-    validate_fields(graph, {"image", "objects"}, "scene_graph")
+def format_json_path(parts) -> str:
+    """Format a schema error path as an actionable field reference"""
+    path = "$"
+    for part in parts:
+        path += f"[{part}]" if isinstance(part, int) else f".{part}"
+    return path
 
-    image = graph["image"]
-    if image != {"width": width, "height": height}:
-        raise ValueError(f"image must be exactly {{'width': {width}, 'height': {height}}}")
 
-    objects = graph["objects"]
-    if not isinstance(objects, list) or not objects:
-        raise ValueError("objects must be a non-empty list")
+def extract_label_category(label) -> str | None:
+    """Read the final category word while allowing prefixes such as green in green mug"""
+    if not isinstance(label, str) or not label.strip():
+        return None
+    return label.lower().split()[-1]
 
-    # First pass validates each object independently
-    ids = []
-    for index, obj in enumerate(objects):
-        prefix = f"objects[{index}]"
-        validate_fields(obj, OBJECT_KEYS, prefix)
-        object_id = obj["id"]
-        if not isinstance(object_id, str) or re.fullmatch(r"[a-z][a-z0-9_]*", object_id) is None:
-            raise ValueError(f"{prefix}.id must be a lowercase snake_case identifier")
-        if not isinstance(obj["kind"], str) or obj["kind"] not in ALLOWED_KINDS:
-            raise ValueError(f"{prefix}.kind: expected one of {sorted(ALLOWED_KINDS)}, got {obj['kind']!r}")
-        if not isinstance(obj["label"], str) or not obj["label"].strip():
-            raise ValueError(f"{prefix}.label must be a non-empty string")
-        if obj["color"] is not None and not isinstance(obj["color"], str):
-            raise ValueError(f"{prefix}.color must be a string or null")
 
-        bbox = validate_pixel(obj["bbox_2d"], f"{prefix}.bbox_2d", width, height, 4)
-        point = validate_pixel(obj["pick_point_2d"], f"{prefix}.pick_point_2d", width, height, 2)
-        if not (bbox[0] <= point[0] <= bbox[2] and bbox[1] <= point[1] <= bbox[3]):
-            raise ValueError(f"{prefix}.pick_point_2d must be inside bbox_2d")
-
-        confidence = obj["confidence"]
-        if (
-            isinstance(confidence, bool)
-            or not isinstance(confidence, (int, float))
-            or not 0 <= confidence <= 1
-        ):
-            raise ValueError(f"{prefix}.confidence must be between 0 and 1")
-
-        relations = obj["relations"]
-        expected_relations = RELATION_KEYS if require_supports else RELATION_KEYS - {"supports"}
-        validate_fields(relations, expected_relations, f"{prefix}.relations")
-        if relations["inside"] is not None and not isinstance(relations["inside"], str):
-            raise ValueError(f"{prefix}.relations.inside must be a string or null")
-        if relations["on_top_of"] is not None and not isinstance(relations["on_top_of"], str):
-            raise ValueError(f"{prefix}.relations.on_top_of must be a string or null")
-        if (
-            not isinstance(relations.get("supports", []), list)
-            or not all(isinstance(value, str) for value in relations.get("supports", []))
-        ):
-            raise ValueError(f"{prefix}.relations.supports must be a list of IDs")
-        if len(set(relations.get("supports", []))) != len(relations.get("supports", [])):
-            raise ValueError(f"{prefix}.relations.supports contains duplicate IDs")
-        for field in ("held_by_human", "partially_occluded"):
-            if not isinstance(relations[field], bool):
-                raise ValueError(f"{prefix}.relations.{field} must be boolean")
-        ids.append(object_id)
-
-    if len(ids) != len(set(ids)):
-        raise ValueError("object IDs must be unique")
-
-    # Collect relationship problems together so a retry can repair the whole graph
-    by_id = graph_objects_by_id(graph)
-    paths = {obj["id"]: f"objects[{index}] ({obj['id']}).relations" for index, obj in enumerate(objects)}
+def collect_object_errors(obj: dict, index: int, width: int, height: int) -> list[str]:
+    """Collect independent object geometry and category errors without changing observations"""
+    path = f"$.objects[{index}] ({obj.get('id', '?')})"
     errors = []
-    for obj in objects:
-        refs = [(field, obj["relations"][field]) for field in ("inside", "on_top_of")]
-        refs.extend((f"supports[{index}]", ref) for index, ref in enumerate(obj["relations"].get("supports", [])))
-        for field, ref in refs:
-            if ref is None:
-                continue
-            if ref not in by_id:
-                errors.append(
-                    f"{paths[obj['id']]}.{field} = {json.dumps(ref)} references an unknown object. "
-                    f"Use an existing ID from {json.dumps(ids)} only if supported by the image; "
-                    "otherwise use null for inside/on_top_of or remove the supports entry"
-                )
-            if ref == obj["id"]:
-                errors.append(
-                    f"{paths[obj['id']]}.{field} references itself. "
-                    "An object cannot contain or support itself; correct the reference from the image"
-                )
-
-    # Only complete graphs have inverse fields to cross-check
-    for obj in objects if require_supports else []:
-        object_id = obj["id"]
-        on_top_of = obj["relations"]["on_top_of"]
-        if on_top_of in by_id and object_id not in by_id[on_top_of]["relations"]["supports"]:
+    geometry = {}
+    for field, length in (("bbox_2d", 4), ("pick_point_2d", 2)):
+        try:
+            geometry[field] = validate_pixel(obj.get(field), f"{path}.{field}", width, height, length)
+        except ValueError as error:
+            errors.append(str(error))
+    if len(geometry) == 2:
+        x1, y1, x2, y2 = geometry["bbox_2d"]
+        u, v = geometry["pick_point_2d"]
+        if not (x1 <= u < x2 and y1 <= v < y2):
             errors.append(
-                f"{paths[object_id]}.on_top_of = {json.dumps(on_top_of)}, but "
-                f"{paths[on_top_of]}.supports = {json.dumps(by_id[on_top_of]['relations']['supports'])}. "
-                f"If {object_id} rests directly on {on_top_of}, add {json.dumps(object_id)} to "
-                f"{paths[on_top_of]}.supports. Otherwise correct {paths[object_id]}.on_top_of "
-                "and its inverse to match the image"
+                f"{path}.pick_point_2d = {[u, v]} lies outside bbox_2d = {[x1, y1, x2, y2]}. "
+                "Select visible solid material inside the half-open box; do not clamp an unverified point"
             )
-        for supported in obj["relations"]["supports"]:
-            if supported not in by_id:
+
+    confidence = obj.get("confidence")
+    if isinstance(confidence, float) and not math.isfinite(confidence):
+        errors.append(f"{path}.confidence: use a finite number from 0 to 1, not {confidence!r}")
+
+    label = obj.get("label")
+    category = extract_label_category(label)
+    if category in BACKGROUND_LABELS:
+        errors.append(
+            f"{path}.label = {label!r} describes excluded background. "
+            "Remove this background object and set references to its support to null; "
+            "do not remove actual trays, plates, or saucers"
+        )
+    if category in CATEGORY_KINDS and obj.get("kind") != CATEGORY_KINDS[category]:
+        errors.append(
+            f"{path}.kind = {obj.get('kind')!r} conflicts with label {label!r}: "
+            f"a {category} has kind {CATEGORY_KINDS[category]!r} in this task. "
+            "Reinspect the category rather than changing it just to pass validation"
+        )
+    return errors
+
+
+def collect_cycle_errors(objects: dict[str, dict], paths: dict[str, str], fields: tuple[str, ...]) -> list[str]:
+    """Detect directed cycles across one or both relations without recursive depth limits"""
+    edges = {
+        object_id: [(field, obj["relations"][field]) for field in fields
+                    if obj["relations"][field] in objects]
+        for object_id, obj in objects.items()
+    }
+    errors = []
+    completed = set()
+    for object_id in objects:
+        if object_id in completed:
+            continue
+        chain = [object_id]
+        chain_fields = []
+        positions = {object_id: 0}
+        pending = [(object_id, iter(edges[object_id]))]
+
+        # Track the active path separately from completed nodes to distinguish cycles from shared parents
+        while pending:
+            current, remaining = pending[-1]
+            edge = next(remaining, None)
+            if edge is None:
+                completed.add(current)
+                del positions[current]
+                pending.pop()
+                chain.pop()
+                if chain_fields:
+                    chain_fields.pop()
                 continue
-            actual = by_id[supported]["relations"]["on_top_of"]
-            if actual != object_id:
+
+            field, target = edge
+            if target in positions:
+                start = positions[target]
+                cycle = chain[start:] + [target]
+                cycle_fields = chain_fields[start:] + [field]
+                if len(fields) > 1 and len(set(cycle_fields)) == 1:
+                    continue
+                description = fields[0] if len(fields) == 1 else "mixed inside/on_top_of"
+                assignments = ", ".join(
+                    f"{paths[node]}.{relation} = {json.dumps(parent)}"
+                    for node, relation, parent in zip(cycle, cycle_fields, cycle[1:])
+                )
                 errors.append(
-                    f"{paths[object_id]}.supports contains {json.dumps(supported)}, but "
-                    f"{paths[supported]}.on_top_of = {json.dumps(actual)}. "
-                    f"If {object_id} directly supports {supported}, set {paths[supported]}.on_top_of "
-                    f"to {json.dumps(object_id)} and reconcile any previous support claim. "
-                    f"Otherwise remove {json.dumps(supported)} from {paths[object_id]}.supports. "
-                    f"Do not add {json.dumps(object_id)} to {paths[supported]}.supports to mirror this edge: "
-                    "that would reverse the physical support direction"
+                    f"Circular {description} chain: {' -> '.join(cycle)}. "
+                    f"Conflicting fields: {assignments}. Reinspect the image and correct the false "
+                    "references. Enclosing/supporting parents must form an acyclic hierarchy "
+                    "in this tabletop scene model. Never mirror a relationship to repair it"
+                )
+            elif target not in completed:
+                positions[target] = len(chain)
+                chain.append(target)
+                chain_fields.append(field)
+                pending.append((target, iter(edges[target])))
+    return errors
+
+
+def collect_relation_errors(objects: dict[str, dict], paths: dict[str, str], width: int, height: int,
+                            require_supports: bool) -> list[str]:
+    """Check directed references, containment plausibility, cycles, and derived inverses"""
+    errors = []
+    margin = max(width, height) * CONTAINMENT_MARGIN_FRACTION
+    for object_id, obj in objects.items():
+        relations = obj["relations"]
+        for field in ("inside", "on_top_of"):
+            target_id = relations[field]
+            if target_id is None:
+                continue
+            path = f"{paths[object_id]}.{field}"
+            if target_id not in objects:
+                errors.append(
+                    f"{path} = {json.dumps(target_id)} has no uniquely identified, structurally valid target. "
+                    f"Valid IDs: {json.dumps(list(objects))}. Correct the reference or the target's fields; "
+                    "do not invent an object to satisfy a reference"
+                )
+                continue
+            target = objects[target_id]
+            if target["kind"] == "human":
+                errors.append(
+                    f"{path} targets a human. Represent human holding with held_by_human=true "
+                    "when visible, not inside/on_top_of"
+                )
+            if field != "inside":
+                continue
+
+            category = extract_label_category(target["label"])
+            if target["kind"] != "container" and category not in RECEPTACLE_LABELS:
+                errors.append(
+                    f"{path} targets {target_id!r}, which is not a recognized receptacle. "
+                    "inside means enclosure by a tray, mug, cup, or bowl; "
+                    "resting on a plate or another solid object uses on_top_of"
                 )
 
-    # Both containment and physical support must be acyclic, even before derivation
-    for field in ("inside", "on_top_of"):
-        reported_cycles = set()
-        for object_id in ids:
-            chain = []
-            current = object_id
-            while current in by_id:
-                if current in chain:
-                    cycle = chain[chain.index(current):]
-                    key = frozenset(cycle)
-                    if key not in reported_cycles:
-                        reported_cycles.add(key)
-                        assignments = ", ".join(
-                            f"{paths[node]}.{field} = {json.dumps(by_id[node]['relations'][field])}"
-                            for node in cycle
-                        )
-                        errors.append(
-                            f"Circular {field} chain: {' -> '.join(cycle + [current])}. "
-                            f"Conflicting fields: {assignments}. Reinspect the image and correct the "
-                            f"false {field} references, using null only when no such detected object exists. "
-                            "Do not mirror the relationship in the opposite direction"
-                        )
-                    break
-                chain.append(current)
-                current = by_id[current]["relations"][field]
+            # This conservative 2D plausibility gate is not proof of physical containment
+            try:
+                child_box = validate_pixel(obj.get("bbox_2d"), path, width, height, 4)
+                parent_box = validate_pixel(target.get("bbox_2d"), path, width, height, 4)
+            except ValueError:
+                continue
+            x1, y1, x2, y2 = child_box
+            a1, b1, a2, b2 = parent_box
+            if not (a1 - margin <= x1 and b1 - margin <= y1 and
+                    x2 <= a2 + margin and y2 <= b2 + margin):
+                errors.append(
+                    f"{path} claims {object_id!r} is inside {target_id!r}, but its box {child_box} "
+                    f"extends beyond the enclosing box {parent_box} by more than the {margin:.1f}px "
+                    "tolerance. Check containment direction and both detections against the image. "
+                    "Do not swap IDs, enlarge boxes, or set null solely to silence this check"
+                )
+
+    for fields in (("inside",), ("on_top_of",), ("inside", "on_top_of")):
+        errors.extend(collect_cycle_errors(objects, paths, fields))
+
+    # Compare with the exact inverse; never ask perception to predict it independently
+    if require_supports:
+        expected = {object_id: [] for object_id in objects}
+        for object_id, obj in objects.items():
+            parent = obj["relations"]["on_top_of"]
+            if parent in expected:
+                expected[parent].append(object_id)
+        for object_id, obj in objects.items():
+            actual = obj["relations"]["supports"]
+            if sorted(actual) != sorted(expected[object_id]):
+                errors.append(
+                    f"{paths[object_id]}.supports = {json.dumps(actual)}; "
+                    f"the inverse of on_top_of requires {json.dumps(expected[object_id])}. "
+                    "Rebuild supports from validated on_top_of observations"
+                )
+    return errors
+
+
+def validate_scene_graph(graph: dict, width: int, height: int, *, require_supports: bool = True) -> dict:
+    """Collect schema and scene-consistency errors and reject the graph without guessing repairs"""
+    if not is_integer(width) or not is_integer(height) or width < 1 or height < 1:
+        raise ValueError("Image width and height must be positive integers")
+
+    schema = load_scene_graph_schema() if require_supports else load_perception_schema()
+    schema_errors = list(Draft202012Validator(schema).iter_errors(graph))
+    errors = [f"{format_json_path(error.absolute_path)}: {error.message}" for error in schema_errors]
+
+    # Structural failures do not hide independent geometry or relationship contradictions
+    if isinstance(graph, dict):
+        image = graph.get("image")
+        if (not isinstance(image, dict) or
+                not all(is_integer(image.get(key)) for key in ("width", "height")) or
+                image != {"width": width, "height": height}):
+            errors.append(f"$.image must be exactly {{'width': {width}, 'height': {height}}}")
+        objects = graph.get("objects")
+        if isinstance(objects, list):
+            ids = [obj.get("id") for obj in objects if isinstance(obj, dict) and isinstance(obj.get("id"), str)]
+            duplicates = {object_id for object_id, count in Counter(ids).items() if count > 1}
+            if duplicates:
+                errors.append(f"$.objects: duplicate IDs {sorted(duplicates)}; assign distinct IDs")
+
+            valid_objects = {}
+            paths = {}
+            for index, obj in enumerate(objects):
+                if not isinstance(obj, dict):
+                    continue
+                errors.extend(collect_object_errors(obj, index, width, height))
+
+                # Geometry errors do not prevent reference checks, but malformed relation types do
+                invalid_fields = {
+                    error.absolute_path[2] if len(error.absolute_path) > 2 else None
+                    for error in schema_errors
+                    if len(error.absolute_path) >= 2 and list(error.absolute_path)[:2] == ["objects", index]
+                }
+                if invalid_fields - {"bbox_2d", "pick_point_2d", "confidence", "color"}:
+                    continue
+                object_id = obj.get("id")
+                if not isinstance(object_id, str) or object_id in duplicates:
+                    continue
+                valid_objects[object_id] = obj
+                paths[object_id] = f"$.objects[{index}] ({object_id}).relations"
+            errors.extend(collect_relation_errors(valid_objects, paths, width, height, require_supports))
 
     if errors:
-        raise ValueError("Scene relationship validation failed:\n" + "\n".join(
-            f"{index}. {error}" for index, error in enumerate(errors, start=1)
+        raise ValueError("Scene graph validation failed:\n" + "\n".join(
+            f"{index}. {error}" for index, error in enumerate(dict.fromkeys(errors), start=1)
         ))
-
     return graph
 
 

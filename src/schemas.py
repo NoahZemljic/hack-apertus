@@ -15,7 +15,7 @@ def load_scene_graph_schema() -> dict:
     return load_schema("scene_graph.schema.json")
 
 
-def load_perception_schema() -> dict:
+def load_perception_schema(width: int | None = None, height: int | None = None) -> dict:
     """Derive the model-output contract by excluding code-generated support lists"""
     schema = load_scene_graph_schema()
     schema["title"] = "Perception observations before support derivation"
@@ -23,6 +23,11 @@ def load_perception_schema() -> dict:
     relations = schema["$defs"]["object"]["properties"]["relations"]
     relations["required"].remove("supports")
     del relations["properties"]["supports"]
+    if width is not None and height is not None:
+        # Enum constraints are supported by the token filter and pin the source image dimensions
+        image = schema["properties"]["image"]["properties"]
+        image["width"]["enum"] = [width]
+        image["height"]["enum"] = [height]
     return schema
 
 

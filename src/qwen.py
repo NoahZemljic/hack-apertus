@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .decoding import SchemaConstrainedDecoder
+from .json_tools import parse_json_object
 from .perception import PerceptionGenerationError, PerceptionModel
 from .prompting import PERCEPTION_RELATION_RULES, append_validation_feedback, prepare_perception_messages
 from .scene_graph import derive_support_relations
@@ -65,7 +66,7 @@ class QwenSceneGraphGenerator(PerceptionModel):
         self.process_vision_info = process_vision_info
         self.decoder = SchemaConstrainedDecoder(self.processor.tokenizer)
 
-    def run_inference(self, messages: list[dict[str, Any]]) -> str:
+    def run_inference(self, messages: list[dict[str, Any]], schema: dict) -> str:
         """Run inference and decode only generated tokens"""
         if any(value is None for value in (
             self.model, self.processor, self.process_vision_info, self.decoder
@@ -91,7 +92,7 @@ class QwenSceneGraphGenerator(PerceptionModel):
         ).to(self.device)
 
         # Create fresh schema-parser state for this attempt while reusing cached tokenizer data
-        token_filter = self.decoder.build_token_filter(load_perception_schema())
+        token_filter = self.decoder.build_token_filter(schema)
 
         # Generate greedily while restricting each next token to the schema's allowed continuations
         generated_ids = self.model.generate(
@@ -126,18 +127,19 @@ class QwenSceneGraphGenerator(PerceptionModel):
             self.load_model()
 
         messages = prepare_perception_messages(image_path, width, height)
+        schema = load_perception_schema(width, height)
         responses = []
         errors = []
         last_error: ValueError | None = None
 
         for attempt in range(self.validation_retries + 1):
-            response = self.run_inference(messages)
+            response = self.run_inference(messages, schema)
             responses.append(response)
 
             # Invalid model output never crosses the perception boundary
             try:
                 # Require the complete response; never accept a nested fragment of truncated JSON
-                graph = json.loads(response)
+                graph = parse_json_object(response)
                 validate_scene_graph(graph, width, height, require_supports=False)
 
                 # Generate inverse relationships in code, never by a second model prediction
