@@ -12,6 +12,7 @@ CATEGORY_KINDS = {
     "tray": "container", "plate": "surface", "saucer": "surface",
     "hand": "human", "mug": "movable", "cup": "movable", "bowl": "movable",
     "gear": "movable", "cube": "movable", "banana": "movable", "mandarin": "movable",
+    "bracket": "movable", "part": "movable", "component": "movable",
 }
 RECEPTACLE_LABELS = {"mug", "cup", "bowl"}
 BACKGROUND_LABELS = {"table", "tabletop", "floor", "background", "workbench"}
@@ -93,7 +94,8 @@ def collect_object_errors(obj: dict, index: int, width: int, height: int) -> lis
     if category in BACKGROUND_LABELS:
         errors.append(
             f"{path}.label = {label!r} describes excluded background. "
-            "Remove this background object and set references to its support to null; "
+            "Remove this background object and remove its ID from on_top_of lists; "
+            "use [] when no detected supporting objects remain. Recheck any inside reference to it; "
             "do not remove actual trays, plates, or saucers"
         )
     if category in CATEGORY_KINDS and obj.get("kind") != CATEGORY_KINDS[category]:
@@ -105,11 +107,23 @@ def collect_object_errors(obj: dict, index: int, width: int, height: int) -> lis
     return errors
 
 
+def collect_relation_references(relations: dict, fields: tuple[str, ...]) -> list[tuple[str, str]]:
+    """Expand validated containment and support references with exact field paths"""
+    references = []
+    for field in fields:
+        if field == "inside":
+            if relations[field] is not None:
+                references.append((field, relations[field]))
+        else:
+            references.extend((f"{field}[{index}]", target) for index, target in enumerate(relations[field]))
+    return references
+
+
 def collect_cycle_errors(objects: dict[str, dict], paths: dict[str, str], fields: tuple[str, ...]) -> list[str]:
     """Detect directed cycles across one or both relations without recursive depth limits"""
     edges = {
-        object_id: [(field, obj["relations"][field]) for field in fields
-                    if obj["relations"][field] in objects]
+        object_id: [(field, target) for field, target in collect_relation_references(obj["relations"], fields)
+                    if target in objects]
         for object_id, obj in objects.items()
     }
     errors = []
@@ -140,7 +154,8 @@ def collect_cycle_errors(objects: dict[str, dict], paths: dict[str, str], fields
                 start = positions[target]
                 cycle = chain[start:] + [target]
                 cycle_fields = chain_fields[start:] + [field]
-                if len(fields) > 1 and len(set(cycle_fields)) == 1:
+                relation_types = {relation.split("[", 1)[0] for relation in cycle_fields}
+                if len(fields) > 1 and len(relation_types) == 1:
                     continue
                 description = fields[0] if len(fields) == 1 else "mixed inside/on_top_of"
                 assignments = ", ".join(
@@ -168,10 +183,7 @@ def collect_relation_errors(objects: dict[str, dict], paths: dict[str, str], wid
     margin = max(width, height) * CONTAINMENT_MARGIN_FRACTION
     for object_id, obj in objects.items():
         relations = obj["relations"]
-        for field in ("inside", "on_top_of"):
-            target_id = relations[field]
-            if target_id is None:
-                continue
+        for field, target_id in collect_relation_references(relations, ("inside", "on_top_of")):
             path = f"{paths[object_id]}.{field}"
             if target_id not in objects:
                 errors.append(
@@ -211,7 +223,8 @@ def collect_relation_errors(objects: dict[str, dict], paths: dict[str, str], wid
                     f"{path} claims {object_id!r} is inside {target_id!r}, but its box {child_box} "
                     f"extends beyond the enclosing box {parent_box} by more than the {margin:.1f}px "
                     "tolerance. Check containment direction and both detections against the image. "
-                    "Do not swap IDs, enlarge boxes, or set null solely to silence this check"
+                    "If the object is outside the receptacle, set inside to null. If a detection boundary "
+                    "is wrong, correct it from the image. Do not swap IDs or enlarge boxes just to pass validation"
                 )
 
     for fields in (("inside",), ("on_top_of",), ("inside", "on_top_of")):
@@ -221,9 +234,9 @@ def collect_relation_errors(objects: dict[str, dict], paths: dict[str, str], wid
     if require_supports:
         expected = {object_id: [] for object_id in objects}
         for object_id, obj in objects.items():
-            parent = obj["relations"]["on_top_of"]
-            if parent in expected:
-                expected[parent].append(object_id)
+            for parent in obj["relations"]["on_top_of"]:
+                if parent in expected:
+                    expected[parent].append(object_id)
         for object_id, obj in objects.items():
             actual = obj["relations"]["supports"]
             if sorted(actual) != sorted(expected[object_id]):

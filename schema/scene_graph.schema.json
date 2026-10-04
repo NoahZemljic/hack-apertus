@@ -63,7 +63,12 @@
           "required": ["inside", "on_top_of", "supports", "held_by_human", "partially_occluded"],
           "properties": {
             "inside": {"type": ["string", "null"], "description": "ID of the immediate enclosing receptacle, not its contents; null when none is visible"},
-            "on_top_of": {"type": ["string", "null"], "description": "ID of the object directly supporting this object from below; null for the unrepresented table or no visible support"},
+            "on_top_of": {
+              "type": "array",
+              "items": {"type": "string"},
+              "uniqueItems": true,
+              "description": "IDs of all detected objects directly supporting this object from below; [] for background support or no established support; exclude indirect supports"
+            },
             "supports": {
               "type": "array",
               "items": {"type": "string"},

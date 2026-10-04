@@ -14,7 +14,6 @@ def derive_support_relations(graph: dict) -> dict:
 
     # Containment alone never establishes physical support
     for obj in objects.values():
-        supporting_id = obj["relations"]["on_top_of"]
-        if supporting_id is not None:
+        for supporting_id in obj["relations"]["on_top_of"]:
             objects[supporting_id]["relations"]["supports"].append(obj["id"])
     return result

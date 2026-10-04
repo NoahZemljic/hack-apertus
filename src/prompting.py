@@ -5,28 +5,29 @@ from pathlib import Path
 from .schemas import load_perception_schema
 
 PERCEPTION_RELATION_RULES = """Relationship semantics:
-- A.on_top_of = B means A rests directly on B, not that B rests on A
-- Output only inside, on_top_of, held_by_human, and partially_occluded in relations
-- Do not output supports; code derives that inverse relationship from on_top_of
-- Support is directional, never symmetric, and must not form cycles
-- A.inside = B means A is contained in B, not that B is inside A; containment must not form cycles
-- Following any combination of inside and on_top_of must never lead back to the starting object
-- Containment alone does not establish physical support
-- An object may be both inside a tray and resting directly on its base
-- Use the immediate enclosing receptacle for inside; a mug can be movable and still contain another object
-- Objects inside a mug must fit its visible extent; a large surrounding tray is not inside a smaller mug
-- The background table/floor is excluded from objects entirely; use null for support by that background
-- Detect actual trays, including black trays; do not confuse a tray with the background table
-- Overlapping bounding boxes alone do not prove containment or physical contact
-Generic example: if part_a rests in receptacle_b, part_a has inside=receptacle_b and
-on_top_of=receptacle_b; receptacle_b does NOT have inside=part_a or on_top_of=part_a.
-Only use that example when both enclosure and direct support are visible in the actual image.
-When repairing a relationship, correct inside or on_top_of using the image. Recheck all affected objects.
-Do not remove true contacts or invent contacts. Preserve unrelated correct detections,
-IDs, boxes, and pick points unless the image or a reported error gives a reason to change them."""
+- Identify every object and its boundaries before assigning relationships between detections
+- inside is the ID of the immediate enclosing receptacle, or null; it points from contents to receptacle
+- A tray has an enclosing rim, side walls, and a recessed interior. Flat black work mats are background, not trays. Detect genuine raised-wall trays of any color
+- An object beside a tray is not inside it. Verify that it occupies the receptacle's interior, not merely the same workspace. An empty tray must remain empty in the graph
+- A movable mug may contain an object. A large surrounding tray is not inside a smaller mug
+- on_top_of is ALWAYS a list of all detected objects directly supporting this object from below. Use [] for background support or when no detected support is established, never null or a single string
+- If object_a rests directly across support_b and support_c, object_a.on_top_of = ["support_b", "support_c"]. Include both only when both contacts are evidenced, not merely because their boxes overlap
+- Include only direct supports, not objects further below in a stack. Do not include the supported object itself or duplicate IDs
+- Containment and support are independent. If part_a is enclosed by receptacle_b and rests on its base, part_a.inside = "receptacle_b" and part_a.on_top_of = ["receptacle_b"], never the reverse
+- Neither relation is symmetric. Following any combination of inside and on_top_of must never return to the starting object
+- Box overlap alone proves neither enclosure nor supporting contact. Use visible boundaries, occlusion ordering, and contact evidence
+- Output only inside, on_top_of, held_by_human, and partially_occluded in relations. Do not output supports; code derives the inverse from every on_top_of entry
+
+Correction procedure:
+Reinspect each flagged field using the original image. If an object is outside the referenced
+receptacle, set inside to null. If a claimed supporting contact is absent, remove that ID from
+on_top_of; if no detected supports remain, use []. Correct incorrect detection boundaries from
+the image rather than enlarging boxes to satisfy a relationship. Preserve a field only if it is
+actually correct. Recheck all affected objects and return the complete corrected graph, not the
+rejected graph unchanged. Do not invent contacts or remove true contacts to silence validation."""
 
 def prepare_perception_prompt(width: int, height: int) -> str:
-    """Builds the Qwen prompt for grounded scene-graph extraction"""
+    """Build the perception prompt with object cues, directed relations, and pixel conventions"""
     schema = json.dumps(load_perception_schema(width, height), separators=(",", ":"))
     return f"""Analyze this overhead robot-workspace image and construct a complete 2D scene graph.
 
@@ -34,13 +35,23 @@ The original image is {width} x {height} pixels. Coordinates are [u, v], where u
 
 Bounding boxes use half-open edges: [x1, y1, x2, y2], with 0 <= x1 < x2 <= {width} and 0 <= y1 < y2 <= {height}. The right and bottom edges may equal the image dimensions. Pick points are actual integer pixels: 0 <= u < {width}, 0 <= v < {height}, and x1 <= u < x2, y1 <= v < y2. Never use width or height itself as a pick-point index.
 
-Detect every movable object, grey or black tray, plate, saucer, mug, and visible human hand. Classify trays as container, plates and saucers as surface, hands as human, and graspable objects including mugs as movable. For repeated objects, create unique snake_case IDs numbered from left to right. A pick_point_2d must lie on a visible solid part of the object's top surface, never in a gear hole, empty bounding-box area, or an occluding object. For containers and surfaces, choose a representative interior point. Use on_top_of only for direct contact with a supporting detected object; omit the table relation by using null. Use inside for membership in a tray or other container.
-
-Object identification: this is a workspace containing physical parts, not a collection of pictograms. A circular mechanical part with regularly spaced teeth around its rim is a gear (cogwheel), not a sun, star, or flower. Gears may have a solid raised cylindrical hub, a central bore, or neither visible; a central hole is NOT required. A toothed part with a solid raised hub is still a gear. Identify it by its mechanical shape, not color alone. When these mechanical features are visible, use label "gear", kind "movable", and IDs such as "gear_1"; record its color separately. Do not assume a gear is present without visual evidence. Place its pick_point_2d on visible solid material, such as the top of a solid hub; avoid a central hole only if one is actually present.
+Object identification:
+This workspace may contain mechanical parts, household objects, fruit, trays, and human hands. These are possible categories, not a required inventory. Detect only visible objects and do not invent absent ones.
+- Gears have regularly spaced teeth and may have solid raised hubs, central bores, or neither visible. A central hole is NOT required. Identify mechanical shape rather than color: a toothed part with a solid hub is a gear, not a sun, star, or flower
+- Elongated flat parts with mounting holes, large bores, or engraved arrows are industrial metal parts, not ceramic saucers. Bent or folded sheet-like parts may be brackets. Use the conservative label "industrial component" for assembled components, such as white/blue assemblies, when their exact function is unclear
+- Reserve "plate" and "saucer" for ceramic dishware. Use "metal part" for industrial plate-like components and "bracket" for identifiable brackets. Printed patterns on dishware, holes, shadows, and highlights are not separate objects
+- Detect mugs, cube-like blocks, and fruit such as bananas or mandarins when present. Use lowercase category labels such as "mug", "cube", or "gear", and record color separately
+- Classify trays as container, ceramic plates/saucers as surface, hands as human, and graspable objects including mugs, gears, metal parts, brackets, and industrial components as movable
+Record every separate physical object, including repeated and partially visible instances. Assign unique snake_case IDs numbered left to right within each category. Exclude the background table, floor, and flat work mats; do not mistake an actual tray for background.
 
 {PERCEPTION_RELATION_RULES}
 
-Report observations only. Do not plan actions, infer an instruction, or invent absent objects. Use a lowercase physical category as label (for example "gear" rather than "yellow sun") and put color in its separate field. Do not infer a category merely because an example names it. If there are no visible in-scope objects, return an empty objects list rather than inventing one. Output all required fields. inside/on_top_of must be an existing object ID or null, never "unknown". Booleans must describe the visible evidence, not arbitrary defaults. A graph passing validation is not proof of a safe grasp. Return exactly one JSON object matching this JSON Schema:
+Pick points and occlusion:
+Choose pick_point_2d on visible solid material belonging to the object, not automatically at the bounding-box centre. For perforated metal parts avoid ALL holes, including central bores and mounting holes. For gears with solid hubs, the visible hub top is a candidate. For mugs avoid the open cavity and any human hand; select visible material such as an unobstructed handle. Never choose an occluding object's pixels. For trays and ceramic surfaces choose an unobstructed representative interior point; for hands choose a representative visible point, not a grasp instruction.
+Keep partially visible objects as separate detections. Mark the object hidden by another object as partially_occluded=true; do not merge overlapping objects. When a hand visibly grips an object, set that object's held_by_human=true. A nearby hand alone does not establish holding. Booleans describe visible evidence, not arbitrary defaults.
+
+Output:
+Report observations only. Do not plan actions or infer an instruction. If no in-scope objects are visible, return objects: []. Include every required field. inside must be an existing object ID or null; on_top_of must be a list of distinct existing IDs or []. Never use "unknown" as a relation target. A graph passing validation is not proof of a safe grasp. Return exactly one JSON object matching this JSON Schema:
 {schema}"""
 
 

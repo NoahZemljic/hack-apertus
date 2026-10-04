@@ -71,21 +71,27 @@ This is a task-specific overhead tabletop model, not a general representation of
 | `bbox_2d` | Half-open `[x1, y1, x2, y2]`: `0 <= x1 < x2 <= width`, `0 <= y1 < y2 <= height`. Right/bottom edges may equal image dimensions |
 | `pick_point_2d` | Integer pixel `[u, v]` inside the half-open box. Unlike box edges, `u < width` and `v < height` |
 | `inside` | Immediate enclosing receptacle, directed from contents to receptacle. It does not by itself assert supporting contact |
-| `on_top_of` | Direct supporting object below this object, never the reverse direction. It does not assert enclosure |
+| `on_top_of` | List of all detected objects directly supporting this object, with distinct IDs. `[]` means no represented support was established. It does not assert enclosure |
 | `supports` | Computed inverse of `on_top_of`, never independently predicted or inferred from `inside` |
 | `kind` | Manipulation role: mugs/cups/bowls and other graspable objects are `movable`, trays `container`, plates/saucers `surface`, hands `human` |
 
 An object can be both inside a tray and resting on its base. A movable mug can contain another object; manipulation role and receptacle capability are not the same thing. The validator recognizes trays/other objects classified as containers and the movable receptacle labels `mug`, `cup`, and `bowl`. Adding a new movable receptacle category requires updating that explicit policy. Solid gears and cubes, plates, and human hands are not enclosure targets in this model.
 
-The background table and floor are excluded from the object list, with `on_top_of: null` for background support. Actual black trays must remain detections. Null means no represented relation was established; it is not proof that the object is unsupported, uncontained, or safe to pick. An empty workspace can use `objects: []`, so the schema does not force a detection.
+The background table, floor, and flat work mats are excluded from the object list, with `on_top_of: []` for background support. Actual raised-wall trays of any color must remain detections. `inside: null` and `on_top_of: []` mean no corresponding represented relation was established; they are not proof that the object is unsupported, uncontained, or safe to pick. An empty workspace can use `objects: []`, so the schema does not force a detection.
 
-IDs must be unique, references must resolve, and neither containment nor support may form a cycle. Mixed chains, such as `A.inside=B`, `B.on_top_of=C`, `C.inside=A`, are rejected too. A conservative containment gate requires the contained object's box to fit within the receptacle's box, allowing a margin of 2% of the longer image dimension. This rejects claims such as a large tray inside a small mug, but is only a 2D plausibility heuristic: protruding objects, perspective, occlusion, or unusual shapes can require human review. Box overlap never establishes containment or support on its own.
+For example, a cube resting directly across two gears has `on_top_of: ["gear_1", "gear_2"]`. Code includes the cube's ID in both gears' `supports` lists. Do not include an indirect support beneath a gear unless the cube also directly contacts it. `inside` remains a single immediate receptacle ID or null; multiple support does not imply multiple containment.
+
+IDs must be unique, references must resolve, and neither containment nor support may form a cycle. Every support-list entry is checked, including branches beyond the first support. Mixed chains, such as `A.inside=B`, `B.on_top_of=[C]`, `C.inside=A`, are rejected too. A conservative containment gate requires the contained object's box to fit within the receptacle's box, allowing a margin of 2% of the longer image dimension. This rejects claims such as a large tray inside a small mug, but is only a 2D plausibility heuristic: protruding objects, perspective, occlusion, or unusual shapes can require human review. Box overlap never establishes containment or support on its own.
+
+The perception prompt distinguishes industrial metal parts and brackets from ceramic plates/saucers, and treats industrial components as movable objects. It asks for object boundaries before relations, solid-material pick points away from all holes, separate partially occluded detections, and human-holding flags based on visible gripping. Correction feedback explicitly permits `inside: null` for an object outside a receptacle and removal of unsupported `on_top_of` entries. It does not contain scene-specific counts, coordinates, or required inventories.
 
 Validation never silently reverses an edge, invents support, changes a category, clamps a pick point, or modifies a box. Qwen receives the violations and original image for a bounded retry. The graph is rejected if it still fails.
 
 Passing these checks means the graph satisfies this contract, not that the image was interpreted correctly. In particular, a mistaken gear label, a missed object, a pick point over a hole, false contact, or a falsely negative human-holding flag can still be internally consistent. Self-reported confidence is not calibrated safety evidence. Inspect overlays and compare detections with ground truth during evaluation; depth/contact/grasp checks and an independent safety controller are still needed before physical execution.
 
 ## Updating an existing Clariden environment
+
+Cached graphs using a string or null for `on_top_of` no longer match the schema. Regenerate them in a fresh scene-graph directory without `--reuse-scene-graphs`; old observations are not silently converted or treated as newly verified detections.
 
 Install the new validation dependency in an existing Clariden environment without changing PyTorch:
 
