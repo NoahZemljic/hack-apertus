@@ -1,4 +1,14 @@
-# Example environment definition file for launching a VLM server of your choice.
+image = "docker.io#vllm/vllm-openai:v0.29.0-cu129"
 
-# Example launch command on Clariden:
-# srun -A <project_account> --partition=debug --environment=./containers/vision.edf.toml --pty bash
+mounts = [
+  "${HOME}:${HOME}",
+  "${SCRATCH}:${SCRATCH}"
+]
+
+workdir = "${HOME}/hack-apertus"
+
+entrypoint = false
+writable = true
+
+[env]
+HF_HOME = "${SCRATCH}/huggingface"

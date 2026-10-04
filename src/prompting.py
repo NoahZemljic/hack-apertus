@@ -108,3 +108,48 @@ def derived_geometry(graph: dict) -> dict:
                 "distance_px": round(math.hypot(u2 - u1, v2 - v1), 1),
             })
     return {"left_to_right": [obj["id"] for obj in ordered], "pairwise_distances": distances}
+
+
+def prepare_scene_discovery_prompt(hints: list[str]) -> str:
+    """Build the Qwen prompt for visible-object discovery."""
+    return f"""You are the visual perception module for a tabletop robot.
+
+Inspect the ENTIRE image and identify the object categories that are actually visible in the robot workspace.
+
+Instruction-derived object hints:
+{json.dumps(hints, ensure_ascii=False)}
+
+Important rules:
+- The hints are clues only. Only return objects that are actually visible in the image.
+- The hints are NOT exhaustive. Search the entire image carefully for additional visible objects, including small, partially occluded, stacked, or peripheral objects.
+- If a visible object matches a specific hint, use the same wording as that hint whenever possible.
+- Return object labels in singular form. Multiple visible instances of the same category require only one label.
+- Use normal lowercase words separated by spaces. Never use snake_case, underscores, IDs, numbering, or plural instance names.
+- Do not use generic referential terms that do not identify a visual object category.
+- Do not add unnecessary visual attributes to a label when a matching hint already provides an adequate name.
+- For visible objects that do not match any hint, use a short, specific, detector-friendly object name based only on what is visually observable.
+- Include visually distinguishable containers and other relevant physical objects, but do not include the table or workbench itself.
+- Return each object label only once.
+"""
+
+def prepare_verification_prompt(
+    hints: list[str],
+    objects: list[str],
+) -> str:
+    return f"""
+Reinspect the entire image and correct this proposed list of visible objects:
+
+{json.dumps(objects, ensure_ascii=False)}
+
+Instruction-derived object hints:
+{json.dumps(hints, ensure_ascii=False)}
+
+Check for:
+- visible object types that are missing
+- incorrect object names
+- objects that are not actually visible
+
+Use short detector-friendly phrases such as "red gear", "yellow saucer", or "grey tray".
+
+Return the complete corrected list.
+"""
