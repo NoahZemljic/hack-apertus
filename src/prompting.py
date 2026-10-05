@@ -7,7 +7,7 @@ from .schemas import load_perception_schema
 PERCEPTION_RELATION_RULES = """Relationship semantics:
 - Identify every object and its boundaries before assigning relationships between detections
 - inside is the ID of the immediate enclosing receptacle, or null; it points from contents to receptacle
-- A tray has an enclosing rim, side walls, and a recessed interior. Flat black work mats are background, not trays. Detect genuine raised-wall trays of any color
+- A tray has an enclosing rim, side walls, and a recessed interior. Include distinct flat work mats used as placement areas, even if their borders are clipped by the image. They are surface objects with label "work mat", not enclosing trays and not excluded background. Detect genuine raised-wall trays of any color
 - An object beside a tray is not inside it. Verify that it occupies the receptacle's interior, not merely the same workspace. An empty tray must remain empty in the graph
 - A movable mug may contain an object. A large surrounding tray is not inside a smaller mug
 - on_top_of is ALWAYS a list of all detected objects directly supporting this object from below. Use [] for background support or when no detected support is established, never null or a single string
@@ -40,9 +40,9 @@ This workspace may contain mechanical parts, household objects, fruit, trays, an
 - Gears have regularly spaced teeth and may have solid raised hubs, central bores, or neither visible. A central hole is NOT required. Identify mechanical shape rather than color: a toothed part with a solid hub is a gear, not a sun, star, or flower
 - Elongated flat parts with mounting holes, large bores, or engraved arrows are industrial metal parts, not ceramic saucers. Bent or folded sheet-like parts may be brackets. Use the conservative label "industrial component" for assembled components, such as white/blue assemblies, when their exact function is unclear
 - Reserve "plate" and "saucer" for ceramic dishware. Use "metal part" for industrial plate-like components and "bracket" for identifiable brackets. Printed patterns on dishware, holes, shadows, and highlights are not separate objects
-- Detect mugs, cube-like blocks, and fruit such as bananas or mandarins when present. Use lowercase category labels such as "mug", "cube", or "gear", and record color separately
-- Classify trays as container, ceramic plates/saucers as surface, hands as human, and graspable objects including mugs, gears, metal parts, brackets, and industrial components as movable
-Record every separate physical object, including repeated and partially visible instances. Assign unique snake_case IDs numbered left to right within each category. Exclude the background table, floor, and flat work mats; do not mistake an actual tray for background.
+- Detect mugs, cube-like blocks, and fruit such as bananas or mandarins when present. Use lowercase category labels such as "mug", "cube", or "gear", and record color separately. Include distinctive interior colors as well as exterior colors for multicolored objects (for example "white and green"). Use descriptive compound colors such as "red-orange" when a hue lies between basic color names
+- Classify trays as container, ceramic plates/saucers and bounded work mats as surface, hands as human, and graspable objects including mugs, gears, metal parts, brackets, and industrial components as movable
+Record every separate physical object, including repeated and partially visible instances. Assign unique snake_case IDs numbered left to right within each category. Exclude the background table and floor. Include bounded work mats as placement destinations.
 
 {PERCEPTION_RELATION_RULES}
 
@@ -70,6 +70,7 @@ Deterministically derived 2D geometry:
 {json.dumps(geometry, separators=(",", ":"))}
 
 The gripper holds one object at a time and opens at most {opening:g} mm. A plate and saucer are wider than the gripper and cannot be picked. Trays are placement destinations, not movable objects.
+In this challenge, instructions may call the black work mat the "black tray". Resolve that phrase to a detected black work mat when present. It is a placement surface, so objects on it use on_top_of rather than inside. Do not invent a missing destination.
 
 Choose exactly one decision:
 - plan when the instruction has one safe, physically possible interpretation

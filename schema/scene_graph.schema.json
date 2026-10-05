@@ -52,7 +52,7 @@
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
         "kind": {"enum": ["movable", "container", "surface", "human"]},
-        "label": {"type": "string", "pattern": "^[a-z]+(?:[ -][a-z]+)*$", "description": "Lowercase physical object category, e.g. gear, mug, tray; color is a separate field; exclude the background table"},
+        "label": {"type": "string", "enum": ["gear", "cube", "mug", "cup", "bowl", "tray", "work mat", "plate", "saucer", "banana", "mandarin", "metal part", "bracket", "industrial component", "hand", "object"], "description": "Canonical physical category; color is a separate field. Use object for an unrecognized physical object, never invent a category from its decorative silhouette. Exclude the background table"},
         "color": {"type": ["string", "null"]},
         "bbox_2d": {"$ref": "#/$defs/bbox"},
         "pick_point_2d": {"$ref": "#/$defs/pixel"},

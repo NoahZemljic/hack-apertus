@@ -51,12 +51,20 @@ class RoboticsPipeline:
                     "replies": failure.replies,
                     "errors": failure.errors,
                 }, indent=2) + "\n")
+                # A failed regeneration must not leave an older graph reusable.
+                cache_path.unlink(missing_ok=True)
+                (self.scene_graph_dir / f"{scene.name}.overlay.jpg").unlink(missing_ok=True)
                 if failure is error:
                     raise
                 raise failure from error
 
         self.scene_graph_dir.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(json.dumps(graph, indent=2) + "\n")
+        (self.scene_graph_dir / f"{scene.name}.failure.json").unlink(missing_ok=True)
+        if replies != ["loaded from cache"]:
+            (self.scene_graph_dir / f"{scene.name}.raw.json").write_text(
+                json.dumps({"scene": scene.name, "replies": replies}, indent=2) + "\n"
+            )
         write_scene_overlay(scene.rgb, graph, self.scene_graph_dir / f"{scene.name}.overlay.jpg")
         return graph, replies
 

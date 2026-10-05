@@ -12,7 +12,7 @@ CATEGORY_KINDS = {
     "tray": "container", "plate": "surface", "saucer": "surface",
     "hand": "human", "mug": "movable", "cup": "movable", "bowl": "movable",
     "gear": "movable", "cube": "movable", "banana": "movable", "mandarin": "movable",
-    "bracket": "movable", "part": "movable", "component": "movable",
+    "bracket": "movable", "part": "movable", "component": "movable", "mat": "surface",
 }
 RECEPTACLE_LABELS = {"mug", "cup", "bowl"}
 BACKGROUND_LABELS = {"table", "tabletop", "floor", "background", "workbench"}
@@ -199,6 +199,23 @@ def collect_relation_errors(objects: dict[str, dict], paths: dict[str, str], wid
                     "when visible, not inside/on_top_of"
                 )
             if field != "inside":
+                # In this overhead tabletop model, distant disjoint boxes cannot
+                # establish direct support. Overlap remains necessary, not sufficient.
+                try:
+                    child_box = validate_pixel(obj.get("bbox_2d"), path, width, height, 4)
+                    parent_box = validate_pixel(target.get("bbox_2d"), path, width, height, 4)
+                except ValueError:
+                    continue
+                x1, y1, x2, y2 = child_box
+                a1, b1, a2, b2 = parent_box
+                if x2 + margin < a1 or a2 + margin < x1 or y2 + margin < b1 or b2 + margin < y1:
+                    errors.append(
+                        f"{path} claims direct support by {target_id!r}, but boxes {child_box} "
+                        f"and {parent_box} are disjoint beyond the {margin:.1f}px tolerance. "
+                        "Reinspect the image: an object beside a tray is not supported by it. "
+                        "Remove a false reference or correct the detection from visual evidence; "
+                        "do not enlarge boxes just to create overlap"
+                    )
                 continue
 
             category = extract_label_category(target["label"])
