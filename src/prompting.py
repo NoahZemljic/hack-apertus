@@ -112,16 +112,19 @@ def derived_geometry(graph: dict) -> dict:
 
 def prepare_scene_discovery_prompt(hints: list[str]) -> str:
     """Build the Qwen prompt for visible-object discovery."""
-    return f"""You are the visual perception module for a tabletop robot.
+    return f"""
+You are the visual perception module for a tabletop robot.
 
-Inspect the ENTIRE image and identify the object categories that are actually visible in the robot workspace.
+Inspect the entire image and identify the object categories that are actually visible in the robot workspace.
 
-Instruction-derived object hints:
+To do so you will be provided with a list of possible objects present in the image:
+
 {json.dumps(hints, ensure_ascii=False)}
 
 Important rules:
+-Try to describe the objects by their color and their category: <color> <object category>
 - The hints are clues only. Only return objects that are actually visible in the image.
-- The hints are NOT exhaustive. Search the entire image carefully for additional visible objects, including small, partially occluded, stacked, or peripheral objects.
+- The hints are not exhaustive. Search the entire image carefully for additional visible objects, including small, partially occluded, stacked, or peripheral objects.
 - If a visible object matches a specific hint, use the same wording as that hint whenever possible.
 - Return object labels in singular form. Multiple visible instances of the same category require only one label.
 - Use normal lowercase words separated by spaces. Never use snake_case, underscores, IDs, numbering, or plural instance names.
@@ -137,19 +140,19 @@ def prepare_verification_prompt(
     objects: list[str],
 ) -> str:
     return f"""
-Reinspect the entire image and correct this proposed list of visible objects:
+Reinspect the entire image and if necessary correct this proposed list of visible objects:
 
 {json.dumps(objects, ensure_ascii=False)}
-
-Instruction-derived object hints:
-{json.dumps(hints, ensure_ascii=False)}
 
 Check for:
 - visible object types that are missing
 - incorrect object names
 - objects that are not actually visible
 
-Use short detector-friendly phrases such as "red gear", "yellow saucer", or "grey tray".
+It i spossible that the list already contains all the objects present in the image.
+
+Use short detector-friendly phrases such as the ones given in the list.
+Do not use plural for any of the objects, always return object names in their singular form.
 
 Return the complete corrected list.
 """
