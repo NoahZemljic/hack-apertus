@@ -72,6 +72,7 @@ All modules live directly under `src/`:
 | `schemas.py` | Loading JSON contracts and deriving the reduced perception schema |
 | `validation.py` | Pixel, scene-graph, and plan validation |
 | `scene_graph.py` | Object lookup and deterministic inverse support derivation |
+| `geometry.py` | Deterministic SAM-mask geometry and reviewable support hypotheses ([usage and thresholds](GEOMETRY.md)) |
 | `results.py` | Converting plans to submission entries and writing result files |
 | `json_tools.py` | Extracting JSON objects from model responses |
 | `visualization.py` | Scene inspection overlays |
@@ -83,4 +84,4 @@ All modules live directly under `src/`:
 
 The model classes call the shared helpers directly. `run.py` defines the command-line arguments, connects the models, and runs the pipeline. Helpers used in only one place stay with the code that uses them.
 
-Perception backends inherit from `PerceptionModel` and implement `generate_scene_graph(image_path, width, height)`. Each backend handles its own loading and inference, returning a validated graph in the shared schema and a list of diagnostic replies (empty for backends without text responses). Qwen implements this interface today. A future Grounding DINO + SAM backend must convert detections and masks into the same complete scene graph, including object properties and relations, before returning it. Select the backend when constructing the pipeline in `run.py`; Apertus and the pipeline do not need backend-specific logic.
+Perception backends inherit from `PerceptionModel` and implement `generate_scene_graph(image_path, width, height)`. Each backend handles its own loading and inference, returning a validated graph in the shared schema and a list of diagnostic replies (empty for backends without text responses). Qwen implements this interface today. A future Grounding DINO + SAM backend must convert detections and masks into the same complete scene graph, including object properties and relations, before returning it. The standalone `python -m src.geometry` stage now produces mask-based image relations and separately marked support hypotheses from `segmentation_results.json`; see [the geometry contract](GEOMETRY.md). Its intermediate output still needs semantic properties and support confirmation before conversion into the planner schema. Select the backend when constructing the pipeline in `run.py`; Apertus and the pipeline do not need backend-specific logic.
