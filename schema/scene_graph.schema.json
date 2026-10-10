@@ -1,81 +1,81 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "see-it-say-it-pick-it/scene_graph.schema.json",
-  "title": "Validated 2D robot workspace scene graph",
+  "title": "Scene Graph",
   "type": "object",
   "additionalProperties": false,
-  "required": ["image", "objects"],
+  "required": [
+    "objects",
+    "relations"
+  ],
   "properties": {
-    "image": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["width", "height"],
-      "properties": {
-        "width": {"type": "integer", "minimum": 1},
-        "height": {"type": "integer", "minimum": 1}
-      }
-    },
     "objects": {
       "type": "array",
-      "minItems": 0,
-      "items": {"$ref": "#/$defs/object"}
-    }
-  },
-  "$defs": {
-    "pixel": {
-      "description": "Integer pixel indices [u, v]; 0 <= u < image.width and 0 <= v < image.height",
-      "type": "array",
-      "items": {"type": "integer", "minimum": 0},
-      "minItems": 2,
-      "maxItems": 2
-    },
-    "bbox": {
-      "description": "Half-open [x1, y1, x2, y2]; 0 <= x1 < x2 <= image.width and 0 <= y1 < y2 <= image.height",
-      "type": "array",
-      "items": {"type": "integer", "minimum": 0},
-      "minItems": 4,
-      "maxItems": 4
-    },
-    "object": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "id",
-        "kind",
-        "label",
-        "color",
-        "bbox_2d",
-        "pick_point_2d",
-        "confidence",
-        "relations"
-      ],
-      "properties": {
-        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
-        "kind": {"enum": ["movable", "container", "surface", "human"]},
-        "label": {"type": "string", "enum": ["gear", "cube", "mug", "cup", "bowl", "tray", "work mat", "plate", "saucer", "banana", "mandarin", "metal part", "bracket", "industrial component", "hand", "object"], "description": "Canonical physical category; color is a separate field. Use object for an unrecognized physical object, never invent a category from its decorative silhouette. Exclude the background table"},
-        "color": {"type": ["string", "null"]},
-        "bbox_2d": {"$ref": "#/$defs/bbox"},
-        "pick_point_2d": {"$ref": "#/$defs/pixel"},
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-        "relations": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["inside", "on_top_of", "supports", "held_by_human", "partially_occluded"],
-          "properties": {
-            "inside": {"type": ["string", "null"], "description": "ID of the immediate enclosing receptacle, not its contents; null when none is visible"},
-            "on_top_of": {
-              "type": "array",
-              "items": {"type": "string"},
-              "uniqueItems": true,
-              "description": "IDs of all detected objects directly supporting this object from below; [] for background support or no established support; exclude indirect supports"
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "target_pixel"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+          },
+          "label": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+          },
+          "target_pixel": {
+            "type": "array",
+            "items": {
+              "type": "integer"
             },
-            "supports": {
-              "type": "array",
-              "items": {"type": "string"},
-              "uniqueItems": true
-            },
-            "held_by_human": {"type": "boolean"},
-            "partially_occluded": {"type": "boolean"}
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "width_mm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "graspable": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject",
+          "relation",
+          "object",
+          "confidence"
+        ],
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "relation": {
+            "enum": [
+              "left",
+              "right",
+              "above",
+              "below",
+              "inside"
+            ]
+          },
+          "object": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
           }
         }
       }
