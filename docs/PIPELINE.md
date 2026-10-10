@@ -215,8 +215,13 @@ the submission path and reused across runs by scene name.
 Both modes save accepted scene graphs and a matching `<scene>.detections.png`
 beside each newly generated graph. The original-resolution overlay shows Qwen's
 bounding boxes, object IDs and target-point crosses for visual inspection.
-It does not calculate an accuracy score or draw the fitted measurement rectangle.
+It does not calculate a detection accuracy score.
 Full runs also write the final submission at the requested output path.
+
+For measured objects, the overlay also shows the width in millimetres, the
+physical minimum-area rectangle projected into the image, and a double-headed
+arrow across its shorter dimension. Objects without a successful measurement
+retain their detection box and target point without a width annotation.
 
 Cached graphs and their existing overlays are reused. Older cached graphs do not
 contain bounding boxes, so their overlays cannot be reconstructed. Use a fresh

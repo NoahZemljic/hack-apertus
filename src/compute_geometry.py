@@ -126,16 +126,38 @@ def project_to_object_plane(scene, points: np.ndarray, target: list[int]) -> np.
     return positions[:, :2].astype(np.float32)
 
 
-def measure_width(scene, contour: np.ndarray, target: list[int]) -> float:
-    """Measure the shorter side of the contour's minimum-area rectangle in mm."""
+def measure_width(scene, contour: np.ndarray, target: list[int]) -> tuple:
+    """Return width in mm and its measurement rectangle and line in image pixels"""
     physical_contour = project_to_object_plane(scene, contour, target)
-    _, (side_a, side_b), _ = cv2.minAreaRect(physical_contour)
+    rectangle = cv2.minAreaRect(physical_contour)
+    _, (side_a, side_b), _ = rectangle
     width_mm = float(min(side_a, side_b))
 
     if not np.isfinite(width_mm) or width_mm <= 0:
         raise ValueError("Minimum-area rectangle has no measurable width")
 
-    return width_mm
+    # Map the physical rectangle back through the same measurement plane
+    x_min, y_min = contour.reshape(-1, 2).min(axis=0)
+    x_max, y_max = contour.reshape(-1, 2).max(axis=0)
+    image_corners = np.float32([
+        [x_min, y_min], [x_max, y_min],
+        [x_max, y_max], [x_min, y_max],
+    ])
+    plane_corners = project_to_object_plane(scene, image_corners, target)
+    plane_to_image = cv2.getPerspectiveTransform(plane_corners, image_corners)
+    physical_rectangle = cv2.boxPoints(rectangle)
+
+    # Join the midpoints of the long sides to show the measured shorter dimension
+    edge_lengths = np.linalg.norm(np.roll(physical_rectangle, -1, axis=0) - physical_rectangle, axis=1)
+    long_edge = int(np.argmax(edge_lengths))
+    width_line = np.float32([
+        (physical_rectangle[long_edge] + physical_rectangle[(long_edge + 1) % 4]) / 2,
+        (physical_rectangle[(long_edge + 2) % 4] + physical_rectangle[(long_edge + 3) % 4]) / 2,
+    ])
+    rectangle_pixels = cv2.perspectiveTransform(physical_rectangle[None], plane_to_image)[0]
+    width_pixels = cv2.perspectiveTransform(width_line[None], plane_to_image)[0]
+
+    return width_mm, rectangle_pixels, width_pixels
 
 
 def compute_objects(scene, detections: dict) -> list[dict]:
@@ -154,11 +176,12 @@ def compute_objects(scene, detections: dict) -> list[dict]:
 
         try:
             contour = object_contour(scene.rgb, obj["bbox_2d"], obj["target_pixel"])
-            width_mm = measure_width(scene, contour, obj["target_pixel"])
+            width_mm, rectangle, width_line = measure_width(scene, contour, obj["target_pixel"])
 
             obj["width_mm"] = width_mm
             obj["graspable"] = width_mm <= GRIPPER_WIDTH_MM
-            obj["rectangle_2d"] = cv2.boxPoints(cv2.minAreaRect(contour)).tolist()
+            obj["rectangle_2d"] = rectangle.tolist()
+            obj["width_line_2d"] = width_line.tolist()
         except (ValueError, cv2.error, np.linalg.LinAlgError) as error:
             obj["measurement_error"] = str(error)
 
