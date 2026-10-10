@@ -46,7 +46,8 @@ TARGET POINT: target_pixel
 - For gears, use an exposed solid tooth-root region, hub, or spoke rather than the central hole or empty space between teeth.
 - For cubes and blocks, prefer a broad visible face, away from corners and edges.
 - For flat metal parts and brackets, choose broad exposed metal away from bores, cutouts, and narrow ends.
-- For mugs and cups, select visible solid material on the body, thick rim, or sufficiently broad handle, never the empty opening or interior void.
+- For mugs and cups with a visible handle, place target_pixel on the solid material of the handle. This takes priority over the general preference for a broad surface on the body or rim. Choose the middle of a clearly visible handle segment, away from its edges; do not choose the empty hole enclosed by the handle, the mug opening, or the inside of the mug. Keep the handle and body as one object, with a bounding box enclosing both.
+- If no solid handle segment is visible, do not invent a handle point. Use an exposed exterior body surface or solid rim as a localization fallback, never the interior cavity. This fallback does not establish a feasible handle grasp.
 - For bananas and mandarins, choose a clearly visible intact portion of the fruit rather than empty space, an occluded area, or the extreme boundary. These objects are not rigid; do not invent a rigid grasp surface.
 - For overlapping or stacked objects, place the point exclusively on the visible surface of the specific detected object, not on its neighbor or on a hidden portion.
 - For a visible human hand, return a point on the visible hand for localization only. A hand must never be interpreted as a robot grasp target.
@@ -79,3 +80,4 @@ Before answering, verify all of the following:
 6. Every coordinate is an integer within the allowed scale.
 7. No object, boundary, feature, dimension, relation, or grasp property has been invented.
 8. The response is valid JSON and contains no planning, reasoning, commentary, or additional fields.
+9. Every mug or cup with a visible handle has its target point on solid handle material, not in either opening or on the body or rim.

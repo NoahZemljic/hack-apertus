@@ -213,7 +213,11 @@ def compute_relations(objects: list[dict]) -> list[dict]:
             inside_pairs.add((obj["id"], tray["id"]))
 
     # Containment replaces directions between an object and its enclosing tray
-    directions = ((0, "left", "right"), (1, "above", "below"))
+    # Image y increases downward; these relations do not describe physical height
+    directions = (
+        (0, "image_left_of", "image_right_of"),
+        (1, "image_up_from", "image_down_from"),
+    )
     for first, second in combinations(objects, 2):
         if (
             (first["id"], second["id"]) in inside_pairs

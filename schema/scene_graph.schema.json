@@ -62,10 +62,10 @@
           },
           "relation": {
             "enum": [
-              "left",
-              "right",
-              "above",
-              "below",
+              "image_left_of",
+              "image_right_of",
+              "image_up_from",
+              "image_down_from",
               "inside"
             ]
           },

@@ -72,8 +72,8 @@ The final graph has exactly `objects` and `relations`:
     {"id": "red_gear_1", "label": "red_gear", "target_pixel": [1775, 584]}
   ],
   "relations": [
-    {"subject": "yellow_gear_1", "relation": "left", "object": "red_gear_1", "confidence": 0.2},
-    {"subject": "yellow_gear_1", "relation": "below", "object": "red_gear_1", "confidence": 0.6}
+    {"subject": "yellow_gear_1", "relation": "image_left_of", "object": "red_gear_1", "confidence": 0.2},
+    {"subject": "yellow_gear_1", "relation": "image_down_from", "object": "red_gear_1", "confidence": 0.6}
   ]
 }
 ```
@@ -107,7 +107,10 @@ Segmentation can include neighboring material or miss part of a multicolored,
 occluded or low-contrast object. The target selects a connected component, not
 an independently verified object mask. In 2D, raised-object sizes are approximate
 because projection uses table height. A width-based `graspable` flag describes
-only gripper opening, not contact, accessibility or safety.
+only gripper opening, not contact, accessibility or safety. This follows the
+width rule on page 10 of the student implementation guide. The guide does not
+define a handle-grasp exception; the current measurement covers the selected
+object component, not a separately detected handle.
 
 ## Computed relations and confidence
 
@@ -121,14 +124,18 @@ relations to that tray. Relations between objects sharing a tray are still
 computed normally.
 
 For every other unordered pair, compare bounding-box edges along each axis.
-Emit `left` or `right` only when the horizontal intervals do not overlap; emit
-`above` or `below` only when the vertical intervals do not overlap. For example,
+Emit `image_left_of` or `image_right_of` only when the horizontal intervals do not overlap; emit
+`image_up_from` or `image_down_from` only when the vertical intervals do not overlap. For example,
 an object beside a tall tray can be right of it without also being above it.
 Touching edges count as separated with zero confidence. These are image
-directions, never physical stacking.
+directions, never physical stacking. Image y increases downward, so
+`image_up_from` means closer to the top of the image, not physically higher.
+The schema rejects ambiguous names such as `above` and `below`. Existing graphs
+with the old names need an explicit migration or a new output directory; cached
+graphs are not regenerated automatically.
 
 Each directional fact is stored once, relative to the pair's input order.
-`A left B` also means `B right A`; the mirrored edge is omitted. Diagonally
+`A image_left_of B` also means `B image_right_of A`; the mirrored edge is omitted. Diagonally
 separated objects can have one horizontal and one vertical relation.
 
 Confidence is computed only for relations:
