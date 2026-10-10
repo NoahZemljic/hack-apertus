@@ -184,32 +184,14 @@ def append_relation(
 
 
 def compute_relations(objects: list[dict]) -> list[dict]:
-    """Derive left/right, above/below and tray containment from detections.
+    """Store containment first, then directions between separated boxes.
 
-    Direction confidence is separation divided by separation plus the pair's
-    mean box extent. Inside confidence is the target's nearest tray-edge margin
-    divided by half the tray's shorter side. These are geometric scores, not
-    calibrated probabilities.
+    An inside pair has no directional relations. Other pairs get at most one
+    relation per axis, without a mirrored inverse. Direction confidence uses
+    the gap between box edges; inside confidence uses the target's edge margin.
     """
     relations = []
-
-    # Compare each pair of target pixels along the horizontal and vertical axes
-    directions = ((0, "left", "right"), (1, "above", "below"))
-    for first, second in combinations(objects, 2):
-        for axis, forward, reverse in directions:
-            separation = second["target_pixel"][axis] - first["target_pixel"][axis]
-            if separation == 0:
-                continue
-
-            first_extent = abs(first["bbox_2d"][axis + 2] - first["bbox_2d"][axis])
-            second_extent = abs(second["bbox_2d"][axis + 2] - second["bbox_2d"][axis])
-            mean_extent = (first_extent + second_extent) / 2
-            confidence = abs(separation) / (abs(separation) + mean_extent)
-            relation, inverse = (forward, reverse) if separation > 0 else (reverse, forward)
-
-            # Store both directions so every object has relations to its neighbors
-            append_relation(relations, first, relation, second, confidence)
-            append_relation(relations, second, inverse, first, confidence)
+    inside_pairs = set()
 
     # A tray is identified by a label ending in "_tray"; its box defines containment
     trays = [obj for obj in objects if obj["label"].split("_")[-1] == "tray"]
@@ -228,5 +210,42 @@ def compute_relations(objects: list[dict]) -> list[dict]:
             half_shorter_side = min(x2 - x1, y2 - y1) / 2
             confidence = min(1.0, margin / half_shorter_side)
             append_relation(relations, obj, "inside", tray, confidence)
+            inside_pairs.add((obj["id"], tray["id"]))
+
+    # Containment replaces directions between an object and its enclosing tray
+    directions = ((0, "left", "right"), (1, "above", "below"))
+    for first, second in combinations(objects, 2):
+        if (
+            (first["id"], second["id"]) in inside_pairs
+            or (second["id"], first["id"]) in inside_pairs
+        ):
+            continue
+
+        for axis, forward, reverse in directions:
+            first_start = first["bbox_2d"][axis]
+            first_end = first["bbox_2d"][axis + 2]
+            second_start = second["bbox_2d"][axis]
+            second_end = second["bbox_2d"][axis + 2]
+
+            # A box needs positive extent before its separation can be measured
+            first_extent = first_end - first_start
+            second_extent = second_end - second_start
+            if first_extent <= 0 or second_extent <= 0:
+                continue
+
+            # Only describe a direction when the boxes do not overlap on that axis
+            if first_end <= second_start:
+                relation = forward
+                gap = second_start - first_end
+            elif second_end <= first_start:
+                relation = reverse
+                gap = first_start - second_end
+            else:
+                continue
+
+            # Store the fact once; the opposite direction is implicit
+            mean_extent = (first_extent + second_extent) / 2
+            confidence = gap / (gap + mean_extent)
+            append_relation(relations, first, relation, second, confidence)
 
     return relations

@@ -55,7 +55,9 @@ Qwen returns `objects`, each with:
 }
 ```
 
-Labels are descriptive snake_case, including distinguishing colors. Boxes use
+Labels use color and category, such as `red_cube` and `white_plate`, without
+patterns or decorations. Fruits use only their names, such as `orange` and
+`banana`. Boxes use
 half-open `[x1, y1, x2, y2]` coordinates. Pixel `[u, v]` means column then row,
 with the origin at the top left. Qwen3-family normalized coordinates are converted
 to original image pixels once: box minima round down, maxima up, target pixels
@@ -76,8 +78,8 @@ The final graph has exactly `objects` and `relations`:
 }
 ```
 
-This example shows only two edges; the implementation emits inverse directional
-edges too. The numbers above illustrate the format, not a measured scene.
+This example shows two directional edges; their inverses are implicit and are
+not stored. The numbers above illustrate the format, not a measured scene.
 `width_mm` and `graspable` are omitted together if measurement fails. There is no
 object confidence, image metadata, bounding box, support or occlusion in the
 planner's graph. Full-precision width determines graspability.
@@ -109,25 +111,35 @@ only gripper opening, not contact, accessibility or safety.
 
 ## Computed relations and confidence
 
-For each unordered object pair, compare target coordinates. Smaller x means
-`left`, larger x `right`; smaller y means `above`, larger y `below`. Emit each
-relation and its inverse. Equal coordinates on an axis produce no relation for
-that axis. These are image directions, never physical stacking.
-
 An object's `inside` edge points to every detected tray whose half-open box
 contains its target pixel. Its whole box need not fit. A tray is identified by
 its label ending in `tray`; mats are not trays. Self-edges are excluded. There is
 no redundant `inside_tray` boolean and no `on` relation.
 
+Containment takes precedence: an object inside a tray gets no directional
+relations to that tray. Relations between objects sharing a tray are still
+computed normally.
+
+For every other unordered pair, compare bounding-box edges along each axis.
+Emit `left` or `right` only when the horizontal intervals do not overlap; emit
+`above` or `below` only when the vertical intervals do not overlap. For example,
+an object beside a tall tray can be right of it without also being above it.
+Touching edges count as separated with zero confidence. These are image
+directions, never physical stacking.
+
+Each directional fact is stored once, relative to the pair's input order.
+`A left B` also means `B right A`; the mirrored edge is omitted. Diagonally
+separated objects can have one horizontal and one vertical relation.
+
 Confidence is computed only for relations:
 
-- Direction: `abs(delta) / (abs(delta) + mean_box_extent)` on the relevant axis.
+- Direction: `box_gap / (box_gap + mean_box_extent)` on the relevant axis.
 - Inside: distance to the nearest tray-box edge divided by half the shorter tray
   extent, capped at 1. A target exactly on an included edge has confidence 0.
 
 Scores are rounded to four decimals. They express geometric separation or margin,
 not calibrated probabilities or Qwen certainty. A low score does not remove an
-otherwise true coordinate comparison.
+otherwise true box separation.
 
 ## Validation and planning
 

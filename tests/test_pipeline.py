@@ -118,15 +118,58 @@ class RelationTests(unittest.TestCase):
         return [dict(detection('gear', [0, 0, 80, 80], [20, 20]), id='gear_1'),
                 dict(detection('grey_tray', [10, 10, 100, 100], [70, 70]), id='grey_tray_1')]
 
-    def test_directions_and_inverses_are_image_relative(self):
+    def test_inside_replaces_directions_to_the_tray(self):
         relations = compute_relations(self.objects())
         edges = {(r['subject'], r['relation'], r['object']) for r in relations}
-        for name in ('left', 'above', 'inside'):
-            self.assertIn(('gear_1', name, 'grey_tray_1'), edges)
-        for name in ('right', 'below'):
-            self.assertIn(('grey_tray_1', name, 'gear_1'), edges)
+        self.assertEqual(edges, {('gear_1', 'inside', 'grey_tray_1')})
+        self.assertEqual(compute_relations(list(reversed(self.objects()))), relations)
         self.assertTrue(all(0 <= r['confidence'] <= 1 for r in relations))
-        self.assertFalse(any(r['subject'] == r['object'] for r in relations))
+
+    def test_separated_boxes_have_no_mirrored_duplicates(self):
+        objects = [
+            dict(detection('red_cube', [0, 0, 20, 20], [10, 10]), id='red_cube_1'),
+            dict(detection('green_mug', [40, 60, 60, 80], [50, 70]), id='green_mug_1'),
+        ]
+        relations = compute_relations(objects)
+        self.assertEqual(len(relations), 2)
+        self.assertEqual({r['relation'] for r in relations}, {'left', 'above'})
+        self.assertTrue(all(r['subject'] == 'red_cube_1' for r in relations))
+        self.assertTrue(all(r['object'] == 'green_mug_1' for r in relations))
+
+        reversed_relations = compute_relations(list(reversed(objects)))
+        self.assertEqual(len(reversed_relations), 2)
+        self.assertEqual({r['relation'] for r in reversed_relations}, {'right', 'below'})
+        self.assertEqual(
+            [r['confidence'] for r in reversed_relations],
+            [r['confidence'] for r in relations],
+        )
+
+        objects[0]['target_pixel'] = [19, 19]
+        objects[1]['target_pixel'] = [40, 60]
+        self.assertEqual(compute_relations(objects), relations)
+
+    def test_tall_tray_beside_cube_has_no_vertical_relation(self):
+        objects = [
+            dict(detection('grey_tray', [0, 0, 100, 1000], [50, 800]), id='grey_tray_1'),
+            dict(detection('red_cube', [130, 10, 170, 50], [150, 30]), id='red_cube_1'),
+        ]
+        relations = compute_relations(objects)
+        edges = {(r['subject'], r['relation'], r['object']) for r in relations}
+        self.assertEqual(edges, {('grey_tray_1', 'left', 'red_cube_1')})
+
+    def test_objects_in_same_tray_keep_their_relative_direction(self):
+        objects = [
+            dict(detection('grey_tray', [0, 0, 200, 200], [20, 160]), id='grey_tray_1'),
+            dict(detection('green_mug', [100, 20, 150, 70], [120, 40]), id='green_mug_1'),
+            dict(detection('yellow_gear', [100, 90, 130, 120], [115, 100]), id='yellow_gear_1'),
+        ]
+        relations = compute_relations(objects)
+        self.assertEqual(len(relations), 3)
+        self.assertEqual({(r['subject'], r['relation'], r['object']) for r in relations}, {
+            ('green_mug_1', 'inside', 'grey_tray_1'),
+            ('yellow_gear_1', 'inside', 'grey_tray_1'),
+            ('green_mug_1', 'above', 'yellow_gear_1'),
+        })
 
     def test_inside_uses_target_not_whole_box(self):
         relations = compute_relations(self.objects())
@@ -140,9 +183,8 @@ class RelationTests(unittest.TestCase):
                 actual = any(r['relation'] == 'inside' for r in compute_relations(objects))
                 self.assertEqual(actual, inside)
 
-    def test_equal_points_produce_no_direction_and_mat_is_not_tray(self):
+    def test_overlapping_boxes_produce_no_direction_and_mat_is_not_tray(self):
         objects = self.objects()
-        objects[0]['target_pixel'] = objects[1]['target_pixel']
         objects[1]['label'] = 'black_work_mat'
         self.assertEqual(compute_relations(objects), [])
 
