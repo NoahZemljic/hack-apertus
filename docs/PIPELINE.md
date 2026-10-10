@@ -1,5 +1,11 @@
 # Qwen perception and Apertus planning
 
+The Apertus extraction → Qwen discovery → DINO → SAM → geometry path has its own
+`run_grounded.py` entry point (`run_geometry.py` is a compatibility alias).
+See [grounded perception and planning](GEOMETRY_PIPELINE.md) for the full pipeline,
+saved-geometry replay, separate results, and evaluation. The Qwen pipeline below
+is unchanged.
+
 The pipeline separates visual observations from robot decisions:
 
 1. Qwen2.5-VL reads each scene once and produces a validated 2D scene graph

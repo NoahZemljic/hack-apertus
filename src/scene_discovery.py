@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import base64
 import json
+import urllib.request
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-from openai import OpenAI
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 from src.prompting import (
     prepare_scene_discovery_prompt,
@@ -67,10 +71,11 @@ def build_query(
     prompt: str,
     schema: dict,
     image_path: Path,
+    *, model: str = QWEN_MODEL,
 ) -> dict[str, Any]:
 
     return {
-        "model": QWEN_MODEL,
+        "model": model,
         "temperature": 0,
         "max_tokens": 800,
 
@@ -103,17 +108,28 @@ def build_query(
 
 
 def call_qwen(
-    client: OpenAI,
+    client: OpenAI | None,
     query: dict[str, Any],
+    *, base_url: str = QWEN_URL, timeout: float = 180,
 ) -> list[str]:
     """Send one request to Qwen."""
 
-    response = client.chat.completions.create(**query)
-
-    result = json.loads(
-        response.choices[0].message.content
-    )
-
+    if client is None:
+        request = urllib.request.Request(
+            base_url.rstrip("/") + "/chat/completions",
+            data=json.dumps(query).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Authorization": "Bearer none"},
+        )
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            text = json.loads(response.read())["choices"][0]["message"]["content"]
+    else:
+        response = client.chat.completions.create(**query)
+        text = response.choices[0].message.content
+    result = json.loads(text)
+    if (not isinstance(result, dict) or set(result) != {"objects"}
+        or not isinstance(result["objects"], list) or not result["objects"]
+        or any(not isinstance(obj, str) or not obj.strip() or len(obj) > 80 for obj in result["objects"])):
+        raise ValueError("Qwen discovery must contain only a nonempty objects list of short labels")
     return result["objects"]
 
 
@@ -154,10 +170,12 @@ def build_grounding_queries(
 
 
 def discover_scene(
-    client: OpenAI,
+    client: OpenAI | None,
     image_path: Path,
     schema: dict,
     hints: list[str],
+    *, model: str = QWEN_MODEL, base_url: str = QWEN_URL,
+    timeout: float = 180, constrained: bool = True,
 ) -> list[str]:
     """
     Run Qwen discovery followed by one verification pass.
@@ -167,13 +185,12 @@ def discover_scene(
         prepare_scene_discovery_prompt(hints)
     )
 
+    discovery_query = build_query(discovery_prompt, schema, image_path, model=model)
+    if not constrained:
+        discovery_query.pop("response_format")
     discovered = call_qwen(
         client,
-        build_query(
-            discovery_prompt,
-            schema,
-            image_path,
-        ),
+        discovery_query, base_url=base_url, timeout=timeout,
     )
 
     discovered = clean_phrases(discovered)
@@ -190,13 +207,12 @@ def discover_scene(
         )
     )
 
+    verification_query = build_query(verification_prompt, schema, image_path, model=model)
+    if not constrained:
+        verification_query.pop("response_format")
     verified = call_qwen(
         client,
-        build_query(
-            verification_prompt,
-            schema,
-            image_path,
-        ),
+        verification_query, base_url=base_url, timeout=timeout,
     )
 
     verified = clean_phrases(verified)
@@ -225,6 +241,7 @@ def write_results(
 
 
 def main():
+    from openai import OpenAI
 
     instruction_objects = (
         load_object_extraction_keywords(

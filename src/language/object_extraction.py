@@ -53,9 +53,12 @@ def load_instructions(dataset_path: Path) -> list[dict]:
     return instructions
 
 
-def ask_apertus(instruction: str, schema: dict) -> dict:
+def ask_apertus(
+    instruction: str, schema: dict, *, base_url: str = BASE_URL,
+    model: str = MODEL, timeout: float = 60, constrained: bool = True,
+) -> dict:
     body = {
-        "model": MODEL,
+        "model": model,
         "temperature": 0,
         "max_tokens": 100,
         "messages": [
@@ -73,8 +76,11 @@ def ask_apertus(instruction: str, schema: dict) -> dict:
         }
     }
 
+    if not constrained:
+        body.pop("response_format")
+
     request = urllib.request.Request(
-        f"{BASE_URL}/chat/completions",
+        base_url.rstrip("/") + "/chat/completions",
         data=json.dumps(body).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
@@ -82,12 +88,17 @@ def ask_apertus(instruction: str, schema: dict) -> dict:
         }
     )
 
-    with urllib.request.urlopen(request, timeout=60) as response:
+    with urllib.request.urlopen(request, timeout=timeout) as response:
         result = json.loads(response.read())
 
-    return json.loads(
+    extraction = json.loads(
         result["choices"][0]["message"]["content"]
     )
+    if (not isinstance(extraction, dict) or set(extraction) != {"objects"}
+        or not isinstance(extraction["objects"], list)
+        or any(not isinstance(obj, str) or not obj.strip() for obj in extraction["objects"])):
+        raise ValueError("Apertus extraction must contain only an objects list of nonempty strings")
+    return extraction
 
 
 def main():

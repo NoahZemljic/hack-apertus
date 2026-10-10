@@ -1,11 +1,19 @@
 import json
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 
 from .json_tools import extract_json_object
 from .prompting import append_validation_feedback, prepare_planning_prompt
 from .schemas import load_plan_schema
 from .validation import validate_plan
+
+
+class PlanningGenerationError(ValueError):
+    def __init__(self, message: str, replies: list[str]) -> None:
+        super().__init__(message)
+        self.replies = replies
+
 
 class ApertusPlanner:
     def __init__(
@@ -15,6 +23,7 @@ class ApertusPlanner:
         timeout: float = 180,
         retries: int = 1,
         constrained: bool = True,
+        prompt_builder: Callable[[dict, str, float | None], str] | None = None,
     ) -> None:
         """Configure access to an OpenAI-compatible Apertus server"""
         self.base_url = base_url
@@ -22,6 +31,7 @@ class ApertusPlanner:
         self.timeout = timeout
         self.retries = retries
         self.constrained = constrained
+        self.prompt_builder = prompt_builder or prepare_planning_prompt
 
     def request_plan(self, messages: list[dict], constrained: bool) -> str:
         """Send one planning request to Apertus and return its text response"""
@@ -51,7 +61,7 @@ class ApertusPlanner:
         """Generate and validate one plan, clarification question, or refusal."""
         messages = [{
             "role": "user",
-            "content": prepare_planning_prompt(graph, instruction, gripper_mm),
+            "content": self.prompt_builder(graph, instruction, gripper_mm),
         }]
         replies = []
         last_error = None
@@ -79,4 +89,4 @@ class ApertusPlanner:
                 if attempt < self.retries:
                     append_validation_feedback(messages, reply, error)
 
-        raise ValueError(f"Apertus did not return a valid plan: {last_error}")
+        raise PlanningGenerationError(f"Apertus did not return a valid plan: {last_error}", replies)

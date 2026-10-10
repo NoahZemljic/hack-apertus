@@ -177,7 +177,12 @@ in `schema/scene_graph.schema.json`. A subsequent scene-graph builder can use
 `safe_pixel` as `pick_point_2d`, and derive semantic object properties separately.
 It must validate image bounds and point membership when constructing that box;
 a SAM mask can extend outside its original DINO prompt. It must resolve projected
-containment against object kinds and confirm support hypotheses before writing
-`inside` / `on_top_of`; `src.scene_graph.derive_support_relations` then derives
-the inverse support lists. The existing `run.py` pipeline is not wired to this
-new stage yet. This module adds no LLM decisions or automatic support claims.
+containment against object kinds and select a support acceptance policy before
+writing `inside` / `on_top_of`; `src.scene_graph.derive_support_relations` then
+derives the inverse support lists. The existing `run.py` pipeline remains
+separate. The new `run_grounded.py` entry point runs all perception stages and
+planning; `--geometry-input geometry_results.json` reuses saved artifacts.
+See [the grounded planning pipeline](GEOMETRY_PIPELINE.md).
+That builder accepts selected support hypotheses as first-pass estimates by
+default, with an option to omit them. This geometry module itself adds no LLM
+decisions or automatic support claims.

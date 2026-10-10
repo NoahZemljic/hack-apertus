@@ -34,10 +34,12 @@ Report observations only. Do not plan actions, infer an instruction, or invent a
 {schema}"""
 
 
-def prepare_planning_prompt(graph: dict, instruction: str, gripper_mm: float | None) -> str:
+def prepare_planning_prompt(
+    graph: dict, instruction: str, gripper_mm: float | None, *, geometry: dict | None = None
+) -> str:
     """Build the Apertus prompt from an instruction and validated scene graph"""
     opening = gripper_mm if gripper_mm is not None else 85
-    geometry = derived_geometry(graph)
+    geometry = derived_geometry(graph) if geometry is None else geometry
     return f"""You are the deliberative planner for a UR5 robot arm above a table.
 
 Instruction: {json.dumps(instruction)}
