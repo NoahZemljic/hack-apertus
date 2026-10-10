@@ -193,8 +193,16 @@ the submission path and reused across runs by scene name.
 
 ## Artifacts and tests
 
-Both modes save accepted scene graphs. Full runs also write the final submission
-at the requested output path. The pipeline does not write diagnostic files.
+Both modes save accepted scene graphs and a matching `<scene>.detections.png`
+beside each newly generated graph. The original-resolution overlay shows Qwen's
+bounding boxes, object IDs and target-point crosses for visual inspection.
+It does not calculate an accuracy score or draw the fitted measurement rectangle.
+Full runs also write the final submission at the requested output path.
+
+Cached graphs and their existing overlays are reused. Older cached graphs do not
+contain bounding boxes, so their overlays cannot be reconstructed. Use a fresh
+`--out` parent directory to generate detections and overlays for those scenes.
+
 After format retries are exhausted, an error stops the run and is raised directly.
 Existing diagnostic files from earlier runs are not deleted.
 

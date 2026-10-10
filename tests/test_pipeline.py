@@ -18,6 +18,7 @@ from src.perception import QwenPerception, PerceptionGenerationError
 from src.pipeline import RoboticsPipeline
 from src.apertus import ApertusPlanner
 from src.validation import validate_perception, validate_scene_graph
+from src.visualization import write_scene_overlay
 
 
 def scene():
@@ -35,6 +36,27 @@ def detection(label='red_part', bbox=None, target=None):
 
 def rectangle(width):
     return np.array([[[100, 60]], [[220, 60]], [[220, 60 + width]], [[100, 60 + width]]], np.float32)
+
+
+class VisualizationTests(unittest.TestCase):
+    def test_overlay_draws_box_and_target_without_changing_source(self):
+        rgb = np.full((120, 160, 3), [10, 20, 30], dtype=np.uint8)
+        original = rgb.copy()
+        obj = dict(detection(bbox=[20, 30, 80, 90], target=[50, 60]), id='red_part_1')
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'overlays' / 'scene.detections.png'
+            write_scene_overlay(rgb, [obj], path)
+            overlay = cv2.imread(str(path))
+
+        np.testing.assert_array_equal(rgb, original)
+        self.assertEqual(overlay.shape, rgb.shape)
+        background = [30, 20, 10]
+        np.testing.assert_array_equal(overlay[110, 150], background)
+        np.testing.assert_array_equal(overlay[60, 80], background)
+        self.assertFalse(np.array_equal(overlay[60, 20], background))
+        self.assertFalse(np.array_equal(overlay[60, 79], background))
+        self.assertFalse(np.array_equal(overlay[60, 50], background))
 
 
 class GeometryTests(unittest.TestCase):
@@ -218,7 +240,12 @@ class PipelineTests(unittest.TestCase):
                     self.assertEqual(len(vlm.requests), 1)
 
                     graph_directory = output.parent / 'scene_graphs'
-                    self.assertEqual([file.name for file in graph_directory.iterdir()], ['synthetic.json'])
+                    self.assertEqual(
+                        sorted(file.name for file in graph_directory.iterdir()),
+                        ['synthetic.detections.png', 'synthetic.json'],
+                    )
+                    overlay = cv2.imread(str(graph_directory / 'synthetic.detections.png'))
+                    np.testing.assert_array_equal(overlay, cv2.cvtColor(sample.rgb, cv2.COLOR_RGB2BGR))
                     self.assertFalse(output.with_suffix('.raw.jsonl').exists())
 
                     if perception_only:
@@ -300,8 +327,14 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(set(graph['objects'][0]), {'id', 'label', 'target_pixel', 'width_mm', 'graspable'})
             self.assertTrue(graph['objects'][0]['graspable'])
             self.assertEqual(json.loads((path / 'synthetic.json').read_text()), graph)
+            overlay_path = path / 'synthetic.detections.png'
+            overlay = cv2.imread(str(overlay_path))
+            self.assertEqual(overlay.shape, sample.rgb.shape)
+            self.assertFalse(np.array_equal(overlay[120, 75], sample.rgb[120, 75]))
+            overlay_modified = overlay_path.stat().st_mtime_ns
             self.assertEqual(pipeline.run([(path, sample)]), results)
             self.assertEqual(len(perception.vlm.requests), 1)
+            self.assertEqual(overlay_path.stat().st_mtime_ns, overlay_modified)
 
     def test_apertus_receives_system_prompt_and_compact_graph(self):
         planner = ApertusPlanner()

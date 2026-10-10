@@ -7,6 +7,7 @@ from .json_tools import parse_json_object
 from .perception import PerceptionModel
 from .results import plan_to_result
 from .validation import validate_perception, validate_scene_graph
+from .visualization import write_scene_overlay
 
 
 class RoboticsPipeline:
@@ -40,6 +41,10 @@ class RoboticsPipeline:
         relations = compute_relations(geometry)
         graph = create_scene_graph(geometry, relations)
         validate_scene_graph(graph)
+
+        # Save detected boxes before caching the graph so the overlay is available on reuse
+        overlay_path = self.scene_graph_dir / f"{scene.name}.detections.png"
+        write_scene_overlay(scene.rgb, geometry, overlay_path)
 
         # Save only the accepted scene graph.
         self.scene_graph_dir.mkdir(parents=True, exist_ok=True)
