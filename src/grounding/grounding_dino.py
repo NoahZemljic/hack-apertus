@@ -60,11 +60,14 @@ def assign_detection_ids(detections: list[dict]) -> list[dict]:
 
 
 class GroundingDinoDetector:
-    def __init__(self, model_id: str = MODEL_ID):
+    def __init__(self, model_id: str = MODEL_ID, device: str | None = None):
         from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id)
+        if device is not None:
+            self.model = self.model.to(device)
+        self.model.eval()
 
     @staticmethod
     def load_queries(
@@ -116,7 +119,11 @@ class GroundingDinoDetector:
             return_tensors="pt",
         )
 
-        outputs = self.model(**inputs)
+        import torch
+
+        inputs = inputs.to(self.model.device)
+        with torch.inference_mode():
+            outputs = self.model(**inputs)
 
         results = self.processor.post_process_grounded_object_detection(
             outputs,
