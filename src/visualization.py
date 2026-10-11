@@ -1,4 +1,4 @@
-"""Draw detection boxes, target points and measured widths for visual inspection"""
+"""Draw detection boxes and target points for visual inspection."""
 from pathlib import Path
 
 import cv2
@@ -28,18 +28,6 @@ def write_scene_overlay(rgb: np.ndarray, objects: list[dict], path: Path) -> Non
         )
 
         label = obj["id"]
-        if "width_mm" in obj:
-            label += f" | {obj['width_mm']:.1f} mm"
-
-            # Show the projected physical rectangle and its shorter dimension
-            rectangle = np.rint(obj["rectangle_2d"]).astype(np.int32)
-            cv2.polylines(canvas, [rectangle], True, color, thickness, cv2.LINE_AA)
-            start, end = np.rint(obj["width_line_2d"]).astype(np.int32)
-            for first, second in [(start, end), (end, start)]:
-                cv2.arrowedLine(
-                    canvas, tuple(first), tuple(second), color,
-                    thickness + 1, cv2.LINE_AA, tipLength=0.15,
-                )
 
         # Outline the label in black so it remains readable on light backgrounds
         label_position = (x1, max(round(20 * font_scale), y1 - 8))
