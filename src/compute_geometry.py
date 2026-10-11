@@ -234,6 +234,7 @@ def compute_relations(objects: list[dict], stacking: list[dict] | None = None) -
     """
     relations = []
     inside_pairs = set()
+    containers = {obj["id"]: set() for obj in objects}
 
     # Accept visual support only between candidate IDs, with no duplicate or opposing edges
     candidate_pairs = {frozenset(pair) for pair in stacking_candidates(objects)}
@@ -269,6 +270,7 @@ def compute_relations(objects: list[dict], stacking: list[dict] | None = None) -
             confidence = min(1.0, margin / half_shorter_side)
             append_relation(relations, obj, "inside", tray, confidence)
             inside_pairs.add((obj["id"], tray["id"]))
+            containers[obj["id"]].add(tray["id"])
 
     # Containment and physical support take precedence over image directions
     # Image y increases downward; these relations do not describe physical height
@@ -277,6 +279,10 @@ def compute_relations(objects: list[dict], stacking: list[dict] | None = None) -
         (1, "image_up_from", "image_down_from"),
     )
     for first, second in combinations(objects, 2):
+        # Compare positions only within the same containers or on the surrounding workspace
+        if containers[first["id"]] != containers[second["id"]]:
+            continue
+
         if (
             (first["id"], second["id"]) in inside_pairs
             or (second["id"], first["id"]) in inside_pairs

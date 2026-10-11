@@ -128,8 +128,10 @@ its label ending in `tray`; mats are not trays. Self-edges are excluded. There i
 no redundant `inside_tray` boolean.
 
 Containment takes precedence: an object inside a tray gets no directional
-relations to that tray. Relations between objects sharing a tray are still
-computed normally.
+relations to that tray. Directional comparisons require identical tray membership:
+both objects must be in the same set of trays, or both outside every detected tray.
+Objects inside a tray are not compared directionally with objects outside it or
+in a different tray. Physical `on` relations remain independent of this grouping.
 
 For every other unordered pair, compare bounding-box intervals along each axis.
 Allow an overlap of at most 15% of the smaller interval; larger overlaps suppress
