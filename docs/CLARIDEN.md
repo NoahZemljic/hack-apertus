@@ -65,16 +65,32 @@ srun -A <project_account> --partition=debug --nodes=1 --ntasks=1 \
   --cpus-per-task=64 --time=00:30:00 --pty bash
 ```
 
-Inside the build allocation:
+Inside the build allocation (host shell, without an EDF), configure node-local
+Podman storage before building. The exported `CONTAINERS_STORAGE_CONF` applies
+to both Podman and the Podman subprocess used by Enroot. This leaves any existing
+user storage configuration untouched:
 
 ```sh
-cd "$HOME/hack-apertus"
+cd "$HOME/hack-apertus" || exit 1
 uname -m                       # aarch64
+pipeline_build_root="$(mktemp -d "/dev/shm/hack-apertus-build-$UID-XXXXXX")" || exit 1
+mkdir -p "$pipeline_build_root/root" "$pipeline_build_root/runroot" "$pipeline_build_root/tmp"
+export CONTAINERS_STORAGE_CONF="$pipeline_build_root/storage.conf"
+export TMPDIR="$pipeline_build_root/tmp"
+cat > "$CONTAINERS_STORAGE_CONF" <<EOF
+[storage]
+driver = "overlay"
+runroot = "$pipeline_build_root/runroot"
+graphroot = "$pipeline_build_root/root"
+EOF
+podman info --format '{{.Store.GraphRoot}}'  # must point under /dev/shm
 mkdir -p "$SCRATCH/hack-apertus/containers"
 podman build --network=host --platform linux/arm64 \
-  -f containers/Containerfile -t hack-apertus:pipeline-arm64 .
-enroot import -x mount -o "$SCRATCH/hack-apertus/containers/pipeline-arm64.sqsh" \
-  podman://localhost/hack-apertus:pipeline-arm64
+  -f containers/Containerfile -t hack-apertus:pipeline-arm64 . || exit 1
+pipeline_image_new="$SCRATCH/hack-apertus/containers/pipeline-arm64-$(date -u +%Y%m%dT%H%M%S)-$$.sqsh"
+enroot import -x mount -o "$pipeline_image_new" \
+  podman://localhost/hack-apertus:pipeline-arm64 || exit 1
+mv -f "$pipeline_image_new" "$SCRATCH/hack-apertus/containers/pipeline-arm64.sqsh" || exit 1
 sha256sum "$SCRATCH/hack-apertus/containers/pipeline-arm64.sqsh"
 ```
 
@@ -507,7 +523,3 @@ wrote a report. Seven replies failed planning validation and became fail-safe
 refusals; model correctness is separate from deployment functionality. The tested
 snapshot was `59e744e313e967811aefabde3732609b64201acc`.
 
-Still to validate on Clariden: Qwen3-VL-32B generation on GPU 2, DINO and SAM
-inference on GPU 3 in this image, concurrent operation of the complete deployment,
-the automatic launcher with real models, and the full build/run budget under
-15 minutes. The completed planning replay does not establish these checks.
