@@ -1,0 +1,38 @@
+# GPU numbers are positions within Slurm's CUDA_VISIBLE_DEVICES allocation.
+# All four model IDs also accept local snapshot directories.
+[apertus]
+model = "swiss-ai/Apertus-v1.5-70B"
+revision = "main"
+gpus = [0, 1]
+port = 8000
+tensor_parallel = 2
+max_model_len = 8192
+memory_utilization = 0.90
+max_num_seqs = 1
+# This pipeline sends only text to Apertus; skip image/audio profiling.
+# Required for the tested GH200 TP=2 setup: avoid fused all-reduce RMS capture failures.
+extra_args = ["--chat-template-content-format", "string", "--limit-mm-per-prompt", '{"image":0,"audio":0}', "--compilation-config.pass_config.fuse_allreduce_rms", "false"]
+
+[qwen]
+model = "Qwen/Qwen3-VL-32B-Instruct"
+revision = "main"
+gpus = [2]
+port = 8001
+tensor_parallel = 1
+max_model_len = 8192
+memory_utilization = 0.90
+max_num_seqs = 1
+extra_args = ["--limit-mm-per-prompt", '{"image":1,"video":0}']
+
+[perception]
+gpu = 3
+dino_model = "IDEA-Research/grounding-dino-base"
+sam_model = "facebook/sam2.1-hiera-small"
+dino_revision = "main"
+sam_revision = "main"
+
+[runtime]
+startup_timeout = 600.0
+shutdown_timeout = 15.0
+monitor_interval = 10.0
+poll_interval = 1.0
