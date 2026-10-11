@@ -3,14 +3,19 @@
 The pipeline is:
 
 ```text
-RGB image → Qwen labels, boxes, target pixels
-          → Python segmentation, physical width, graspability, relations
+RGB image → Qwen detection and inventory review
+          → Python segmentation, physical width, graspability
+          → Qwen visual stacking + Python image directions and containment
           → compact scene graph → Apertus plan → submission
 ```
 
-Qwen makes one detection request per image, with bounded retries for malformed
-JSON. It never predicts relations, sizes, graspability or confidence. Python
-assigns numbered IDs from labels. The Qwen-selected target pixel is preserved.
+Qwen makes a detection request followed by an inventory review per image, with
+bounded retries for malformed JSON. The review returns the complete corrected
+inventory, checking small components and partly covered trays in particular.
+Python then assigns numbered IDs from labels. The Qwen-selected target pixel is
+preserved. A separate visual request inspects physical stacking when non-tray
+boxes overlap. Only this request may predict `on` relations and their confidence;
+sizes, graspability, image directions and containment remain computed in Python.
 
 ## Project layout
 
@@ -18,6 +23,7 @@ assigns numbered IDs from labels. The Qwen-selected target pixel is preserved.
 run_pipeline.py               command-line entry point
 prompts/
   qwen_system.txt             detection instructions
+  qwen_stacking.txt           visual support inspection
   apertus_system.txt          planning instructions
 src/
   perception.py               Qwen detection contract, prompt and coordinate conversion
@@ -61,7 +67,9 @@ patterns or decorations. Fruits use only their names, such as `orange` and
 half-open `[x1, y1, x2, y2]` coordinates. Pixel `[u, v]` means column then row,
 with the origin at the top left. Qwen3-family normalized coordinates are converted
 to original image pixels once: box minima round down, maxima up, target pixels
-down. Qwen2.5 uses original pixels. There are no follow-up relation/point queries.
+down. Qwen2.5 uses original pixels. The inventory review uses the same coordinate
+convention before conversion. Stacking receives a crop around candidate objects
+and their IDs and boxes expressed in that crop's pixel coordinates.
 
 The final graph has exactly `objects` and `relations`:
 
@@ -117,17 +125,18 @@ object component, not a separately detected handle.
 An object's `inside` edge points to every detected tray whose half-open box
 contains its target pixel. Its whole box need not fit. A tray is identified by
 its label ending in `tray`; mats are not trays. Self-edges are excluded. There is
-no redundant `inside_tray` boolean and no `on` relation.
+no redundant `inside_tray` boolean.
 
 Containment takes precedence: an object inside a tray gets no directional
 relations to that tray. Relations between objects sharing a tray are still
 computed normally.
 
-For every other unordered pair, compare bounding-box edges along each axis.
-Emit `image_left_of` or `image_right_of` only when the horizontal intervals do not overlap; emit
-`image_up_from` or `image_down_from` only when the vertical intervals do not overlap. For example,
-an object beside a tall tray can be right of it without also being above it.
-Touching edges count as separated with zero confidence. These are image
+For every other unordered pair, compare bounding-box intervals along each axis.
+Allow an overlap of at most 15% of the smaller interval; larger overlaps suppress
+that axis's relation. This tolerance accommodates loose boxes around neighboring
+objects without assigning directions to strongly overlapping objects. Use box
+centers to choose `image_left_of` / `image_right_of` and `image_up_from` /
+`image_down_from`, independently of pick points. These are image
 directions, never physical stacking. Image y increases downward, so
 `image_up_from` means closer to the top of the image, not physically higher.
 The schema rejects ambiguous names such as `above` and `below`. Existing graphs
@@ -138,15 +147,31 @@ Each directional fact is stored once, relative to the pair's input order.
 `A image_left_of B` also means `B image_right_of A`; the mirrored edge is omitted. Diagonally
 separated objects can have one horizontal and one vertical relation.
 
-Confidence is computed only for relations:
+Physical `on` relations come from a dedicated Qwen pass, never from box overlap
+alone. Python uses overlapping non-tray boxes to select candidate pairs. The
+model identifies `upper` and `lower` objects for each support; Python converts
+these to `upper on lower`. It may return multiple direct supports for one object,
+or none when uncertain. The crop includes a margin around the candidate objects
+so nearby surfaces remain visible.
+Visual support below confidence 0.7 is omitted; this is a heuristic cutoff, not
+a calibrated probability threshold. Edges with unknown or non-candidate IDs are discarded; duplicate edges are
+collapsed and opposing support claims for a pair are omitted. An accepted `on`
+edge suppresses image directions between the same pair. The pass remains a
+visual estimate, not a depth measurement or a proof of contact. Disjoint visible
+boxes are not candidates, so some heavily occluded support may remain unknown.
 
-- Direction: `box_gap / (box_gap + mean_box_extent)` on the relevant axis.
+Confidence is attached only to relations:
+
+- Direction: `center_separation / (center_separation + mean_box_extent)` on the relevant axis.
 - Inside: distance to the nearest tray-box edge divided by half the shorter tray
   extent, capped at 1. A target exactly on an included edge has confidence 0.
 
-Scores are rounded to four decimals. They express geometric separation or margin,
-not calibrated probabilities or Qwen certainty. A low score does not remove an
-otherwise true box separation.
+- On: Qwen's visual confidence, not a calibrated probability.
+
+Python scores are rounded to four decimals and express geometric separation or
+margin. Detection review and stacking add up to two model calls per new scene.
+Cached scene graphs are still reused without any model calls; use a new output
+directory to evaluate these changes on existing scenes.
 
 ## Validation and planning
 

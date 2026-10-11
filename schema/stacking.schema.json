@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Visual stacking",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "supports"
+  ],
+  "properties": {
+    "supports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "upper",
+          "lower",
+          "confidence"
+        ],
+        "properties": {
+          "upper": {
+            "type": "string"
+          },
+          "lower": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

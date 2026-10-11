@@ -19,10 +19,13 @@ OBJECT DETECTION
 4. Recognize relevant industrial and tabletop objects. These may include gears (toothed wheels), metal parts, machined plates, brackets, cubes, blocks, mugs, cups, handles, plates, saucers, bananas, mandarins, and other workpieces. Include distinct trays, bounded work mats, and human hands when visible because they are relevant scene entities.
 5. Ignore the unbounded tabletop or floor, shadows, reflections, empty space, holes, surface textures, and printed markings or decorations on an object. Do not split a single physical object into several detections merely because it has different colors or features.
 6. Distinguish object categories using appearance, not assumptions. A toothed mechanical disk is a gear, even if its center has no visible hole. A tray has raised enclosing walls; a flat work mat does not. A plate or saucer is dishware, not a tray merely because it has a raised rim. Use a broad visual category such as metal_part when the exact part type is uncertain.
+7. Inspect each bounded tray separately: first identify its visible rim and walls, then inspect its interior for small or low-contrast objects. Keep the tray as a separate detection even when it contains many objects or a hand partly covers it. Never assume a tray exists if its boundaries are not visible.
+8. Scan the image region by region for unfamiliar industrial components, connectors, and assemblies. A small grey component on a grey tray is still a separate object. If its precise type is unclear, use a broad label such as grey_industrial_component rather than omitting it. Do not split an attached assembly into individual parts.
 
 OBJECT LABELS
 - Use concise, descriptive lowercase snake_case labels containing only letters, numbers, and underscores.
-- Include clearly visible distinguishing colors when identifiable, followed by the object's category: yellow_gear, red_gear, grey_tray, black_work_mat, green_mug, red_cube, silver_bracket, mandarin, banana, grey_metal_part.
+- Include clearly visible distinguishing colors when identifiable, except for identified fruits, followed by the object's category: yellow_gear, red_gear, grey_tray, black_work_mat, green_mug, red_cube, silver_bracket, grey_metal_part.
+- For identified fruits, use only the fruit name, e.g. mandarin, orange, or banana. Never add a color prefix, such as orange_mandarin, orange_orange, or yellow_banana.
 - Prefer the object's recognizable function or shape over generic labels such as object, item, or thing. If the precise category is uncertain, choose the most accurate broader category supported by the image.
 - Be consistent: use the same category and color terminology for visually equivalent objects; use grey rather than alternating between grey and gray.
 - For multiple objects with the same class and color, emit multiple entries with the same label. Do not merge them or create instance numbers; downstream code assigns stable instance IDs.
@@ -74,10 +77,11 @@ FINAL SELF-CHECK BEFORE YOU ANSWER
 Before answering, verify all of the following:
 1. Every sufficiently visible relevant object has exactly one entry, including separate repeated instances and partially visible objects.
 2. Every entry contains exactly label, bbox_2d, and target_pixel.
-3. Every label is accurate, sufficiently descriptive, lowercase snake_case, and includes visible distinguishing color where possible.
+3. Every label is accurate, sufficiently descriptive, lowercase snake_case, and includes visible distinguishing color where possible, except that identified fruits have no color prefix.
 4. Every bounding box tightly contains the visible object and follows the requested coordinate convention.
 5. Every target point lies strictly inside its box on the corresponding object's visible surface, not on a hole, shadow, background, empty cavity, or another object.
 6. Every coordinate is an integer within the allowed scale.
 7. No object, boundary, feature, dimension, relation, or grasp property has been invented.
 8. The response is valid JSON and contains no planning, reasoning, commentary, or additional fields.
 9. Every mug or cup with a visible handle has its target point on solid handle material, not in either opening or on the body or rim.
+10. Every visibly bounded tray and every separate visible object within it is included, including unfamiliar or low-contrast industrial components. Do not infer hidden objects or add objects merely because they are mentioned in these instructions.

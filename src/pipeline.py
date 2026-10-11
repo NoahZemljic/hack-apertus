@@ -33,12 +33,13 @@ class RoboticsPipeline:
 
             return graph
 
-        # Detect objects, then compute geometry and relations in Python.
+        # Review detections, compute geometry, and inspect physical stacking visually
         detections, _ = self.perception.detect(scene_dir / "rgb.png", *scene.size)
         validate_perception(detections)
 
         geometry = compute_objects(scene, detections)
-        relations = compute_relations(geometry)
+        stacking = self.perception.detect_stacking(scene_dir / "rgb.png", geometry)
+        relations = compute_relations(geometry, stacking)
         graph = create_scene_graph(geometry, relations)
         validate_scene_graph(graph)
 

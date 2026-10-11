@@ -14,6 +14,8 @@ from starter.scene_io import TABLE_Z_MM, pixel_to_robot
 
 GRIPPER_WIDTH_MM = 85.0
 MAX_SEGMENTATION_SIZE = 640
+MAX_DIRECTION_OVERLAP = 0.15
+MIN_STACKING_CONFIDENCE = 0.7
 
 
 def object_contour(rgb: np.ndarray, bbox: list[int], target: list[int]) -> np.ndarray:
@@ -206,15 +208,48 @@ def append_relation(
     })
 
 
-def compute_relations(objects: list[dict]) -> list[dict]:
-    """Store containment first, then directions between separated boxes.
+def stacking_candidates(objects: list[dict]) -> list[tuple[str, str]]:
+    """Find overlapping object pairs for visual support inspection"""
+    candidates = []
 
-    An inside pair has no directional relations. Other pairs get at most one
-    relation per axis, without a mirrored inverse. Direction confidence uses
-    the gap between box edges; inside confidence uses the target's edge margin.
+    for first, second in combinations(objects, 2):
+        # Tray containment is handled separately and does not need model inference
+        if any(obj["label"].split("_")[-1] == "tray" for obj in (first, second)):
+            continue
+
+        a = first["bbox_2d"]
+        b = second["bbox_2d"]
+        if min(a[2], b[2]) > max(a[0], b[0]) and min(a[3], b[3]) > max(a[1], b[1]):
+            candidates.append((first["id"], second["id"]))
+
+    return candidates
+
+
+def compute_relations(objects: list[dict], stacking: list[dict] | None = None) -> list[dict]:
+    """Combine visual support, containment and image directions
+
+    A supported or contained pair has no directional relations
+    Other pairs get at most one relation per axis, without a mirrored inverse
+    Small edge overlaps are allowed to account for loose detection boxes
     """
     relations = []
     inside_pairs = set()
+
+    # Accept visual support only between candidate IDs, with no duplicate or opposing edges
+    candidate_pairs = {frozenset(pair) for pair in stacking_candidates(objects)}
+    support_edges = {
+        (edge["subject"], edge["object"]): edge
+        for edge in stacking or []
+        if edge["relation"] == "on"
+        and edge["confidence"] >= MIN_STACKING_CONFIDENCE
+        and frozenset((edge["subject"], edge["object"])) in candidate_pairs
+    }
+    support_pairs = set()
+    for (subject, target), edge in support_edges.items():
+        if (target, subject) in support_edges:
+            continue
+        relations.append(edge.copy())
+        support_pairs.add(frozenset((subject, target)))
 
     # A tray is identified by a label ending in "_tray"; its box defines containment
     trays = [obj for obj in objects if obj["label"].split("_")[-1] == "tray"]
@@ -235,7 +270,7 @@ def compute_relations(objects: list[dict]) -> list[dict]:
             append_relation(relations, obj, "inside", tray, confidence)
             inside_pairs.add((obj["id"], tray["id"]))
 
-    # Containment replaces directions between an object and its enclosing tray
+    # Containment and physical support take precedence over image directions
     # Image y increases downward; these relations do not describe physical height
     directions = (
         (0, "image_left_of", "image_right_of"),
@@ -245,6 +280,7 @@ def compute_relations(objects: list[dict]) -> list[dict]:
         if (
             (first["id"], second["id"]) in inside_pairs
             or (second["id"], first["id"]) in inside_pairs
+            or frozenset((first["id"], second["id"])) in support_pairs
         ):
             continue
 
@@ -260,19 +296,20 @@ def compute_relations(objects: list[dict]) -> list[dict]:
             if first_extent <= 0 or second_extent <= 0:
                 continue
 
-            # Only describe a direction when the boxes do not overlap on that axis
-            if first_end <= second_start:
-                relation = forward
-                gap = second_start - first_end
-            elif second_end <= first_start:
-                relation = reverse
-                gap = first_start - second_end
-            else:
+            # Compare overlap to the smaller box so large objects cannot hide ambiguity
+            overlap = max(0, min(first_end, second_end) - max(first_start, second_start))
+            if overlap > MAX_DIRECTION_OVERLAP * min(first_extent, second_extent):
                 continue
+
+            # Box centers describe image position independently of the chosen pick points
+            first_center = (first_start + first_end) / 2
+            second_center = (second_start + second_end) / 2
+            relation = forward if first_center < second_center else reverse
+            separation = abs(second_center - first_center)
 
             # Store the fact once; the opposite direction is implicit
             mean_extent = (first_extent + second_extent) / 2
-            confidence = gap / (gap + mean_extent)
+            confidence = separation / (separation + mean_extent)
             append_relation(relations, first, relation, second, confidence)
 
     return relations
