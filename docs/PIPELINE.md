@@ -18,28 +18,46 @@ Pixel-to-robot conversion is deliberately outside the reasoning path. The challe
 
 ## GPU environment
 
-Create the environment on a compute node from a CSCS PyTorch container so its CUDA-compatible PyTorch installation is available. Then install the optional model libraries without replacing the container's PyTorch build:
+The [single-container Clariden setup](CLARIDEN.md) runs the complete grounded
+pipeline with Apertus 1.5 70B, Qwen3-VL-32B, and isolated DINO/SAM GPUs. For the baked unified image use `python` directly; do not run `uv sync` or
+install another engine there. The environment creation recipe below applies
+only to a separate generic development container.
+
+All stages share the root dependency configuration; the language, grounding,
+and masking folders are not separately installed projects. Follow
+[the shared environment instructions](ENVIRONMENT.md) for container installation,
+SAM dependencies, caches, and CPU/GPU preflight checks.
+
+Create the environment on a compute node from a CSCS PyTorch container so its CUDA-compatible Torch/Torchvision installation is available. Then install the optional model libraries without selecting the `accelerator` extra:
 
 ```sh
 python -m venv --system-site-packages .venv
-uv sync --active --extra vision
+source .venv/bin/activate
+uv sync --active --locked --inexact --extra vision
+python -m src.check_environment --require-cuda
 ```
 
 On CSCS, use a recent PyTorch container on a Clariden compute node rather than a login node. Put Hugging Face model caches on scratch or project datacache, not in the small home filesystem.
 
-Start Apertus in a separate allocation or process:
+For the older Qwen graph workflow, start Apertus using the manual command in
+[CLARIDEN.md](CLARIDEN.md), with served name `swiss-ai/Apertus-v1.5-70B`.
+Skip the persistent Qwen server: `run.py` loads its own Qwen2.5-VL perception model.
+Inside the unified container, isolate that model on allocation GPU 2:
 
 ```sh
-uv tool run --from vllm vllm serve swiss-ai/Apertus-v1.5-8B --chat-template-content-format string
+cd /opt/hack-apertus
+IFS=, read -r -a allocated_gpus <<< "${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
+CUDA_VISIBLE_DEVICES="${allocated_gpus[2]}" python run.py \
+  --data "$HACK_APERTUS_DATA" \
+  --apertus-model swiss-ai/Apertus-v1.5-70B \
+  --out "$HACK_APERTUS_OUTPUT/qwen_pipeline/results.json"
 ```
 
-Then run the pipeline:
+This is separate from the full grounded pipeline. To replay its saved geometry
+with the additional spatial prompt context and evaluate Apertus, use
+[the grounded planning replay commands](CLARIDEN.md#plan-and-evaluate-from-saved-grounding-artifacts).
 
-```sh
-uv run --extra vision run.py
-```
-
-Useful development options:
+Useful options in the upstream development environment:
 
 ```sh
 uv run --extra vision run.py --limit 5

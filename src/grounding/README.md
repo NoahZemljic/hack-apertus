@@ -1,27 +1,30 @@
 # DINO boxes and conservative cleanup
 
-Run from the repository root in your DINO environment (PyTorch, Transformers,
-Pillow, and Matplotlib):
+Run from the repository root in the
+[shared project environment](../../docs/ENVIRONMENT.md). DINO, SAM, and the
+language stages share the root dependencies and container; no stage-specific
+installation is required:
 
 ```sh
 python -m src.grounding.grounding_dino
 ```
 
-Each scene is cleaned immediately after detection. Outputs:
+Each scene is cleaned immediately after detection. Outputs default to
+`outputs/grounded_pipeline/` (JSON names below are relative to that directory):
 
 - `grounding_detections.json`: raw DINO boxes and labels.
 - `grounding_detections_clean.json`: cleaned boxes with source IDs and review flags.
 - `grounding_cleanup_report.json`: removed boxes, reasons, clipping/merge counts,
   and IDs needing review.
-- `outputs/grounding/<scene>_boxes.png`: raw boxes.
-- `outputs/grounding/<scene>_boxes_clean.png`: cleaned boxes.
-- `outputs/grounding/<scene>_comparison.png`: raw and cleaned panels with matching
+- `outputs/grounded_pipeline/grounding_debug/<scene>_boxes.png`: raw boxes.
+- `outputs/grounded_pipeline/grounding_debug/<scene>_boxes_clean.png`: cleaned boxes.
+- `outputs/grounded_pipeline/grounding_debug/<scene>_comparison.png`: raw and cleaned panels with matching
   colors. Dashed boxes and `?` mark unresolved labels or other review cases.
 
 Clean and plot an existing run without loading DINO or changing the input JSON:
 
 ```sh
-python -m src.grounding.grounding_dino --input-detections grounding_detections.json
+python -m src.grounding.grounding_dino --input-detections outputs/grounded_pipeline/grounding_detections.json
 ```
 
 Add `--scene scene_06` to process one scene. Direct execution with
@@ -47,7 +50,7 @@ objects.
 To give SAM the cleaned boxes:
 
 ```sh
-python -m src.masking.sam --detections grounding_detections_clean.json
+python -m src.masking.sam --detections outputs/grounded_pipeline/grounding_detections_clean.json
 ```
 
 Regression checks (Pillow and Matplotlib required; DINO weights are not needed):

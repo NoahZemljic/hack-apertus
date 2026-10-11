@@ -14,11 +14,23 @@
 `run_geometry.py` is a compatibility alias for this same full pipeline. The Qwen
 graph pipeline in `run.py` keeps its defaults and output locations.
 
-Run with PyTorch and the vision dependencies installed (the existing GPU setup
-in [PIPELINE.md](PIPELINE.md) applies). Start Apertus on port 8000 and your Qwen
+For the complete four-GPU, single-container deployment, use the
+[Clariden launcher and validation commands](CLARIDEN.md). It configures persistent
+local servers and explicitly isolates DINO/SAM on allocation GPU 3.
+
+All stages use the root `pyproject.toml` / `uv.lock` and a shared container
+environment. SAM has no separate package installation or requirements file.
+Follow [the shared environment setup and checks](ENVIRONMENT.md), including
+the container-provided Torch/Torchvision pair and the `vision` extra.
+Start Apertus on port 8000 and your Qwen
 vision server on port 8001, with served model name `qwen-vl`, or override their
 URLs and model names below. DINO and SAM load locally. This entrypoint uses the
 standard library for server calls and does not require the OpenAI Python SDK.
+
+The examples below use the upstream development environment and CLI defaults
+(Apertus 8B and the Qwen served alias `qwen-vl`). Inside the unified container,
+use `python` directly and the 70B/Qwen3-VL model overrides documented in
+[CLARIDEN.md](CLARIDEN.md); do not use `uv run` there.
 
 Run and evaluate:
 
@@ -30,7 +42,7 @@ uv run starter/evaluate.py outputs/grounded_pipeline/results.json --data dataset
 To inspect existing geometry without any model calls:
 
 ```sh
-uv run run_grounded.py --geometry-input geometry_results.json --build-only
+uv run run_grounded.py --geometry-input outputs/grounded_pipeline/geometry_results.json --build-only
 ```
 
 Useful options:
@@ -40,8 +52,8 @@ uv run --extra vision run_grounded.py --limit 5
 uv run --extra vision run_grounded.py --scene scene_06
 uv run --extra vision run_grounded.py --qwen-base-url http://localhost:8001/v1 --qwen-model qwen-vl
 uv run --extra vision run_grounded.py --build-only
-uv run run_grounded.py --geometry-input geometry_results.json
-uv run run_grounded.py --geometry-input geometry_results.json --no-support-candidates --out outputs/grounded_no_support/results.json
+uv run run_grounded.py --geometry-input outputs/grounded_pipeline/geometry_results.json
+uv run run_grounded.py --geometry-input outputs/grounded_pipeline/geometry_results.json --no-support-candidates --out outputs/grounded_no_support/results.json
 ```
 
 The default starts from instructions and images each time. `--geometry-input`
