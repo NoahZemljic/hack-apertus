@@ -1,111 +1,161 @@
-# Qwen perception and Apertus planning
+# Pipeline architecture
 
-The Apertus extraction → Qwen discovery → DINO → SAM → geometry path has its own
-`run_grounded.py` entry point (`run_geometry.py` is a compatibility alias).
-See [grounded perception and planning](GEOMETRY_PIPELINE.md) for the full pipeline,
-saved-geometry replay, separate results, and evaluation. The Qwen pipeline below
-is unchanged.
+To reproduce the complete grounded pipeline on Clariden, follow
+[Run the full pipeline](CLARIDEN.md#run-the-full-pipeline). That is the central
+run guide: container build/cache preparation, GPU allocation, startup, unique
+scratch output directories, evaluation and planning replay are documented there.
+This page explains the processing contracts.
 
-The pipeline separates visual observations from robot decisions:
+## Grounded pipeline
 
-1. Qwen2.5-VL reads each scene once and produces a validated 2D scene graph
-2. The graph is cached as JSON so detections and relationships can be inspected
-3. Apertus receives the graph, an instruction, and the robot safety constraints
-4. Apertus chooses a plan, clarification question, or refusal
-5. For a plan, ordinary code copies the first picked object's `pick_point_2d` into `target_pixel`
+The Clariden launcher executes `run_grounded.py` with Apertus 1.5 70B and
+Qwen3-VL-32B-Instruct. Its stages are:
 
-Pixel-to-robot conversion is deliberately outside the reasoning path. The challenge evaluator consumes full-resolution pixels. A physical robot can later pass an accepted target through `starter/scene_io.py`.
+1. Apertus extracts object descriptions from each instruction.
+2. Descriptions are combined per scene and passed to Qwen with the image.
+3. Qwen discovers visible objects and verifies its list in a second pass.
+4. Grounding DINO detects those verified categories; deterministic cleanup merges duplicates.
+5. SAM segments cleaned boxes and selects foreground safe pixels.
+6. Geometry calculates spatial relations and selected support hypotheses.
+7. The deterministic builder constructs and strictly validates the planner graph.
+8. Apertus receives that graph and each instruction to produce the submission.
 
-## GPU environment
+`run_geometry.py` is a compatibility alias for `run_grounded.py`. The launcher
+supplies model/server/device settings from `containers/deployment.toml`; direct
+CLI defaults remain Apertus 8B and the Qwen served alias `qwen-vl` for development.
+Use the launcher for the documented Clariden configuration. All stages share the
+root dependencies and one container; SAM is not separately installed.
 
-The [single-container Clariden setup](CLARIDEN.md) runs the complete grounded
-pipeline with Apertus 1.5 70B, Qwen3-VL-32B, and isolated DINO/SAM GPUs. For the baked unified image use `python` directly; do not run `uv sync` or
-install another engine there. The environment creation recipe below applies
-only to a separate generic development container.
+Apertus selects object IDs and actions. Code copies the first picked object's
+SAM-derived safe pixel into the submission's `target_pixel`; Apertus does not
+choose pixel coordinates. Pixel-to-robot conversion is outside this evaluation
+pipeline. Challenge ground truth is used only by the evaluator.
 
-All stages share the root dependency configuration; the language, grounding,
-and masking folders are not separately installed projects. Follow
-[the shared environment instructions](ENVIRONMENT.md) for container installation,
-SAM dependencies, caches, and CPU/GPU preflight checks.
+## Pipeline options and replay behavior
 
-Create the environment on a compute node from a CSCS PyTorch container so its CUDA-compatible Torch/Torchvision installation is available. Then install the optional model libraries without selecting the `accelerator` extra:
+For runnable replay commands, see
+[Plan and evaluate from saved grounding artifacts](CLARIDEN.md#plan-and-evaluate-from-saved-grounding-artifacts).
+Use `python run_grounded.py --help` for the complete CLI. Model/server/device
+settings belong in the deployment config; other pipeline flags follow the
+launcher's `--` separator.
 
-```sh
-python -m venv --system-site-packages .venv
-source .venv/bin/activate
-uv sync --active --locked --inexact --extra vision
-python -m src.check_environment --require-cuda
-```
+The default starts from instructions and images each time. `--geometry-input`
+(also `--input`) explicitly skips all upstream perception and reuses saved
+geometry and masks. Relative paths in that file resolve against its directory,
+or `--base-dir`. Fresh runs write absolute image/mask paths so their generated
+geometry can be replayed from another working directory.
 
-On CSCS, use a recent PyTorch container on a Clariden compute node rather than a login node. Put Hugging Face model caches on scratch or project datacache, not in the small home filesystem.
+Only Qwen's verified categories reach DINO by default. `--query-source
+grounding_queries` combines them with Apertus-extracted descriptions as an
+explicit experiment. An instruction mentioning an absent object therefore
+does not automatically add it to the default detector vocabulary.
 
-For the older Qwen graph workflow, start Apertus using the manual command in
-[CLARIDEN.md](CLARIDEN.md), with served name `swiss-ai/Apertus-v1.5-70B`.
-Skip the persistent Qwen server: `run.py` loads its own Qwen2.5-VL perception model.
-Inside the unified container, isolate that model on allocation GPU 2:
+`--limit` caps final planning and skips perception for later scenes. Every
+instruction in each included scene is still extracted to build a shared scene
+inventory. `--build-only` skips final planning; fresh perception still calls
+Apertus for extraction and Qwen for discovery. Pair it with `--geometry-input`
+for a graph check with no model calls. `--no-constrained-decoding` applies to
+extraction, discovery, and final planning; validators remain active.
 
-```sh
-cd /opt/hack-apertus
-IFS=, read -r -a allocated_gpus <<< "${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
-CUDA_VISIBLE_DEVICES="${allocated_gpus[2]}" python run.py \
-  --data "$HACK_APERTUS_DATA" \
-  --apertus-model swiss-ai/Apertus-v1.5-70B \
-  --out "$HACK_APERTUS_OUTPUT/qwen_pipeline/results.json"
-```
+`--artifact-dir` changes the intermediate-file directory (default: the output
+directory). `--debug-visualizations` also saves stage plots; DINO/SAM plotting
+requires matplotlib. Dataset/output paths resolve against the working directory.
+Subset runs score as missing answers for omitted instructions; preserve complete
+runs in separate output directories.
 
-This is separate from the full grounded pipeline. To replay its saved geometry
-with the additional spatial prompt context and evaluate Apertus, use
-[the grounded planning replay commands](CLARIDEN.md#plan-and-evaluate-from-saved-grounding-artifacts).
+## Graph construction
 
-Useful options in the upstream development environment:
+IDs and full labels are preserved. Explicit label words determine kind and
+color; conflicting colors yield null. Body parts are human, trays are containers,
+plates/saucers/coasters are surfaces, and other objects are movable. The builder
+does not split merged detections, resolve conflicting identities, invent missing
+destinations, or consult ground truth or instruction categories.
 
-```sh
-uv run --extra vision run.py --limit 5
-uv run --extra vision run.py --reuse-scene-graphs
-uv run --extra vision run.py --attention flash_attention_2
-```
+SAM masks are reloaded and checked for size, binary foreground, saved area,
+centroid, bounds, and safe-pixel membership. Boxes use mask bounds converted
+from exclusive SAM endpoints to inclusive planner endpoints. `confidence`
+carries the DINO score for compatibility, not a calibrated probability.
 
-`--reuse-scene-graphs` skips Qwen inference only when a graph already exists and still validates the cached graph against the current image dimensions.
+Projected `inside` edges become membership only for a nonhuman source and a
+container target. If multiple containers qualify, the smallest mask wins.
+Containment never creates support.
 
-## Generated artifacts
+By default, selected geometry `on` hypotheses become first-pass `on_top_of`
+estimates for movable objects on nonhuman objects. `supports` is derived in
+code. These are **not physical confirmation**: single-view masks can be wrong
+about stacking. `--no-support-candidates` omits them for comparison. Cyclic or
+conflicting relationships are omitted with reasons in debug output.
 
-- `outputs/results.json`: challenge submission
-- `outputs/results.raw.jsonl`: raw perception and planning responses plus validation errors
-- `outputs/scene_graphs/scene_NN.json`: validated Qwen scene graphs
-- `outputs/scene_graphs/scene_NN.overlay.jpg`: bounding-box and pick-point inspection image
+Human-holding and occlusion flags are copied only from explicit upstream boolean
+observations, defaulting to false when absent. Current geometry does not detect
+either condition. Overlap or touching alone never creates a holding claim.
 
-The scene graph format is defined in `schema/scene_graph.schema.json`. Model output is also checked in Python for image bounds, unique IDs, valid relationship references, and pick points inside their bounding boxes.
+Every graph passes the existing strict validator: IDs, required fields, image
+bounds, box/point consistency, references, support inverses, and relationship
+cycles. This establishes structural consistency, not correct perception.
+Failed builds save `<scene>.failure.json` and stop before planning.
 
-The perception-output contract is derived from that schema by excluding `supports`. Qwen predicts `inside`, `on_top_of`, `held_by_human`, and `partially_occluded` only. Both its prompt and token filter use this reduced contract. Raw observations are validated, including containment and support cycle checks, before code builds inverse `supports` lists from `on_top_of`. Containment alone does not create support edges. The completed graph is validated again before caching or planning, so the final scene-graph format and Apertus inputs remain unchanged. Failed raw replies contain no derived support lists.
+Apertus receives the clean graph plus mask-centroid ordering, pairwise centroid
+distances, and image-plane directional/overlap/touching edges. Review flags,
+candidate scores, and rejected relationships stay outside the prompt. Centroids
+determine spatial comparisons; safe pixels determine submission targets. The
+earlier Qwen graph workflow retains its original planning prompt and
+pick-point-derived geometry.
 
-Qwen uses LM Format Enforcer through Transformers' `prefix_allowed_tokens_fn` to constrain generated JSON structure, required fields, types, and enums. The tokenizer data is cached once, while each generation attempt gets a fresh schema parser. There is no automatic unconstrained fallback. Missing decoding dependencies stop generation with an error.
+## Checkpoints and failures
 
-Constraints do not guarantee correct perception, valid object references, or every JSON Schema keyword. The validator remains responsible for bounds and relationship consistency. A token limit can still truncate JSON; Qwen rejects incomplete responses rather than extracting a nested fragment. Validation feedback reports exact missing and unexpected fields, and failed attempts are saved in `outputs/scene_graphs/<scene>.failure.json` (or the configured graph directory) before the pipeline stops.
+For the output file tree and evaluation command, see
+[Run the full pipeline](CLARIDEN.md#run-the-full-pipeline).
+Standalone perception scripts default to `outputs/grounded_pipeline/`; the
+Clariden full-run command overrides this with a unique scratch run directory.
 
-Other Transformers-based generative VLMs can reuse `SchemaConstrainedDecoder` with their tokenizer and pass its token filter to `generate`. Detection/segmentation backends such as Grounding DINO + SAM construct graphs in code and use validation; they do not perform JSON token decoding.
+Intermediate outputs are checkpointed after each instruction or scene. Upstream
+errors save `perception.failure.json` with the failing stage and scene, and stop
+the run. All selected graphs are checked before final planning. `--build-only`
+does not write or overwrite a submission. Planning reuses the existing Apertus
+client, constrained decoding, retry, and plan validation. Raw logs include the
+prompt, replies, and errors. Invalid plans after retry become fail-safe refusals;
+inspect these separately from model refusals. Connection/HTTP failures stop the
+run rather than refusing every instruction. Successful results are checkpointed
+after each instruction.
 
-Apertus's intermediate output contract is defined in `schema/plan.schema.json` and loaded for constrained decoding. The final submission contract is defined in `schema/result.schema.json`.
+## Earlier Qwen graph workflow
 
-## Code organization
+`run.py` is a separate workflow: Qwen2.5-VL generates a scene graph directly,
+then Apertus plans from it. It does not run DINO, SAM or mask geometry, and its
+`--reuse-scene-graphs` option omits the grounded pipeline's separate spatial
+prompt context. For evaluating grounded perception, use `run_grounded.py`.
 
-All modules live directly under `src/`:
+`run.py` retains its defaults (Qwen2.5-VL-7B-Instruct and Apertus 8B). Its
+`--reuse-scene-graphs` skips Qwen inference only when a cached graph exists and
+still validates that graph against the image dimensions. Default outputs are
+`outputs/results.json`, `outputs/results.raw.jsonl` and `outputs/scene_graphs/`.
 
-| Module | Responsibility |
-| --- | --- |
-| `prompting.py` | Perception and planning prompts, spatial calculations, image messages, and validation feedback |
-| `schemas.py` | Loading JSON contracts and deriving the reduced perception schema |
-| `validation.py` | Pixel, scene-graph, and plan validation |
-| `scene_graph.py` | Object lookup and deterministic inverse support derivation |
-| `geometry.py` | Deterministic SAM-mask geometry and reviewable support hypotheses ([usage and thresholds](GEOMETRY.md)) |
-| `results.py` | Converting plans to submission entries and writing result files |
-| `json_tools.py` | Extracting JSON objects from model responses |
-| `visualization.py` | Scene inspection overlays |
-| `perception.py` | Shared abstract interface for scene-graph generation |
-| `decoding.py` | Reusable JSON-schema token filtering for Transformers-based VLMs |
-| `qwen.py` | Accelerator selection, Qwen model loading, inference, and validated perception |
-| `apertus.py` | Apertus requests and validated reasoning |
-| `pipeline.py` | Executing perception and planning across scenes |
+Qwen's perception contract uses `schema/scene_graph.schema.json` with `supports`
+excluded. It predicts `inside`, `on_top_of`, holding and occlusion flags. Code
+validates raw observations, derives inverse support lists from `on_top_of`,
+then validates the complete graph before caching or planning. Containment alone
+does not create support.
 
-The model classes call the shared helpers directly. `run.py` defines the command-line arguments, connects the models, and runs the pipeline. Helpers used in only one place stay with the code that uses them.
+`src.decoding.SchemaConstrainedDecoder` uses LM Format Enforcer through
+Transformers' `prefix_allowed_tokens_fn` to constrain JSON structure. Tokenizer
+data is cached, with a fresh schema parser per generation attempt. Missing
+dependencies stop generation; there is no automatic unconstrained fallback.
+Validators still check image bounds, references and relation cycles. Truncated
+JSON is rejected, and failed perception attempts save `<scene>.failure.json`
+before stopping. DINO/SAM construct graphs in code rather than generating JSON.
 
-Perception backends inherit from `PerceptionModel` and implement `generate_scene_graph(image_path, width, height)`. Each backend handles its own loading and inference, returning a validated graph in the shared schema and a list of diagnostic replies (empty for backends without text responses). Qwen implements this interface today. A future Grounding DINO + SAM backend must convert detections and masks into the same complete scene graph, including object properties and relations, before returning it. The standalone `python -m src.geometry` stage now produces mask-based image relations and separately marked support hypotheses from `segmentation_results.json`; see [the geometry contract](GEOMETRY.md). Its intermediate output still needs semantic properties and support confirmation before conversion into the planner schema. Select the backend when constructing the pipeline in `run.py`; Apertus and the pipeline do not need backend-specific logic.
+Apertus planning uses `schema/plan.schema.json`; the final submission uses
+`schema/result.schema.json`.
+
+## Technical references
+
+- [Geometry](GEOMETRY.md): mask measurements, relation thresholds and output contract.
+- [Environment](ENVIRONMENT.md): dependency groups, development setup and import checks.
+- [Data](DATA.md): dataset layout and coordinate conventions.
+- [Evaluation](../EVALUATION.md): scoring rules and submission format.
+
+CPU tests in `tests/test_grounded_pipeline.py` and
+`tests/test_geometry_scene_graph.py` cover stage handoffs, mask geometry, graph
+validation, target pixels and failure handling with mocked model inference.
+The Clariden guide records which GPU deployment checks have actually passed.

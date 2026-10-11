@@ -19,32 +19,12 @@ The upstream development lock resolves Transformers 5.18.0 within the root
 implementation, including `Sam2Model` and `Sam2Processor`; it needs no separate
 SAM repository or CUDA extension. See the [SAM 2 API](https://huggingface.co/docs/transformers/model_doc/sam2).
 
-## Install inside the GPU container
+## Development installation
 
-For the unified image follow [CLARIDEN.md](CLARIDEN.md); all dependencies are
-baked in. From the login node, after building/exporting the SquashFS image:
-
-```sh
-cd "$HOME/hack-apertus"
-srun -A <project_account> --partition=debug --nodes=1 --ntasks=1 \
-  --gpus-per-node=4 --cpus-per-task=64 --time=00:15:00 \
-  --environment=./containers/clariden.edf.toml --pty bash
-```
-
-Inside the container:
-
-```sh
-cd /opt/hack-apertus
-python --version
-python -m pip check
-python -m src.check_environment --require-cuda --check-vllm
-```
-
-Do not run `uv sync` or install upstream vLLM/Transformers into this image: those
-would replace the tested Apertus forks. The EDF disables the entrypoint, so the
-shell command starts no servers. Start the automatic launcher or manual servers
-as described in the Clariden guide. Run `srun` on the host/login node; use `hf`,
-`vllm` and pipeline scripts inside the container.
+The unified Clariden image already includes the dependencies. Use
+[the Clariden guide](CLARIDEN.md#run-the-full-pipeline) for building, opening the
+container and running the pipeline. Do not run `uv sync` or install upstream
+vLLM/Transformers there; doing so replaces the Apertus forks.
 
 For a separately provided generic development container, Python 3.11–3.13 and a
 matching CUDA Torch/Torchvision pair can be combined with the upstream lock:
@@ -123,61 +103,18 @@ The full grounded pipeline uses local OpenAI-compatible HTTP endpoints. These
 are local model servers, not external hosted APIs. The OpenAI Python package
 does not imply that data is sent to an external provider.
 
-## Cache weights, then run offline
+## Cache preparation and full runs
 
-For the unified deployment, accept Apertus's gated access conditions with the
-same Hugging Face account used by the CLI. Then, inside the container:
+Use [Persistent cache preparation](CLARIDEN.md#persistent-cache-preparation)
+for model downloads and [Run the full pipeline](CLARIDEN.md#run-the-full-pipeline)
+for offline inference and evaluation. Preparation and serving must share the
+same persistent cache. Custom development model IDs need complete cached
+snapshots, including processor/tokenizer files.
 
-```sh
-HF_HUB_OFFLINE=0 hf auth login   # if needed
-bash containers/start_pipeline.sh --prepare-cache
-```
-
-This prepares Apertus 1.5 70B, Qwen3-VL-32B-Instruct, Grounding DINO and SAM 2 in
-the EDF's persistent `HF_HOME=$SCRATCH/hack-apertus/huggingface`. It downloads no
-weights during the image build and starts no servers during cache preparation.
-If the Xet downloader fails, use
-`HF_HUB_DISABLE_XET=1 bash containers/start_pipeline.sh --prepare-cache`.
-For Apertus-only geometry replay, see the single-model download and startup
-commands in [CLARIDEN.md](CLARIDEN.md).
-
-Normal startup is offline and uses local snapshots and localhost HTTP servers.
-Custom development model IDs need their own complete cached snapshots, including
-processor/tokenizer files. Preparation and serving must share the same cache.
-
-For an existing geometry artifact, no servers or weights are needed:
-
-```sh
-python run_grounded.py --geometry-input outputs/grounded_pipeline/geometry_results.json --build-only
-```
-
-Check all stages without model weights or server connections:
+To check the software without model weights or server connections:
 
 ```sh
 python -m unittest discover -s tests
 ```
 
-SAM standalone usage is `python -m src.masking.sam`. Its default input is
-`outputs/grounded_pipeline/grounding_detections_clean.json`; it saves one best nonempty mask per detection,
-unchanged detection metadata, centroid/area/bounds, and a distance-transform
-interior safe pixel. Masks, `segmentation_results.json` and overlays all go under
-`outputs/grounded_pipeline/`, in its `segmentation/` and `segmentation_debug/`
-subdirectories where appropriate.
-These stages all use this shared environment. See [the grounded pipeline](GEOMETRY_PIPELINE.md)
-for orchestration, saved-geometry replay, output paths, and failure handling.
-
-## What still requires a cluster run
-
-Passing the local checks/tests does not certify a particular image's GPU driver,
-vLLM kernels, model checkpoint loading, or generated answers. Run the CUDA,
-engine, and local-server checks inside the actual EDF allocation, followed by
-a complete pipeline run. The ARM64 unified image has been built/imported and
-Apertus 70B planning replay has run on two GH200 GPUs with the fusion workaround.
-The remaining concurrent Qwen/DINO/SAM checks and complete-run timing are still
-pending. The unified build pins an inspected ARM64 digest; see [CLARIDEN.md](CLARIDEN.md)
-for its compatibility evidence and exact GPU acceptance commands.
-
-The under-15-minute build/run target needs measurement on that allocation,
-including whatever image preparation, dependency installation, weight loading,
-kernel compilation, and inference the jury timer includes. These dependencies
-and tests make installation reproducible; they do not establish that timing.
+See [Pipeline architecture](PIPELINE.md) for stage contracts and replay behavior.

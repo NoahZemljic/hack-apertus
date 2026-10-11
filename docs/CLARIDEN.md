@@ -52,29 +52,6 @@ the image records its dependency resolution. The ordinary `uv.lock` remains the
 upstream development environment: **do not run `uv sync` or install generic
 vLLM/Transformers into this image**, as that would replace the Apertus fork.
 
-## Memory and time limits
-
-Defaults: BF16, 8,192-token contexts, one simultaneous sequence per server, 90%
-GPU memory utilization. Apertus image/audio prompts are disabled to avoid profiling
-unused media; Qwen allows one image and no videos. Apertus 70B has now loaded and
-served planning requests on **two Clariden GH200 GPUs**, with about **66.85 GiB of
-model memory per GPU** at these settings. Disable fused all-reduce RMS with
-`--compilation-config.pass_config.fuse_allreduce_rms false`; this is included in
-the default deployment configuration and manual command below. The original
-startup failed during CUDA graph capture without the workaround, as described
-in the [official Apertus instructions](https://huggingface.co/swiss-ai/Apertus-v1.5-70B#vllm).
-This validates the tested Apertus settings, not other context sizes or the full
-four-GPU pipeline. The tested node exposed about 95 GiB of usable memory per GPU;
-use actual runtime memory rather than the GPU product name to assess budgets.
-Qwen's [weight index](https://huggingface.co/Qwen/Qwen3-VL-32B-Instruct/blob/main/model.safetensors.index.json)
-reports 66,714,780,128 bytes (62.1 GiB). Startup compares optimistic weight/KV lower
-bounds from **cached** metadata against actual GPU memory and rejects impossible
-budgets. Workspaces, activations, multimodal replication, CUDA graphs and NCCL add
-overhead: passing this check does not prove fit. The launcher does not silently
-quantize models or change their GPU allocation.
-
-Prepare the image and weight cache once; normal debug startup installs nothing
-and downloads nothing. Persistent CUDA/vLLM caches also reduce repeated compilation.
 
 ## Build once without model weights
 
@@ -165,7 +142,7 @@ From the login node with the image and cache already prepared:
 ```sh
 cd "$HOME/hack-apertus"
 srun -A <project-account> --partition=debug --nodes=1 --ntasks=1 \
-  --gpus-per-node=4 --cpus-per-task=64 --time=00:15:00 \
+  --gpus-per-node=4 --cpus-per-task=64 --time=01:30:00 \
   --environment=./containers/clariden.edf.toml --pty bash
 ```
 
@@ -192,8 +169,10 @@ time bash containers/start_pipeline.sh -- --scene scene_01 --limit 1 \
   --debug-visualizations --out "$HACK_APERTUS_OUTPUT/one_scene/results.json"
 
 # Full offline acceptance run including preflight/server startup/shutdown.
+mkdir -p "$HACK_APERTUS_OUTPUT"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/full-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
 time bash containers/start_pipeline.sh -- \
-  --out "$HACK_APERTUS_OUTPUT/full/results.json"
+  --out "$run_dir/results.json"
 ```
 
 The EDF disables the image entrypoint so `--pty bash` opens a shell. Explicitly
@@ -207,6 +186,83 @@ Run `srun` from the login/host environment, not from `/opt/hack-apertus` inside
 the container: host Slurm plugins require host libraries. Select a longer time
 only when permitted by your partition/account (90 minutes is `--time=01:30:00`).
 The 15-minute default is the acceptance target, not a measured complete-run time.
+
+## Run the full pipeline
+
+Use this section for a fresh run of every stage. First build/export the current
+image and prepare all four model caches using the sections above. Open the
+four-GPU container shell from the login node; the shell itself starts no servers.
+Inside the container, with ports 8000 and 8001 free, run:
+
+```sh
+cd /opt/hack-apertus || exit 1
+mkdir -p "$HACK_APERTUS_OUTPUT"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/full-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
+
+time bash containers/start_pipeline.sh -- \
+  --debug-visualizations \
+  --out "$run_dir/results.json"
+```
+
+`mktemp -d` creates a new directory on every invocation, with an atomic uniqueness
+check. This command keeps each run's artifacts separate. A fixed path such as
+`--out "$HACK_APERTUS_OUTPUT/full/results.json"` reuses the same directory and
+overwrites previous files. The launcher does not automatically create a unique
+run directory when you omit `--out` or supply a fixed path. Do not redirect
+`--artifact-dir` or `--scene-graph-dir` to a shared directory if retaining runs.
+Repeat the entire block for each run: rerunning only the launcher with the old
+`$run_dir` value reuses that directory.
+
+The launcher checks the environment and local model caches, starts Apertus 70B
+on GPUs 0–1 and Qwen3-VL-32B on GPU 2, waits for readiness, and executes the full
+pipeline. Apertus extracts instruction objects; Qwen discovers and verifies
+visible objects; Grounding DINO detects boxes and SAM 2 segments the cleaned
+detections on GPU 3. Cleanup, mask geometry and scene-graph construction are
+deterministic Python operations. Apertus then plans from the graphs and spatial
+context. All model inference is local and offline; no saved perception artifacts
+are reused in this fresh run. See [the stage overview](PIPELINE.md#grounded-pipeline)
+for the processing contracts and intermediate files.
+
+The EDF sets `HACK_APERTUS_OUTPUT=$SCRATCH/hack-apertus/outputs`. Everything
+generated by this command is saved under `$run_dir`, outside the repository.
+Root-level results in your repository are left untouched. Open the scratch run
+directory directly, or copy it into the repository’s ignored `outputs/` folder
+for inspection:
+
+```text
+$SCRATCH/hack-apertus/outputs/full-<UTC timestamp>-<random suffix>/
+  perception_config.json
+  object_extractions.json
+  scene_discovery.json
+  grounding_detections.json
+  grounding_detections_clean.json
+  grounding_cleanup_report.json
+  segmentation_results.json
+  geometry_results.json
+  geometry_debug.json
+  segmentation/<scene>/<object_id>.png
+  grounding_debug/, segmentation_debug/, geometry_debug/
+  scene_graphs/                 # graphs, spatial context, diagnostics and overlays
+  results.json                 # evaluator submission
+  results.raw.jsonl            # final planning prompts, replies and errors
+  deployment_logs/<run_id>/     # server/pipeline logs, GPU usage and timing
+```
+
+The `--debug-visualizations` flag enables the three upstream debug-image folders.
+Model weights and compilation caches remain shared in their persistent cache
+directories. They are reused across runs rather than copied into the run folder.
+The launcher stops both servers and their workers when the run completes or
+fails. A failed run may contain partial outputs and diagnostic files.
+
+After a successful run, optionally evaluate in the same shell:
+
+```sh
+python starter/evaluate.py "$run_dir/results.json" \
+  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
+```
+
+Evaluation adds `report.json` to this run's folder and uses challenge ground
+truth only in the evaluator. It is a separate command from pipeline inference.
 
 ## Open a shell and launch servers manually
 
@@ -325,6 +381,15 @@ results are produced.
 
 ## Configuration, shutdown and replay
 
+These are optional controls around the full-run command:
+
+- **Configuration** changes model IDs, GPU assignments, ports, context lengths,
+  memory budgets and timeouts. The defaults are in `containers/deployment.toml`.
+- **Shutdown** describes how the automatic launcher stops its servers and workers
+  on completion, errors or interruption; manual servers require manual cleanup.
+- **Replay** starts from saved geometry and masks, skipping upstream perception
+  inference. It runs Apertus planning unless `--build-only` is selected.
+
 Edit `containers/deployment.toml`, use `--config /mounted/deployment.toml`, or set
 environment overrides. Every field accepts uppercase `<SECTION>_<FIELD>`:
 
@@ -360,6 +425,12 @@ The supervisor starts servers concurrently, waits for `/health` and the expected
 to SIGKILL after a timeout. Uncatchable SIGKILL/node loss relies on Slurm cleanup.
 Occupied ports, missing CUDA, unsupported implementations, missing shards, readiness
 timeouts and child failures produce nonzero exits and useful diagnostics.
+
+Deployment logs include `gpu_memory.csv` for GPU usage, `deployment.json` for
+resolved models and device assignments, and `timing.json` for preflight, server
+startup, inference and shutdown durations. Image build, cache preparation and
+Slurm/container startup are excluded from the internal timer; use outer
+`time srun ...` if the jury counts those too.
 
 Existing pipeline arguments after `--` are forwarded except model/server/device
 settings, which belong in deployment config. Replay skips unused servers:
@@ -425,83 +496,7 @@ ground truth. The run writes the submission, raw planning replies, evaluation
 report and rebuilt scene graphs into the fresh scratch output directory. Inspect
 `results.raw.jsonl` for the exact prompts and validation failures.
 
-## Outputs and remaining validation
-
-All full-pipeline artifacts are written beside the `--out` submission file unless
-`--artifact-dir` or `--scene-graph-dir` explicitly redirects them. The standalone
-extraction, discovery, DINO, SAM and geometry scripts now default to
-`outputs/grounded_pipeline/`, matching `run_grounded.py`. Existing root-level
-JSONs are left in place; old artifacts can still be selected with explicit input
-flags. SAM records absolute mask/image paths so geometry replay can resolve them
-when the metadata JSON lives in the output folder. Rebuild/export the container
-to include these updated standalone defaults in its baked source.
-
-**Reusing an output directory overwrites its artifacts.** Submission results and
-raw replies are checkpointed during planning, so a failed run can also leave a
-partial submission. Graph-only `--build-only` leaves the submission untouched but
-rewrites graph/debug files. A subset run replaces its JSON with only the selected
-records and can leave older mask/debug images in the same directory.
-Dataset files, challenge evaluation code, schemas, and root-level artifacts are
-not written by the full pipeline unless an explicit output override targets them.
-
-Use a new directory per run to retain evaluation submissions and their evidence:
-
-```sh
-mkdir -p "$HACK_APERTUS_OUTPUT"
-run_dir="$HACK_APERTUS_OUTPUT/run-$(date -u +%Y%m%dT%H%M%S)-$$"
-mkdir "$run_dir"
-time bash containers/start_pipeline.sh -- --out "$run_dir/results.json"
-python starter/evaluate.py "$run_dir/results.json" --data "$HACK_APERTUS_DATA"
-```
-
-For manually started servers, pass the same `--out "$run_dir/results.json"` to
-`run_grounded.py` alongside the model/device flags above. A unique `--out` parent
-also separates intermediate JSONs, masks, scene graphs and deployment logs; do
-not point `--artifact-dir` or `--scene-graph-dir` at a shared old run.
-`outputs/` is ignored by Git, so retain or copy any submission/debug evidence
-needed for evaluation separately.
-
-The EDF's `HACK_APERTUS_OUTPUT` points to `$SCRATCH/hack-apertus/outputs`, outside
-the repository. A root-level `results.json` in your editor is not updated by this
-run. Open the scratch run directory directly, or copy it into the repository's
-ignored `outputs/` folder for convenient inspection.
-
-With an explicit `--out "$HACK_APERTUS_OUTPUT/full/results.json"`:
-
-```text
-$SCRATCH/hack-apertus/
-  containers/pipeline-arm64.sqsh
-  huggingface/                            # weights + cache manifest
-  cache/{vllm,cuda,matplotlib,...}/
-  outputs/full/
-    results.json
-    results.raw.jsonl
-    object_extractions.json
-    scene_discovery.json
-    grounding_detections.json
-    grounding_detections_clean.json
-    grounding_cleanup_report.json
-    segmentation_results.json
-    geometry_results.json
-    geometry_debug.json
-    segmentation/<scene>/<id>.png
-    scene_graphs/
-    deployment_logs/<timestamp>-<pid>/
-      environment.log
-      deployment.json
-      apertus.log
-      qwen.log, 
-      pipeline.log
-      gpu_memory.csv
-      timing.json
-```
-
-The GPU CSV records UTC timestamp, index, UUID, name, used/total MiB and utilization
-percent for node-visible GPUs; `deployment.json` records the child map, versions,
-resolved checkpoints and memory estimates. Timing includes preflight, server startup,
-inference and shutdown, with a separate server/pipeline duration. Image build/cache
-preparation and Slurm/container startup are excluded from the internal timer; use
-outer `time srun ...` if the jury counts those too.
+## Validation status
 
 CPU tests cover remapping, configuration failures, protected engine constraints,
 cache completeness, memory bounds, real localhost connectivity, readiness timeouts,

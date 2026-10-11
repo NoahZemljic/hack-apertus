@@ -1,5 +1,9 @@
 # Deterministic geometry after SAM
 
+This is the technical reference for mask relations and thresholds. To reproduce
+the complete deployment, use [Run the full pipeline](CLARIDEN.md#run-the-full-pipeline);
+the launcher runs this geometry stage automatically.
+
 Run from the repository root in Python 3.11+:
 
 ```sh
@@ -130,12 +134,12 @@ The original DINO box is retained, and mask geometry uses independently
 calculated tight mask bounds. No box clipping, relabeling, mask edits, or
 object-specific exceptions occur here.
 
-## Outputs and the future scene-graph builder
+## Output contract and scene-graph integration
 
 ```text
-geometry_results.json
-geometry_debug.json
-outputs/
+outputs/grounded_pipeline/
+  geometry_results.json
+  geometry_debug.json
   geometry_debug/
     scene_01.png
     scene_01_directions.png
@@ -172,17 +176,13 @@ left/above arrows, with inverses omitted for readability. Legends identify
 each arrow's source, relation, and target.
 
 This is an **intermediate geometry contract**, not the strict planner schema
-in `schema/scene_graph.schema.json`. A subsequent scene-graph builder can use
-`id` unchanged, convert `box` to the planner's integer `bbox_2d` and use
-`safe_pixel` as `pick_point_2d`, and derive semantic object properties separately.
-It must validate image bounds and point membership when constructing that box;
-a SAM mask can extend outside its original DINO prompt. It must resolve projected
-containment against object kinds and select a support acceptance policy before
-writing `inside` / `on_top_of`; `src.scene_graph.derive_support_relations` then
-derives the inverse support lists. The existing `run.py` pipeline remains
-separate. The new `run_grounded.py` entry point runs all perception stages and
-planning; `--geometry-input geometry_results.json` reuses saved artifacts.
-See [the grounded planning pipeline](GEOMETRY_PIPELINE.md).
-That builder accepts selected support hypotheses as first-pass estimates by
-default, with an option to omit them. This geometry module itself adds no LLM
-decisions or automatic support claims.
+in `schema/scene_graph.schema.json`. The existing `GeometrySceneGraphBuilder` in
+`src/geometry_scene_graph.py` preserves IDs, derives semantic properties from
+labels, uses tight mask bounds for `bbox_2d` and the safe pixel for `pick_point_2d`,
+and validates the resulting graph. Projected containment is filtered by object
+kinds. Selected support hypotheses become first-pass `on_top_of` estimates by
+default; `--no-support-candidates` omits them. Inverse support lists are derived
+in code. The geometry module itself makes no LLM calls or confirmed physical
+support claims. See [Graph construction](PIPELINE.md#graph-construction) for the
+builder's contract and [the Clariden replay commands](CLARIDEN.md#plan-and-evaluate-from-saved-grounding-artifacts)
+for planning from saved geometry.
