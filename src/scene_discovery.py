@@ -17,9 +17,9 @@ from src.prompting import (
 from src.schemas import load_scene_discovery_schema
 
 
-OBJECT_KEYWORDS = Path("object_extractions.json")
+OBJECT_KEYWORDS = Path("outputs/grounded_pipeline/object_extractions.json")
 DATASET = Path("dataset")
-OUTPUT = Path("scene_discovery.json")
+OUTPUT = Path("outputs/grounded_pipeline/scene_discovery.json")
 
 QWEN_URL = "http://127.0.0.1:8001/v1"
 QWEN_MODEL = "qwen-vl"
@@ -230,6 +230,7 @@ def write_results(
     path: Path,
 ) -> None:
 
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(
             results,

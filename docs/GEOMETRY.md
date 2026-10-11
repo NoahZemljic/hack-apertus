@@ -6,11 +6,11 @@ Run from the repository root in Python 3.11+:
 python -m src.geometry
 ```
 
-This reads `segmentation_results.json` and its **SAM mask PNGs**, with images
+This reads `outputs/grounded_pipeline/segmentation_results.json` and its **SAM mask PNGs**, with images
 from each record's `image_path` (normally `dataset/<scene>/rgb.png`). It performs
 no model loading, LLM calls, downloads, or ground-truth access. NumPy and OpenCV
 are already dependencies in `pyproject.toml`; no new dependency is required.
-For a fresh environment, `python -m pip install 'numpy>=2,<3' 'opencv-python-headless>=4.10,<5'`
+For a fresh environment, `python -m pip install 'numpy>=2,<3' 'opencv-python-headless>=4.10,<6'`
 installs these two dependencies. This module also runs with networking disabled.
 
 ```sh

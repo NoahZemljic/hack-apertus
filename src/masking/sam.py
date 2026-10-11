@@ -16,7 +16,7 @@ from PIL import Image
 
 
 MODEL_ID = "facebook/sam2.1-hiera-small"
-DEFAULT_DETECTIONS = Path("grounding_detections_clean.json")
+DEFAULT_DETECTIONS = Path("outputs/grounded_pipeline/grounding_detections_clean.json")
 Mask = NDArray[np.bool_]
 
 
@@ -310,9 +310,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--detections", type=Path, default=DEFAULT_DETECTIONS)
     parser.add_argument("--dataset", type=Path, default=Path("dataset"))
-    parser.add_argument("--output-dir", type=Path, default=Path("outputs/segmentation"))
-    parser.add_argument("--debug-dir", type=Path, default=Path("outputs/segmentation_debug"))
-    parser.add_argument("--output", type=Path, default=Path("segmentation_results.json"))
+    parser.add_argument("--output-dir", type=Path, default=Path("outputs/grounded_pipeline/segmentation"))
+    parser.add_argument("--debug-dir", type=Path, default=Path("outputs/grounded_pipeline/segmentation_debug"))
+    parser.add_argument("--output", type=Path, default=Path("outputs/grounded_pipeline/segmentation_results.json"))
     parser.add_argument("--model-id", default=MODEL_ID)
     parser.add_argument("--device", help="PyTorch device, e.g. cpu or cuda:0; auto by default")
     parser.add_argument("--scene", help="Process only this scene, e.g. scene_01")
@@ -341,11 +341,11 @@ def main() -> None:
             raise ValueError(f"{scene}: {exc}") from exc
         for obj in objects:
             mask_path = segmenter.save_mask(obj["mask"], args.output_dir / scene / f"{obj['id']}.png")
-            obj["mask_path"] = mask_path.as_posix()
+            obj["mask_path"] = mask_path.resolve().as_posix()
         segmenter.visualize(image_path, objects, args.debug_dir / f"{scene}.png")
         results.append({
             **{key: value for key, value in item.items() if key != "detections"},
-            "image_path": image_path.as_posix(),
+            "image_path": image_path.resolve().as_posix(),
             "objects": [{key: value for key, value in obj.items() if key != "mask"} for obj in objects],
         })
     segmenter.save_results(results, args.output)

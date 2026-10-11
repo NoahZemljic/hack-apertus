@@ -15,6 +15,7 @@ import numpy as np
 from PIL import Image
 
 from src.masking.sam import DEFAULT_DETECTIONS, SamSegmenter, clip_box, main
+from src.geometry import GeometryReasoner
 
 
 class SegmentationTests(unittest.TestCase):
@@ -172,13 +173,13 @@ class SegmentationTests(unittest.TestCase):
 
     def test_actual_sam2_processor_batches_boxes_and_restores_resolution(self) -> None:
         import torch
-        from transformers import Sam2ImageProcessorFast, Sam2Processor
+        from transformers import Sam2ImageProcessor, Sam2Processor
 
         image_path = self.root / "rgb.png"
         Image.new("RGB", (40, 30)).save(image_path)
         segmenter = SamSegmenter()
         segmenter.device = "cpu"
-        segmenter.processor = Sam2Processor(Sam2ImageProcessorFast(size={"height": 32, "width": 32}))
+        segmenter.processor = Sam2Processor(Sam2ImageProcessor(size={"height": 32, "width": 32}))
         predictions = torch.full((1, 2, 3, 8, 8), -10.0)
         predictions[0, 0, 0, 1:4, 1:4] = 10.0
         predictions[0, 1, 2, 4:7, 4:7] = 10.0
@@ -197,11 +198,12 @@ class SegmentationTests(unittest.TestCase):
         np.testing.assert_allclose(calls["input_boxes"][0, 1].numpy(), [16, 16, 32, 32])
 
     def test_default_cli_uses_cleaned_detections_and_required_output_layout(self) -> None:
-        self.assertEqual(DEFAULT_DETECTIONS, Path("grounding_detections_clean.json"))
+        self.assertEqual(DEFAULT_DETECTIONS, Path("outputs/grounded_pipeline/grounding_detections_clean.json"))
         scene_dir = self.root / "dataset" / "example"
         scene_dir.mkdir(parents=True)
         Image.new("RGB", (20, 20)).save(scene_dir / "rgb.png")
         scene = {"scene": "example", "queries": ["valid object"], "detections": [self.detection]}
+        (self.root / DEFAULT_DETECTIONS).parent.mkdir(parents=True)
         (self.root / DEFAULT_DETECTIONS).write_text(json.dumps([scene]))
         (self.root / "grounding_detections.json").write_text("invalid raw input must not be read")
         result = self.segmenter.segment_object(self.detection, self.mask()[None], np.array([0.9]))
@@ -209,12 +211,15 @@ class SegmentationTests(unittest.TestCase):
                 patch.object(SamSegmenter, "segment_scene", return_value=[result]) as segment:
             main()
         segment.assert_called_once_with(Path("dataset/example/rgb.png"), [self.detection])
-        saved = json.loads((self.root / "segmentation_results.json").read_text())
+        saved = json.loads((self.root / "outputs/grounded_pipeline/segmentation_results.json").read_text())
         self.assertEqual(saved[0]["queries"], scene["queries"])
-        self.assertEqual(saved[0]["objects"][0]["mask_path"], "outputs/segmentation/example/object_1.png")
+        self.assertEqual(saved[0]["objects"][0]["mask_path"], str(self.root / "outputs/grounded_pipeline/segmentation/example/object_1.png"))
         self.assertNotIn("mask", saved[0]["objects"][0])
-        self.assertTrue((self.root / "outputs/segmentation/example/object_1.png").exists())
-        with Image.open(self.root / "outputs/segmentation_debug/example.png") as image:
+        reasoner = GeometryReasoner(base_dir=self.root / "outputs/grounded_pipeline")
+        geometry, _ = reasoner.analyze_scene(saved[0])
+        self.assertEqual(geometry["objects"][0]["id"], self.detection["id"])
+        self.assertTrue((self.root / "outputs/grounded_pipeline/segmentation/example/object_1.png").exists())
+        with Image.open(self.root / "outputs/grounded_pipeline/segmentation_debug/example.png") as image:
             self.assertEqual(image.format, "PNG")
 
     def test_empty_scene_does_not_load_model(self) -> None:

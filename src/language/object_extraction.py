@@ -119,7 +119,7 @@ def main():
     parser.add_argument(
         "--out",
         type=Path,
-        default=Path("object_extractions_v2.json")
+        default=Path("outputs/grounded_pipeline/object_extractions.json")
     )
 
     args = parser.parse_args()
@@ -151,6 +151,7 @@ def main():
         print(f"Instruction: {instruction}")
         print(f"Objects:     {extraction['objects']}")
 
+    args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(
         json.dumps(results, indent=2),
         encoding="utf-8"

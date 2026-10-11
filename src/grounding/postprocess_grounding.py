@@ -248,10 +248,10 @@ def process_scene(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Conservative Grounding DINO post-processing")
-    parser.add_argument("--input", type=Path, default=Path("grounding_detections.json"))
+    parser.add_argument("--input", type=Path, default=Path("outputs/grounded_pipeline/grounding_detections.json"))
     parser.add_argument("--dataset", type=Path, default=Path("dataset"))
-    parser.add_argument("--output", type=Path, default=Path("grounding_detections_clean.json"))
-    parser.add_argument("--report", type=Path, default=Path("grounding_cleanup_report.json"))
+    parser.add_argument("--output", type=Path, default=Path("outputs/grounded_pipeline/grounding_detections_clean.json"))
+    parser.add_argument("--report", type=Path, default=Path("outputs/grounded_pipeline/grounding_cleanup_report.json"))
     parser.add_argument("--duplicate-iou", type=float, default=0.90)
     parser.add_argument("--max-object-area-ratio", type=float, default=0.35)
     args = parser.parse_args()

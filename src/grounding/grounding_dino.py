@@ -238,13 +238,13 @@ def save_box_plot(
 
 def main():
     parser = argparse.ArgumentParser(description="Run DINO, conservative cleanup, and comparison plots")
-    parser.add_argument("--queries", type=Path, default=Path("scene_discovery.json"))
+    parser.add_argument("--queries", type=Path, default=Path("outputs/grounded_pipeline/scene_discovery.json"))
     parser.add_argument("--query-source", choices=["qwen_objects", "grounding_queries"], default="qwen_objects")
     parser.add_argument("--dataset", type=Path, default=Path("dataset"))
-    parser.add_argument("--output", type=Path, default=Path("grounding_detections.json"))
-    parser.add_argument("--clean-output", type=Path, default=Path("grounding_detections_clean.json"))
-    parser.add_argument("--report", type=Path, default=Path("grounding_cleanup_report.json"))
-    parser.add_argument("--debug-dir", type=Path, default=Path("outputs/grounding"))
+    parser.add_argument("--output", type=Path, default=Path("outputs/grounded_pipeline/grounding_detections.json"))
+    parser.add_argument("--clean-output", type=Path, default=Path("outputs/grounded_pipeline/grounding_detections_clean.json"))
+    parser.add_argument("--report", type=Path, default=Path("outputs/grounded_pipeline/grounding_cleanup_report.json"))
+    parser.add_argument("--debug-dir", type=Path, default=Path("outputs/grounded_pipeline/grounding_debug"))
     parser.add_argument("--input-detections", type=Path, help="Clean and plot saved DINO results without running the model")
     parser.add_argument("--scene", help="Process only this scene, e.g. scene_01")
     parser.add_argument("--duplicate-iou", type=float, default=0.90)

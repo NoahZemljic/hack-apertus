@@ -589,10 +589,10 @@ class GeometryReasoner:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=Path("segmentation_results.json"))
-    parser.add_argument("--output", type=Path, default=Path("geometry_results.json"))
-    parser.add_argument("--debug-output", type=Path, default=Path("geometry_debug.json"))
-    parser.add_argument("--debug-dir", type=Path, default=Path("outputs/geometry_debug"))
+    parser.add_argument("--input", type=Path, default=Path("outputs/grounded_pipeline/segmentation_results.json"))
+    parser.add_argument("--output", type=Path, default=Path("outputs/grounded_pipeline/geometry_results.json"))
+    parser.add_argument("--debug-output", type=Path, default=Path("outputs/grounded_pipeline/geometry_debug.json"))
+    parser.add_argument("--debug-dir", type=Path, default=Path("outputs/grounded_pipeline/geometry_debug"))
     parser.add_argument("--base-dir", type=Path, help="Root of input mask/image paths; defaults to input JSON's directory")
     parser.add_argument("--dataset", type=Path, help="Override image paths with <dataset>/<scene>/rgb.png")
     parser.add_argument("--config", type=Path, help="JSON object overriding GeometryConfig fields")

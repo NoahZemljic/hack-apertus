@@ -216,20 +216,24 @@ class GeometryTests(unittest.TestCase):
 
     def test_cli_outputs_measurement_links_and_visualizations_with_relative_paths(self) -> None:
         scene = self.scene(self.rectangle(30, 20, 70, 40), self.rectangle(30, 40, 70, 80))
-        path = self.root / "segmentation_results.json"
+        path = self.root / "outputs/grounded_pipeline/segmentation_results.json"
+        path.parent.mkdir(parents=True)
+        scene["image_path"] = "../../rgb.png"
+        for obj in scene["objects"]:
+            obj["mask_path"] = "../../" + obj["mask_path"]
         path.write_text(json.dumps([scene]))
         config = self.root / "thresholds.json"
         config.write_text(json.dumps({"reference_image_side": 256}))
         with chdir(self.root):
             self.assertEqual(main(["--config", str(config)]), 0)
-        result = json.loads((self.root / "geometry_results.json").read_text())[0]
-        debug = json.loads((self.root / "geometry_debug.json").read_text())
+        result = json.loads((self.root / "outputs/grounded_pipeline/geometry_results.json").read_text())[0]
+        debug = json.loads((self.root / "outputs/grounded_pipeline/geometry_debug.json").read_text())
         self.assertEqual(debug["config"]["reference_image_side"], 256)
         for edge in result["relations"] + result["relation_candidates"]:
             pair = debug["scenes"][0]["pairs"][edge["measurements_index"]]
             self.assertEqual({pair["a"], pair["b"]}, {edge["source"], edge["target"]})
         for suffix in ("", "_directions"):
-            image_path = self.root / "outputs/geometry_debug" / f"arbitrary_scene{suffix}.png"
+            image_path = self.root / "outputs/grounded_pipeline/geometry_debug" / f"arbitrary_scene{suffix}.png"
             self.assertIsNotNone(cv2.imread(str(image_path)))
         self.assertNotIn("mask", result["objects"][0])
 
