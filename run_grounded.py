@@ -18,6 +18,7 @@ from src.visualization import write_scene_overlay
 
 
 def create_parser() -> argparse.ArgumentParser:
+    """Define CLI options for fresh perception, geometry replay and planning."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--geometry-input", "--input", dest="input", type=Path,
                         help="Start from saved geometry instead of running upstream perception")
@@ -51,8 +52,17 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Load scenes, obtain geometry, build graphs and save Apertus plans.
+
+    ``argv`` is an optional list of CLI arguments; ``None`` reads the process's
+    command-line arguments. Saved geometry skips upstream perception, while
+    ``--build-only`` skips final planning. Returns 0 on completion; invalid
+    arguments, perception/graph failures and connection errors exit via argparse.
+    Invalid model plans become logged fail-safe refusals.
+    """
     parser = create_parser()
     args = parser.parse_args(argv)
+    # Reject invalid settings before loading scenes or calling any models.
     if args.limit is not None and args.limit < 1:
         parser.error("--limit must be positive")
     if args.timeout <= 0:
@@ -63,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--base-dir applies only to --geometry-input")
     if not args.data.is_dir():
         parser.error(f"Dataset directory does not exist: {args.data}")
+    # Find image-bearing scene folders and apply any explicit scene selection.
     scene_dirs = sorted(p for p in args.data.iterdir() if p.is_dir() and (p / "rgb.png").exists())
     if args.scene:
         missing = set(args.scene) - {p.name for p in scene_dirs}
@@ -73,6 +84,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"No scene images found in {args.data}")
     scenes = [(directory, load_scene(directory)) for directory in scene_dirs]
     if args.limit is not None:
+        # Keep whole scenes for perception so all their instructions inform discovery.
+        # The exact instruction limit is applied later during final planning.
         selected, count = [], 0
         for directory, scene in scenes:
             if count >= args.limit:
@@ -80,9 +93,12 @@ def main(argv: list[str] | None = None) -> int:
             selected.append((directory, scene))
             count += len(scene.instructions)
         scenes = selected
+    # Keep intermediate artifacts and graphs beside the submission by default.
     artifact_dir = args.artifact_dir or args.out.parent
     graph_dir = args.scene_graph_dir or args.out.parent / "scene_graphs"
     if args.input is None:
+        # Fresh run: extraction → Qwen → DINO → cleanup → SAM → mask geometry.
+        # generate_geometry saves checkpoints and returns the geometry JSON path.
         try:
             overrides = json.loads(args.geometry_config.read_text()) if args.geometry_config else {}
             if not isinstance(overrides, dict):
@@ -99,6 +115,7 @@ def main(argv: list[str] | None = None) -> int:
             args.input = generate_geometry(scenes, artifact_dir, config, GeometryConfig(**overrides))
         except (ValueError, OSError, ImportError, KeyError, TypeError, TimeoutError) as error:
             parser.error(f"Perception failed: {error}; diagnostics: {artifact_dir / 'perception.failure.json'}")
+    # Both fresh and replay runs load geometry through the same graph builder.
     try:
         builder = GeometrySceneGraphBuilder(args.input, base_dir=args.base_dir,
                                             accept_support_candidates=not args.no_support_candidates)
@@ -108,8 +125,8 @@ def main(argv: list[str] | None = None) -> int:
     if missing:
         parser.error(f"Geometry results missing scenes: {missing}")
 
-    # Preflight every graph before spending any final planning calls. A build-only run
-    # never overwrites an existing submission or pretends to have model results.
+    # Preflight every graph before spending any final planning calls.
+    # A build-only run never overwrites an existing submission or pretends to have model results.
     built = []
     graph_dir.mkdir(parents=True, exist_ok=True)
     for scene_dir, scene in scenes:
@@ -120,12 +137,14 @@ def main(argv: list[str] | None = None) -> int:
                 "scene": scene.name, "input": str(args.input), "error": str(error),
             }, indent=2) + "\n")
             parser.error(f"{scene.name}: {error}")
+        # Save planner input, spatial context and diagnostics separately for inspection.
         for suffix, value in ((".json", graph), (".spatial.json", spatial), (".debug.json", debug)):
             (graph_dir / f"{scene.name}{suffix}").write_text(json.dumps(value, indent=2) + "\n")
         write_scene_overlay(scene.rgb, graph, graph_dir / f"{scene.name}.overlay.jpg")
         built.append((scene, graph, spatial))
         print(f"Validated {scene.name}: {len(graph['objects'])} objects", flush=True)
     if args.build_only:
+        # Graph-only runs stop here without writing a submission.
         print(f"Built {len(built)} scene graphs in {graph_dir}; final planning skipped")
         return 0
 
@@ -134,6 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     for scene, graph, spatial in built:
         if remaining is not None and remaining <= 0:
             break
+        # Attach this scene's mask-derived spatial context to each planning prompt.
         planner = ApertusPlanner(base_url=args.apertus_base_url, model=args.apertus_model,
                                  timeout=args.timeout, constrained=not args.no_constrained_decoding,
                                  prompt_builder=partial(prepare_planning_prompt, geometry=spatial))
@@ -143,8 +163,10 @@ def main(argv: list[str] | None = None) -> int:
             replies, error = [], None
             try:
                 plan, replies = planner.plan(graph, instruction, scene.gripper_max_opening_mm)
+                # Use the first picked object's saved safe pixel as the target coordinate.
                 result = plan_to_result(instruction_id, plan, graph)
             except (urllib.error.URLError, TimeoutError, ConnectionError) as exception:
+                # Save available progress and stop if the server cannot be reached.
                 raw.append({"instruction_id": instruction_id, "stage": "planning", "instruction": instruction,
                             "prompt": prompt, "error": f"{type(exception).__name__}: {exception}"})
                 if results:
@@ -155,10 +177,12 @@ def main(argv: list[str] | None = None) -> int:
                         "".join(json.dumps(entry) + "\n" for entry in raw))
                 parser.exit(1, f"Cannot obtain an Apertus response at {args.apertus_base_url}: {exception}\n")
             except ValueError as exception:
+                # A plan that fails validation produces a refusal and a raw-log error.
                 replies = getattr(exception, "replies", [])
                 error = f"{type(exception).__name__}: {exception}"
                 result = {"instruction_id": instruction_id, "target_pixel": None,
                           "actions": [{"action": "refuse", "reason": "Planning failed validation; no robot motion was issued"}]}
+            # Check the final challenge answer format before checkpointing it.
             kind, validation_error = answer_type(result)
             if validation_error:
                 raise ValueError(f"{instruction_id}: invalid submission: {validation_error}")
