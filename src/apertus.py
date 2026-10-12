@@ -1,11 +1,18 @@
 import json
 import urllib.error
 import urllib.request
-from pathlib import Path
+from collections.abc import Callable
 
 from .json_tools import parse_json_object
 from .schemas import load_plan_schema
 from .validation import validate_plan
+
+
+class PlanningGenerationError(ValueError):
+    def __init__(self, message: str, replies: list[str]) -> None:
+        super().__init__(message)
+        self.replies = replies
+
 
 class ApertusPlanner:
     def __init__(
@@ -15,14 +22,15 @@ class ApertusPlanner:
         timeout: float = 180,
         retries: int = 1,
         constrained: bool = True,
+        prompt_builder: Callable[[dict, str, float | None], str] | None = None,
     ) -> None:
         """Configure access to an OpenAI-compatible Apertus server"""
         self.base_url = base_url
         self.model = model
         self.timeout = timeout
         self.retries = retries
-        self.constrained_decoding = constrained
-        self.planning_prompt_path = "prompts/apertus_system.txt"
+        self.constrained = constrained
+        self.prompt_builder = prompt_builder or prepare_planning_prompt
 
     def generate_response(self, messages: list[dict], constrained_decoding: bool) -> str:
         """Send one planning request to Apertus and return its text response"""
@@ -50,13 +58,10 @@ class ApertusPlanner:
 
     def create_plan(self, graph: dict, instruction: str) -> tuple[dict, list[str]]:
         """Generate and validate one plan, clarification question, or refusal."""
-        messages = [
-            {"role": "system", "content": Path(self.planning_prompt_path).read_text()},
-            {"role": "user", "content": json.dumps({
-                "instruction": instruction,
-                "scene_graph": graph,
-            }, separators=(",", ":"))},
-        ]
+        messages = [{
+            "role": "user",
+            "content": self.prompt_builder(graph, instruction, gripper_mm),
+        }]
         replies = []
         last_error = None
         constrained_decoding = self.constrained_decoding
@@ -85,4 +90,4 @@ class ApertusPlanner:
                         {"role": "user", "content": f"Correct the JSON format: {error}. Return the full JSON object."},
                     ])
 
-        raise ValueError(f"Apertus did not return a valid plan: {last_error}")
+        raise PlanningGenerationError(f"Apertus did not return a valid plan: {last_error}", replies)

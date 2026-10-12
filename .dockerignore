@@ -1,0 +1,22 @@
+# Only application sources enter the image. Never include datasets, weights,
+# credentials, working-tree artifacts, or a developer's Python environment.
+**
+!pyproject.toml
+!uv.lock
+!run.py
+!run_grounded.py
+!run_geometry.py
+!src/
+!src/**
+!starter/
+!starter/**
+!schema/
+!schema/**
+!containers/
+!containers/**
+!tests/
+!tests/**
+!docs/
+!docs/**
+**/__pycache__/**
+**/*.pyc

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "see-it-say-it-pick-it/scene_discovery.schema.json",
+  "title": "Visible object discovery result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["objects"],
+  "properties": {
+    "objects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      }
+    }
+  }
+}

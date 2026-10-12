@@ -10,4 +10,5 @@ dist/
 .env
 .env.*
 !.env.example
+outputs/
 models/

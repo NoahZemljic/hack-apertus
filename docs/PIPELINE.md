@@ -1,241 +1,161 @@
-# Qwen detection, Python geometry, Apertus planning
+# Pipeline architecture
 
-The pipeline is:
+To reproduce the complete grounded pipeline on Clariden, follow
+[Run the full pipeline](CLARIDEN.md#run-the-full-pipeline). That is the central
+run guide: container build/cache preparation, GPU allocation, startup, unique
+scratch output directories, evaluation and planning replay are documented there.
+This page explains the processing contracts.
 
-```text
-RGB image → Qwen labels, boxes, target pixels
-          → Python segmentation, physical width, graspability, relations
-          → compact scene graph → Apertus plan → submission
-```
+## Grounded pipeline
 
-Qwen makes one detection request per image, with bounded retries for malformed
-JSON. It never predicts relations, sizes, graspability or confidence. Python
-assigns numbered IDs from labels. The Qwen-selected target pixel is preserved.
+The Clariden launcher executes `run_grounded.py` with Apertus 1.5 70B and
+Qwen3-VL-32B-Instruct. Its stages are:
 
-## Project layout
+1. Apertus extracts object descriptions from each instruction.
+2. Descriptions are combined per scene and passed to Qwen with the image.
+3. Qwen discovers visible objects and verifies its list in a second pass.
+4. Grounding DINO detects those verified categories; deterministic cleanup merges duplicates.
+5. SAM segments cleaned boxes and selects foreground safe pixels.
+6. Geometry calculates spatial relations and selected support hypotheses.
+7. The deterministic builder constructs and strictly validates the planner graph.
+8. Apertus receives that graph and each instruction to produce the submission.
 
-```text
-run_pipeline.py               command-line entry point
-prompts/
-  qwen_system.txt             detection instructions
-  apertus_system.txt          planning instructions
-src/
-  perception.py               Qwen detection contract, prompt and coordinate conversion
-  compute_geometry.py         segmentation, minimum-area rectangle, width and relations
-  vlm.py                      model loading and inference
-  create_scene_graph.py       compact graph serialization
-  apertus.py                  planning requests
-  validation.py               JSON/schema structure only
-  pipeline.py                 stage orchestration and scene-graph caching
-apertus/
-  start.sh                    vLLM server launcher
-containers/
-  vision.edf.toml             Qwen Clariden container configuration
-  apertus.edf.toml            Apertus Clariden container configuration
-```
+`run_geometry.py` is a compatibility alias for `run_grounded.py`. The launcher
+supplies model/server/device settings from `containers/deployment.toml`; direct
+CLI defaults remain Apertus 8B and the Qwen served alias `qwen-vl` for development.
+Use the launcher for the documented Clariden configuration. All stages share the
+root dependencies and one container; SAM is not separately installed.
 
-Small helpers in `src/` handle schema loading, JSON parsing and submission formatting. `run.py` forwards to `run_pipeline.py` for
-existing commands. `starter/` remains the supplied data loader and evaluator.
+Apertus selects object IDs and actions. Code copies the first picked object's
+SAM-derived safe pixel into the submission's `target_pixel`; Apertus does not
+choose pixel coordinates. Pixel-to-robot conversion is outside this evaluation
+pipeline. Challenge ground truth is used only by the evaluator.
 
-`RoboticsPipeline.run(..., perception_only=True)` creates or reuses scene graphs.
-Graph loading/creation is shared and happens before the mode branch. With
-`perception_only=False`, the `else` branch plans instructions using that graph.
-The method returns the final results list, which is empty in perception-only mode.
-Errors propagate to the caller; there are no diagnostic logs or failure reports.
+## Pipeline options and replay behavior
 
-## Detection and graph contracts
+For runnable replay commands, see
+[Plan and evaluate from saved grounding artifacts](CLARIDEN.md#plan-and-evaluate-from-saved-grounding-artifacts).
+Use `python run_grounded.py --help` for the complete CLI. Model/server/device
+settings belong in the deployment config; other pipeline flags follow the
+launcher's `--` separator.
 
-Qwen returns `objects`, each with:
+The default starts from instructions and images each time. `--geometry-input`
+(also `--input`) explicitly skips all upstream perception and reuses saved
+geometry and masks. Relative paths in that file resolve against its directory,
+or `--base-dir`. Fresh runs write absolute image/mask paths so their generated
+geometry can be replayed from another working directory.
 
-```json
-{
-  "label": "yellow_gear",
-  "bbox_2d": [1700, 660, 1800, 760],
-  "target_pixel": [1747, 712]
-}
-```
+Only Qwen's verified categories reach DINO by default. `--query-source
+grounding_queries` combines them with Apertus-extracted descriptions as an
+explicit experiment. An instruction mentioning an absent object therefore
+does not automatically add it to the default detector vocabulary.
 
-Labels use color and category, such as `red_cube` and `white_plate`, without
-patterns or decorations. Fruits use only their names, such as `orange` and
-`banana`. Boxes use
-half-open `[x1, y1, x2, y2]` coordinates. Pixel `[u, v]` means column then row,
-with the origin at the top left. Qwen3-family normalized coordinates are converted
-to original image pixels once: box minima round down, maxima up, target pixels
-down. Qwen2.5 uses original pixels. There are no follow-up relation/point queries.
+`--limit` caps final planning and skips perception for later scenes. Every
+instruction in each included scene is still extracted to build a shared scene
+inventory. `--build-only` skips final planning; fresh perception still calls
+Apertus for extraction and Qwen for discovery. Pair it with `--geometry-input`
+for a graph check with no model calls. `--no-constrained-decoding` applies to
+extraction, discovery, and final planning; validators remain active.
 
-The final graph has exactly `objects` and `relations`:
+`--artifact-dir` changes the intermediate-file directory (default: the output
+directory). `--debug-visualizations` also saves stage plots; DINO/SAM plotting
+requires matplotlib. Dataset/output paths resolve against the working directory.
+Subset runs score as missing answers for omitted instructions; preserve complete
+runs in separate output directories.
 
-```json
-{
-  "objects": [
-    {"id": "yellow_gear_1", "label": "yellow_gear", "target_pixel": [1747, 712], "width_mm": 43.0, "graspable": true},
-    {"id": "red_gear_1", "label": "red_gear", "target_pixel": [1775, 584]}
-  ],
-  "relations": [
-    {"subject": "yellow_gear_1", "relation": "image_left_of", "object": "red_gear_1", "confidence": 0.2},
-    {"subject": "yellow_gear_1", "relation": "image_down_from", "object": "red_gear_1", "confidence": 0.6}
-  ]
-}
-```
+## Graph construction
 
-This example shows two directional edges; their inverses are implicit and are
-not stored. The numbers above illustrate the format, not a measured scene.
-`width_mm` and `graspable` are omitted together if measurement fails. There is no
-object confidence, image metadata, bounding box, support or occlusion in the
-planner's graph. Full-precision width determines graspability.
+IDs and full labels are preserved. Explicit label words determine kind and
+color; conflicting colors yield null. Body parts are human, trays are containers,
+plates/saucers/coasters are surfaces, and other objects are movable. The builder
+does not split merged detections, resolve conflicting identities, invent missing
+destinations, or consult ground truth or instruction categories.
 
-## Geometry
+SAM masks are reloaded and checked for size, binary foreground, saved area,
+centroid, bounds, and safe-pixel membership. Boxes use mask bounds converted
+from exclusive SAM endpoints to inclusive planner endpoints. `confidence`
+carries the DINO score for compatibility, not a calibrated probability.
 
-1. Crop around the detected box, retaining a background margin. Resize large
-   crops to at most 640 pixels on their longer axis to bound CPU work.
-2. Run OpenCV GrabCut with the box interior as probable foreground, surrounding
-   pixels as background, and the Qwen-chosen material pixel as definite foreground.
-3. Select the connected foreground component containing that pixel and extract
-   its external contour. No ground-truth annotations enter this computation.
-4. Project the contour onto the horizontal plane through the selected pixel's
-   measured 3D height when depth is available. For this dataset's 2D images, use
-   the calibrated table plane at robot-base z = 4 mm.
-5. Fit `cv2.minAreaRect` in physical coordinates. `width_mm` is its shorter side;
-   `graspable` is exactly `width_mm <= 85`, independent of label.
+Projected `inside` edges become membership only for a nonhuman source and a
+container target. If multiple containers qualify, the smallest mask wins.
+Containment never creates support.
 
-An unmeasurable region, invalid sampling coordinates or missing calibration
-leaves width and graspability unknown.
-There is no guessed bounding-box width fallback. Geometry prerequisites protect
-array access and projection; the scene-graph validator does not enforce them.
+By default, selected geometry `on` hypotheses become first-pass `on_top_of`
+estimates for movable objects on nonhuman objects. `supports` is derived in
+code. These are **not physical confirmation**: single-view masks can be wrong
+about stacking. `--no-support-candidates` omits them for comparison. Cyclic or
+conflicting relationships are omitted with reasons in debug output.
 
-Segmentation can include neighboring material or miss part of a multicolored,
-occluded or low-contrast object. The target selects a connected component, not
-an independently verified object mask. In 2D, raised-object sizes are approximate
-because projection uses table height. A width-based `graspable` flag describes
-only gripper opening, not contact, accessibility or safety. This follows the
-width rule on page 10 of the student implementation guide. The guide does not
-define a handle-grasp exception; the current measurement covers the selected
-object component, not a separately detected handle.
+Human-holding and occlusion flags are copied only from explicit upstream boolean
+observations, defaulting to false when absent. Current geometry does not detect
+either condition. Overlap or touching alone never creates a holding claim.
 
-## Computed relations and confidence
+Every graph passes the existing strict validator: IDs, required fields, image
+bounds, box/point consistency, references, support inverses, and relationship
+cycles. This establishes structural consistency, not correct perception.
+Failed builds save `<scene>.failure.json` and stop before planning.
 
-An object's `inside` edge points to every detected tray whose half-open box
-contains its target pixel. Its whole box need not fit. A tray is identified by
-its label ending in `tray`; mats are not trays. Self-edges are excluded. There is
-no redundant `inside_tray` boolean and no `on` relation.
+Apertus receives the clean graph plus mask-centroid ordering, pairwise centroid
+distances, and image-plane directional/overlap/touching edges. Review flags,
+candidate scores, and rejected relationships stay outside the prompt. Centroids
+determine spatial comparisons; safe pixels determine submission targets. The
+earlier Qwen graph workflow retains its original planning prompt and
+pick-point-derived geometry.
 
-Containment takes precedence: an object inside a tray gets no directional
-relations to that tray. Relations between objects sharing a tray are still
-computed normally.
+## Checkpoints and failures
 
-For every other unordered pair, compare bounding-box edges along each axis.
-Emit `image_left_of` or `image_right_of` only when the horizontal intervals do not overlap; emit
-`image_up_from` or `image_down_from` only when the vertical intervals do not overlap. For example,
-an object beside a tall tray can be right of it without also being above it.
-Touching edges count as separated with zero confidence. These are image
-directions, never physical stacking. Image y increases downward, so
-`image_up_from` means closer to the top of the image, not physically higher.
-The schema rejects ambiguous names such as `above` and `below`. Existing graphs
-with the old names need an explicit migration or a new output directory; cached
-graphs are not regenerated automatically.
+For the output file tree and evaluation command, see
+[Run the full pipeline](CLARIDEN.md#run-the-full-pipeline).
+Standalone perception scripts default to `outputs/grounded_pipeline/`; the
+Clariden full-run command overrides this with a unique scratch run directory.
 
-Each directional fact is stored once, relative to the pair's input order.
-`A image_left_of B` also means `B image_right_of A`; the mirrored edge is omitted. Diagonally
-separated objects can have one horizontal and one vertical relation.
+Intermediate outputs are checkpointed after each instruction or scene. Upstream
+errors save `perception.failure.json` with the failing stage and scene, and stop
+the run. All selected graphs are checked before final planning. `--build-only`
+does not write or overwrite a submission. Planning reuses the existing Apertus
+client, constrained decoding, retry, and plan validation. Raw logs include the
+prompt, replies, and errors. Invalid plans after retry become fail-safe refusals;
+inspect these separately from model refusals. Connection/HTTP failures stop the
+run rather than refusing every instruction. Successful results are checkpointed
+after each instruction.
 
-Confidence is computed only for relations:
+## Earlier Qwen graph workflow
 
-- Direction: `box_gap / (box_gap + mean_box_extent)` on the relevant axis.
-- Inside: distance to the nearest tray-box edge divided by half the shorter tray
-  extent, capped at 1. A target exactly on an included edge has confidence 0.
+`run.py` is a separate workflow: Qwen2.5-VL generates a scene graph directly,
+then Apertus plans from it. It does not run DINO, SAM or mask geometry, and its
+`--reuse-scene-graphs` option omits the grounded pipeline's separate spatial
+prompt context. For evaluating grounded perception, use `run_grounded.py`.
 
-Scores are rounded to four decimals. They express geometric separation or margin,
-not calibrated probabilities or Qwen certainty. A low score does not remove an
-otherwise true box separation.
+`run.py` retains its defaults (Qwen2.5-VL-7B-Instruct and Apertus 8B). Its
+`--reuse-scene-graphs` skips Qwen inference only when a cached graph exists and
+still validates that graph against the image dimensions. Default outputs are
+`outputs/results.json`, `outputs/results.raw.jsonl` and `outputs/scene_graphs/`.
 
-## Validation and planning
+Qwen's perception contract uses `schema/scene_graph.schema.json` with `supports`
+excluded. It predicts `inside`, `on_top_of`, holding and occlusion flags. Code
+validates raw observations, derives inverse support lists from `on_top_of`,
+then validates the complete graph before caching or planning. Containment alone
+does not create support.
 
-`schema/perception.schema.json` and `schema/scene_graph.schema.json` define the
-two separate contracts. `validation.py` checks JSON representability, fields,
-types, array lengths, enums and scalar format limits, with comments for each
-check. It does not check unique object IDs, reference existence, coordinate
-bounds, cycles, physical plausibility or consistency of graspability with width.
-JSON parsing also rejects duplicate keys, incomplete JSON and non-finite numbers.
+`src.decoding.SchemaConstrainedDecoder` uses LM Format Enforcer through
+Transformers' `prefix_allowed_tokens_fn` to constrain JSON structure. Tokenizer
+data is cached, with a fresh schema parser per generation attempt. Missing
+dependencies stop generation; there is no automatic unconstrained fallback.
+Validators still check image bounds, references and relation cycles. Truncated
+JSON is rejected, and failed perception attempts save `<scene>.failure.json`
+before stopping. DINO/SAM construct graphs in code rather than generating JSON.
 
-Qwen receives the detection schema in its prompt and generates text without a
-custom token filter. Python parses the response and checks its structure afterward.
-Malformed JSON or schema errors trigger a fresh request with error feedback, up to
-`--qwen-validation-retries`. Thinking is disabled for detection. Geometry is
-computed in Python after a valid detection response.
+Apertus planning uses `schema/plan.schema.json`; the final submission uses
+`schema/result.schema.json`.
 
-Apertus receives only the compact graph and instruction. The gripper opening is
-fixed at 85 mm in the geometry calculation and Apertus system prompt. Its system
-prompt uses measured graspability and computed relations, and treats absent
-measurements as unknown. The graph cannot answer physical-support or
-human-holding questions; the prompt asks for clarification when an instruction
-depends on such facts. The plan schema checks output structure only. This code
-writes challenge submissions and does not execute robot motion.
+## Technical references
 
-## Running
+- [Geometry](GEOMETRY.md): mask measurements, relation thresholds and output contract.
+- [Environment](ENVIRONMENT.md): dependency groups, development setup and import checks.
+- [Data](DATA.md): dataset layout and coordinate conventions.
+- [Evaluation](../EVALUATION.md): scoring rules and submission format.
 
-See [instructions.md](../instructions.md) for the full Clariden allocation,
-environment, model startup and evaluation sequence. Keep the Apertus/vLLM
-container environment separate from Qwen's environment and retain its CUDA
-PyTorch installation. The optional `vision` dependencies in `pyproject.toml`
-are needed for the default Qwen3 model; core geometry tests need only the base
-dependencies.
-
-Start Apertus, then run the complete pipeline. The launcher reserves a 32,768-token
-context because explicit pairwise relations grow quadratically with object count;
-set `APERTUS_MAX_MODEL_LEN` to adjust this. The official [Apertus model card](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)
-documents support for longer contexts. Existing servers launched with an 8,192-token
-limit may need restarting for crowded scenes:
-
-```sh
-CUDA_VISIBLE_DEVICES=0 VLLM_BIN=/opt/venv/bin/vllm bash apertus/start.sh
-# In another terminal on the same compute node:
-CUDA_VISIBLE_DEVICES=1 .venv-clariden/bin/python -u run_pipeline.py \
-  --data dataset --out outputs/results.json
-```
-
-Run detection and geometry without an Apertus server:
-
-```sh
-CUDA_VISIBLE_DEVICES=1 .venv-clariden/bin/python -u run_pipeline.py \
-  --perception-only --scene scene_04
-```
-
-The default Qwen model is `Qwen/Qwen3-VL-32B-Instruct`; select another supported
-checkpoint with `--qwen-model`. The default generation budget is 4096 tokens with
-two format retries. `--limit` counts instructions and only applies to full runs.
-`--attention`, `--timeout` and `--no-constrained-decoding` retain their existing
-roles; the last option affects Apertus only.
-
-The pipeline loads or creates one graph for each scene and passes it to every
-instruction for that scene. Accepted graphs are saved in `scene_graphs/` beside
-the submission path and reused across runs by scene name.
-
-## Artifacts and tests
-
-Both modes save accepted scene graphs and a matching `<scene>.detections.png`
-beside each newly generated graph. The original-resolution overlay shows Qwen's
-bounding boxes, object IDs and target-point crosses for visual inspection.
-It does not calculate a detection accuracy score.
-Full runs also write the final submission at the requested output path.
-
-For measured objects, the overlay also shows the width in millimetres, the
-physical minimum-area rectangle projected into the image, and a double-headed
-arrow across its shorter dimension. Objects without a successful measurement
-retain their detection box and target point without a width annotation.
-
-Cached graphs and their existing overlays are reused. Older cached graphs do not
-contain bounding boxes, so their overlays cannot be reconstructed. Use a fresh
-`--out` parent directory to generate detections and overlays for those scenes.
-
-After format retries are exhausted, an error stops the run and is raised directly.
-Existing diagnostic files from earlier runs are not deleted.
-
-```sh
-.venv/bin/python -m unittest discover -s tests -v
-```
-
-The tests use synthetic geometry and stub model responses. They cover rotated
-segmentation, target-depth projection, the 85 mm boundary, unknown measurements,
-relation directions, tray boundaries, schema-only validation, coordinate
-conversion, retries, compact planner input and graph reuse across instructions. Real model accuracy
-requires running the models and comparing detections with the source images.
+CPU tests in `tests/test_grounded_pipeline.py` and
+`tests/test_geometry_scene_graph.py` cover stage handoffs, mask geometry, graph
+validation, target pixels and failure handling with mocked model inference.
+The Clariden guide records which GPU deployment checks have actually passed.

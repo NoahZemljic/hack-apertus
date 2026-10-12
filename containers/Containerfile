@@ -1,0 +1,28 @@
+# Swiss AI ARM64 release inspected 2026-10-10. Override only with a tested build.
+ARG BASE_IMAGE=ghcr.io/swiss-ai/vllm_apertus_1.5_release@sha256:8eb36e284fbefdd44c6f4dc23072eff9c06c1caed5643ce2f99ac7e0915a06ae
+FROM ${BASE_IMAGE}
+ARG BASE_IMAGE
+LABEL org.opencontainers.image.title="Hack Apertus Clariden pipeline"
+ENV HACK_APERTUS_BASE_IMAGE=${BASE_IMAGE} \
+    PYTHONUNBUFFERED=1 \
+    HF_HUB_DISABLE_TELEMETRY=1 \
+    VLLM_NO_USAGE_STATS=1 \
+    DO_NOT_TRACK=1 \
+    MPLBACKEND=Agg
+WORKDIR /opt/hack-apertus
+COPY pyproject.toml uv.lock ./
+COPY containers/install_dependencies.py containers/install_dependencies.py
+# Protect the engine's custom Transformers, Torch, CUDA and transitive packages.
+# Install application packages only; never fetch model weights during the build.
+RUN python containers/install_dependencies.py
+COPY src/ src/
+COPY starter/ starter/
+COPY schema/ schema/
+COPY run.py run_grounded.py run_geometry.py ./
+COPY containers/ containers/
+COPY tests/ tests/
+COPY docs/ docs/
+RUN HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.check_environment --check-vllm \
+    && HF_HUB_OFFLINE=1 python -m src.clariden --check-engine \
+    && HF_HUB_OFFLINE=1 python -m unittest discover -s tests
+ENTRYPOINT ["bash", "/opt/hack-apertus/containers/start_pipeline.sh"]
