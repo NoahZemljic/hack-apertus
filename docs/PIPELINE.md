@@ -194,10 +194,12 @@ Apertus receives only the compact graph and instruction. The gripper opening is
 fixed at 85 mm in the geometry calculation and Apertus system prompt. Its system
 prompt uses measured graspability and computed relations, and treats absent
 measurements as unknown. Physical support is represented by accepted `on`
-relations; human-holding relations are not currently produced. The new planning
-prompt currently requests `actions` and `first_pick_object`,
-while `schema/plan.schema.json` and result conversion expect `steps`. These
-contracts must be aligned before an end-to-end planning run. The plan schema
+relations; human-holding relations are not currently produced. The planning
+prompt matches `schema/plan.schema.json`: `decision`, `steps`, `question`, and
+`reason`, with `action` and `object_id` in each step. It explains reference aliases,
+image-relative comparisons, blocker ordering, and the distinction between
+pickability and placement destinations. Python derives the first target pixel
+from the graph and converts `steps` into submission `actions`. The plan schema
 checks output structure only. This code writes challenge submissions and does
 not execute robot motion.
 
@@ -227,7 +229,7 @@ CUDA_VISIBLE_DEVICES=0,1 VLLM_BIN=/opt/venv/bin/vllm bash apertus/start.sh
 export HF_HOME="${SCRATCH:?SCRATCH is not set}/hack-apertus/huggingface"
 export HF_HUB_CACHE="$HF_HOME/hub"
 CUDA_VISIBLE_DEVICES=2 .venv-clariden/bin/python -u run_pipeline.py \
-  --data dataset --out "$SCRATCH/hack-apertus/outputs/results.json"
+  --data dataset --out "$HOME/hack-apertus/outputs/results.json"
 ```
 
 Run detection and geometry without an Apertus server:

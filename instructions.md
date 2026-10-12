@@ -57,7 +57,7 @@ interactively once. The 70B model has a separate access agreement on its Hugging
 Run this once per allocation. The timestamp keeps previous outputs intact.
 
 ```bash
-RUN_DIRECTORY="$SCRATCH/hack-apertus/outputs/comparison-$(date +%Y%m%d-%H%M%S)"
+RUN_DIRECTORY="$HOME/hack-apertus/outputs/comparison-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$RUN_DIRECTORY/pipeline" "$RUN_DIRECTORY/baseline"
 git rev-parse HEAD > "$RUN_DIRECTORY/commit.txt"
 printf 'Outputs: %s\n' "$RUN_DIRECTORY"
