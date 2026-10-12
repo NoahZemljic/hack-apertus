@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Baseline: send each photo and instruction to Apertus with a plain prompt. This is the score to beat.
 
-    uv tool run --from vllm vllm serve swiss-ai/Apertus-v1.5-8B --chat-template-content-format string
+    uv tool run --from vllm vllm serve swiss-ai/Apertus-v1.5-70B --tensor-parallel-size 2 --max-model-len 32768 --chat-template-content-format string
     uv run baseline/baseline.py --data dataset --out results.json
     uv run starter/evaluate.py results.json --data dataset
 
@@ -89,7 +89,7 @@ def main():
     ap.add_argument("--data", type=Path, default=Path("dataset"))
     ap.add_argument("--out", type=Path, default=Path("results.json"))
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
-    ap.add_argument("--model", default="swiss-ai/Apertus-v1.5-8B")
+    ap.add_argument("--model", default="swiss-ai/Apertus-v1.5-70B", choices=["swiss-ai/Apertus-v1.5-70B"])
     ap.add_argument("--max-side", type=int, default=1024, help="resize the photo so its long side is at most this")
     ap.add_argument("--timeout", type=float, default=180)
     ap.add_argument("--limit", type=int)

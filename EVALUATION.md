@@ -31,7 +31,7 @@ The mock run checks the pipeline without a model. To serve Apertus locally on a
 supported GPU machine, run the optional server in a separate uv environment:
 
 ```sh
-uv tool run --from vllm vllm serve swiss-ai/Apertus-v1.5-8B --chat-template-content-format string
+uv tool run --from vllm vllm serve swiss-ai/Apertus-v1.5-70B --tensor-parallel-size 2 --max-model-len 32768 --chat-template-content-format string
 ```
 
 Then run `uv run run.py` to use the server.

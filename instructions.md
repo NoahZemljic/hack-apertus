@@ -28,6 +28,7 @@ Do not install Transformers 4 into `/opt/venv` or reinstall PyTorch.
 ```bash
 cd /users/noahzemljic/hack-apertus
 export HF_HOME="${SCRATCH:?SCRATCH is not set}/hack-apertus/huggingface"
+export HF_HUB_CACHE="$HF_HOME/hub"
 set -o pipefail
 
 if [ ! -x .venv-clariden/bin/python ]; then
@@ -40,33 +41,28 @@ VISION_SITE=$(.venv-clariden/bin/python -c 'import sysconfig; print(sysconfig.ge
 printf '%s\n' "$CONTAINER_SITE" > "$VISION_SITE/container-packages.pth"
 
 .venv-clariden/bin/python -m pip install \
-  "transformers==4.57.6" "qwen-vl-utils>=0.0.8,<1" \
+  "transformers>=5.18,<6" "qwen-vl-utils>=0.0.8,<1" \
   "jsonschema>=4.23,<5" \
   "numpy>=2,<3" "opencv-python-headless>=4.10,<5"
 
-CUDA_VISIBLE_DEVICES=1 .venv-clariden/bin/python -c \
-'import torch, torchvision, cv2; from transformers import Qwen2_5_VLForConditionalGeneration; from qwen_vl_utils import process_vision_info; print("GPU:", torch.cuda.get_device_name(0)); print("CUDA:", torch.ones(1, device="cuda").item())'
+CUDA_VISIBLE_DEVICES=2 .venv-clariden/bin/python -c \
+'import torch, torchvision, cv2; from transformers import AutoModelForImageTextToText; from qwen_vl_utils import process_vision_info; print("GPU:", torch.cuda.get_device_name(0)); print("CUDA:", torch.ones(1, device="cuda").item())'
 ```
 
 If model downloads require authentication, run `/opt/venv/bin/hf auth login`
-interactively once. Run project tests with `.venv-clariden/bin/python -m unittest discover -s tests`.
-Always specify `-s tests` to avoid loading unrelated container tests.
+interactively once. The 70B model has a separate access agreement on its Hugging Face page.
 
-## 3. Start Apertus on GPU 0 and wait for readiness
+## 3. Start Apertus on GPUs 0 and 1 and wait for readiness
 
 Run this once per allocation. The timestamp keeps previous outputs intact.
 
 ```bash
-RUN_DIRECTORY="outputs/comparison-$(date +%Y%m%d-%H%M%S)"
+RUN_DIRECTORY="$SCRATCH/hack-apertus/outputs/comparison-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$RUN_DIRECTORY/pipeline" "$RUN_DIRECTORY/baseline"
 git rev-parse HEAD > "$RUN_DIRECTORY/commit.txt"
 printf 'Outputs: %s\n' "$RUN_DIRECTORY"
 
-CUDA_VISIBLE_DEVICES=0 /opt/venv/bin/vllm serve swiss-ai/Apertus-v1.5-8B \
-  --host 127.0.0.1 --port 8000 \
-  --dtype bfloat16 --tensor-parallel-size 1 \
-  --max-model-len 32768 --gpu-memory-utilization 0.8 \
-  --chat-template-content-format string \
+CUDA_VISIBLE_DEVICES=0,1 VLLM_BIN=/opt/venv/bin/vllm bash apertus/start.sh \
   > "$RUN_DIRECTORY/apertus.log" 2>&1 &
 APERTUS_PID=$!
 
@@ -86,11 +82,11 @@ once and shared by that scene's instructions. Graphs are saved under
 `$RUN_DIRECTORY/pipeline/scene_graphs` and reused if that output directory is used again.
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 .venv-clariden/bin/python -u run_pipeline.py \
+CUDA_VISIBLE_DEVICES=2 .venv-clariden/bin/python -u run_pipeline.py \
   --data dataset \
   --out "$RUN_DIRECTORY/pipeline/results.json" \
-  --qwen-model Qwen/Qwen2.5-VL-7B-Instruct \
-  --apertus-model swiss-ai/Apertus-v1.5-8B \
+  --qwen-model Qwen/Qwen3-VL-32B-Instruct \
+  --apertus-model swiss-ai/Apertus-v1.5-70B \
   --apertus-base-url http://127.0.0.1:8000/v1 \
   --attention sdpa --timeout 300 \
   2>&1 | tee "$RUN_DIRECTORY/pipeline/run.log"
@@ -104,7 +100,7 @@ only after the whole run completes.
 ```bash
 .venv-clariden/bin/python -u baseline/baseline.py \
   --data dataset --out "$RUN_DIRECTORY/baseline/results.json" \
-  --model swiss-ai/Apertus-v1.5-8B \
+  --model swiss-ai/Apertus-v1.5-70B \
   --base-url http://127.0.0.1:8000/v1 --timeout 300 \
   2>&1 | tee "$RUN_DIRECTORY/baseline/run.log"
 ```

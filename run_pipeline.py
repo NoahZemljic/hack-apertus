@@ -3,7 +3,7 @@ from pathlib import Path
 
 from starter.evaluate import answer_type
 from starter.scene_io import load_scene
-from src.apertus import ApertusPlanner
+from src.apertus import APERTUS_MODEL, ApertusPlanner
 from src.pipeline import RoboticsPipeline
 from src.perception import QwenPerception
 from src.vlm import QwenVLM
@@ -15,7 +15,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--data", type=Path, default=Path("dataset"))
     parser.add_argument("--out", type=Path, default=Path("outputs/results.json"))
     parser.add_argument("--qwen-model", default="Qwen/Qwen3-VL-32B-Instruct")
-    parser.add_argument("--apertus-model", "--model", default="swiss-ai/Apertus-v1.5-8B")
+    parser.add_argument("--apertus-model", "--model", default=APERTUS_MODEL, choices=[APERTUS_MODEL])
     parser.add_argument("--apertus-base-url", default="http://localhost:8000/v1")
     parser.add_argument("--attention", choices=("sdpa", "flash_attention_2"), default="sdpa")
     parser.add_argument("--perception-only", action="store_true", help="Create or reuse scene graphs without running Apertus")

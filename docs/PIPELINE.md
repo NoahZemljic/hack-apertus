@@ -193,10 +193,13 @@ computed in Python after a valid detection response.
 Apertus receives only the compact graph and instruction. The gripper opening is
 fixed at 85 mm in the geometry calculation and Apertus system prompt. Its system
 prompt uses measured graspability and computed relations, and treats absent
-measurements as unknown. The graph cannot answer physical-support or
-human-holding questions; the prompt asks for clarification when an instruction
-depends on such facts. The plan schema checks output structure only. This code
-writes challenge submissions and does not execute robot motion.
+measurements as unknown. Physical support is represented by accepted `on`
+relations; human-holding relations are not currently produced. The new planning
+prompt currently requests `actions` and `first_pick_object`,
+while `schema/plan.schema.json` and result conversion expect `steps`. These
+contracts must be aligned before an end-to-end planning run. The plan schema
+checks output structure only. This code writes challenge submissions and does
+not execute robot motion.
 
 ## Running
 
@@ -207,23 +210,30 @@ PyTorch installation. The optional `vision` dependencies in `pyproject.toml`
 are needed for the default Qwen3 model; core geometry tests need only the base
 dependencies.
 
-Start Apertus, then run the complete pipeline. The launcher reserves a 32,768-token
+Apertus is fixed to `swiss-ai/Apertus-v1.5-70B`; other model IDs are rejected.
+Start Apertus on GPUs 0 and 1, then run Qwen on GPU 2. The launcher uses two-way
+tensor parallelism for Clariden; set `APERTUS_TENSOR_PARALLEL_SIZE` if using a
+different GPU layout. The launcher reserves a 32,768-token
 context because explicit pairwise relations grow quadratically with object count;
-set `APERTUS_MAX_MODEL_LEN` to adjust this. The official [Apertus model card](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)
+set `APERTUS_MAX_MODEL_LEN` to adjust this. The official [Apertus model card](https://huggingface.co/swiss-ai/Apertus-v1.5-70B)
 documents support for longer contexts. Existing servers launched with an 8,192-token
 limit may need restarting for crowded scenes:
 
 ```sh
-CUDA_VISIBLE_DEVICES=0 VLLM_BIN=/opt/venv/bin/vllm bash apertus/start.sh
+export HF_HOME="${SCRATCH:?SCRATCH is not set}/hack-apertus/huggingface"
+export HF_HUB_CACHE="$HF_HOME/hub"
+CUDA_VISIBLE_DEVICES=0,1 VLLM_BIN=/opt/venv/bin/vllm bash apertus/start.sh
 # In another terminal on the same compute node:
-CUDA_VISIBLE_DEVICES=1 .venv-clariden/bin/python -u run_pipeline.py \
-  --data dataset --out outputs/results.json
+export HF_HOME="${SCRATCH:?SCRATCH is not set}/hack-apertus/huggingface"
+export HF_HUB_CACHE="$HF_HOME/hub"
+CUDA_VISIBLE_DEVICES=2 .venv-clariden/bin/python -u run_pipeline.py \
+  --data dataset --out "$SCRATCH/hack-apertus/outputs/results.json"
 ```
 
 Run detection and geometry without an Apertus server:
 
 ```sh
-CUDA_VISIBLE_DEVICES=1 .venv-clariden/bin/python -u run_pipeline.py \
+CUDA_VISIBLE_DEVICES=2 .venv-clariden/bin/python -u run_pipeline.py \
   --perception-only --scene scene_04
 ```
 

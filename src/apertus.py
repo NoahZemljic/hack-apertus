@@ -7,16 +7,22 @@ from .json_tools import parse_json_object
 from .schemas import load_plan_schema
 from .validation import validate_plan
 
+APERTUS_MODEL = "swiss-ai/Apertus-v1.5-70B"
+
+
 class ApertusPlanner:
     def __init__(
         self,
         base_url: str = "http://localhost:8000/v1",
-        model: str = "swiss-ai/Apertus-v1.5-8B",
+        model: str = APERTUS_MODEL,
         timeout: float = 180,
         retries: int = 1,
         constrained: bool = True,
     ) -> None:
         """Configure access to an OpenAI-compatible Apertus server"""
+        if model != APERTUS_MODEL:
+            raise ValueError(f"Only {APERTUS_MODEL} is supported")
+
         self.base_url = base_url
         self.model = model
         self.timeout = timeout
