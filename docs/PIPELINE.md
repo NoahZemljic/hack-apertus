@@ -22,7 +22,8 @@ Qwen3-VL-32B-Instruct. Its stages are:
 
 `run_geometry.py` is a compatibility alias for `run_grounded.py`. The launcher
 supplies model/server/device settings from `containers/deployment.toml`; direct
-CLI defaults remain Apertus 8B and the Qwen served alias `qwen-vl` for development.
+CLI defaults also use `swiss-ai/Apertus-v1.5-70B` and
+`Qwen/Qwen3-VL-32B-Instruct`.
 Use the launcher for the documented Clariden configuration. All stages share the
 root dependencies and one container; SAM is not separately installed.
 

@@ -31,9 +31,9 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--build-only", action="store_true", help="Build graphs and skip final planning; fresh perception still calls Apertus and Qwen")
     parser.add_argument("--no-support-candidates", action="store_true", help="Omit selected geometry support hypotheses")
     parser.add_argument("--apertus-base-url", default="http://localhost:8000/v1")
-    parser.add_argument("--apertus-model", "--model", default="swiss-ai/Apertus-v1.5-8B")
+    parser.add_argument("--apertus-model", "--model", default="swiss-ai/Apertus-v1.5-70B")
     parser.add_argument("--qwen-base-url", default="http://127.0.0.1:8001/v1")
-    parser.add_argument("--qwen-model", default="qwen-vl")
+    parser.add_argument("--qwen-model", default="Qwen/Qwen3-VL-32B-Instruct")
     parser.add_argument("--query-source", choices=("qwen_objects", "grounding_queries"), default="qwen_objects",
                         help="Use verified visible labels, or combine them with Apertus instruction terms")
     parser.add_argument("--dino-model", default="IDEA-Research/grounding-dino-base")

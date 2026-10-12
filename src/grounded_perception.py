@@ -14,9 +14,9 @@ from .schemas import load_object_extraction_schema, load_scene_discovery_schema
 @dataclass(frozen=True)
 class GroundedPerceptionConfig:
     apertus_base_url: str = "http://localhost:8000/v1"
-    apertus_model: str = "swiss-ai/Apertus-v1.5-8B"
+    apertus_model: str = "swiss-ai/Apertus-v1.5-70B"
     qwen_base_url: str = "http://127.0.0.1:8001/v1"
-    qwen_model: str = "qwen-vl"
+    qwen_model: str = "Qwen/Qwen3-VL-32B-Instruct"
     timeout: float = 180
     constrained: bool = True
     query_source: str = "qwen_objects"

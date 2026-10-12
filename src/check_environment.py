@@ -200,9 +200,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check-vllm", action="store_true", help="Also import the container-provided inference engine")
     parser.add_argument("--check-servers", action="store_true", help="Query both local model inventories")
     parser.add_argument("--apertus-base-url", default="http://localhost:8000/v1")
-    parser.add_argument("--apertus-model", default="swiss-ai/Apertus-v1.5-8B")
+    parser.add_argument("--apertus-model", default="swiss-ai/Apertus-v1.5-70B")
     parser.add_argument("--qwen-base-url", default="http://127.0.0.1:8001/v1")
-    parser.add_argument("--qwen-model", default="qwen-vl")
+    parser.add_argument("--qwen-model", default="Qwen/Qwen3-VL-32B-Instruct")
     parser.add_argument("--json", action="store_true", help="Print the report as JSON")
     args = parser.parse_args(argv)
     if args.require_cuda and args.profile != "vision":
