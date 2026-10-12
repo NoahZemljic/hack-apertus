@@ -1,91 +1,90 @@
 import json
 from pathlib import Path
 
-from .perception import PerceptionGenerationError, PerceptionModel
+from .compute_geometry import compute_objects, compute_relations
+from .create_scene_graph import create_scene_graph
+from .json_tools import parse_json_object
+from .perception import PerceptionModel
 from .results import plan_to_result
-from .validation import validate_scene_graph
+from .validation import validate_perception, validate_scene_graph
 from .visualization import write_scene_overlay
+
 
 class RoboticsPipeline:
     def __init__(
         self,
         perception: PerceptionModel,
         planner,
-        scene_graph_dir: Path,
-        reuse_scene_graphs: bool = False,
+        scene_graph_dir: Path = Path("outputs/scene_graphs"),
     ) -> None:
-        """Connect perception, planning, and scene-graph artifact storage"""
+        """Connect detection, geometry, scene graphs, and planning."""
         self.perception = perception
         self.planner = planner
         self.scene_graph_dir = scene_graph_dir
-        self.reuse_scene_graphs = reuse_scene_graphs
 
-    def build_scene_graph(self, scene, scene_dir: Path) -> tuple[dict, list[str]]:
-        """Load or generate a scene graph and write its inspection artifacts"""
+    def build_scene_graph(self, scene, scene_dir: Path) -> dict:
+        """Reuse the saved graph, or create it if this scene has no graph yet."""
         cache_path = self.scene_graph_dir / f"{scene.name}.json"
 
-        # Reusing a graph avoids repeating perception inference during prompt work
-        if self.reuse_scene_graphs and cache_path.exists():
-            graph = validate_scene_graph(json.loads(cache_path.read_text()), *scene.size)
-            replies = ["loaded from cache"]
-        else:
-            try:
-                graph, replies = self.perception.generate_scene_graph(
-                    scene_dir / "rgb.png",
-                    *scene.size,
-                )
-            except PerceptionGenerationError as error:
-                # Save rejected outputs separately so they can never become cached graphs
-                self.scene_graph_dir.mkdir(parents=True, exist_ok=True)
-                failure_path = self.scene_graph_dir / f"{scene.name}.failure.json"
-                failure_path.write_text(json.dumps({
-                    "scene": scene.name,
-                    "replies": error.replies,
-                    "errors": error.errors,
-                }, indent=2) + "\n")
-                raise
+        # Always reuse an existing graph.
+        if cache_path.exists():
+            graph = parse_json_object(cache_path.read_text())
+            validate_scene_graph(graph)
 
+            return graph
+
+        # Detect objects, then compute geometry and relations in Python.
+        detections, _ = self.perception.detect(scene_dir / "rgb.png", *scene.size)
+        validate_perception(detections)
+
+        geometry = compute_objects(scene, detections)
+        relations = compute_relations(geometry)
+        graph = create_scene_graph(geometry, relations)
+        validate_scene_graph(graph)
+
+        # Save detected boxes before caching the graph so the overlay is available on reuse
+        overlay_path = self.scene_graph_dir / f"{scene.name}.detections.png"
+        write_scene_overlay(scene.rgb, geometry, overlay_path)
+
+        # Save only the accepted scene graph.
         self.scene_graph_dir.mkdir(parents=True, exist_ok=True)
         cache_path.write_text(json.dumps(graph, indent=2) + "\n")
-        write_scene_overlay(scene.rgb, graph, self.scene_graph_dir / f"{scene.name}.overlay.jpg")
-        return graph, replies
 
-    def run(self, scenes: list[tuple[Path, object]], limit: int | None = None) -> tuple[list[dict], list[dict]]:
-        """Process every scene instruction and collect results plus raw responses"""
+        return graph
+
+    def run(
+        self,
+        scenes: list[tuple[Path, object]],
+        limit: int | None = None,
+        *,
+        perception_only: bool = False,
+    ) -> list[dict]:
+        """Create each scene graph and optionally plan its instructions."""
+        if perception_only and limit is not None:
+            raise ValueError("Omit instructions in perception-only mode")
+
         results = []
-        raw = []
         remaining = limit
 
         for scene_dir, scene in scenes:
             if remaining is not None and remaining <= 0:
                 break
 
-            # Runs perception once because all instructions share the same image
-            graph, perception_replies = self.build_scene_graph(scene, scene_dir)
-            raw.append({"scene": scene.name, "stage": "perception", "replies": perception_replies})
-            instructions = scene.instructions if remaining is None else scene.instructions[:remaining]
+            graph = self.build_scene_graph(scene, scene_dir)
 
-            for instruction_id, _, instruction in instructions:
-                try:
-                    plan, replies = self.planner.plan(graph, instruction, scene.gripper_max_opening_mm)
+            if perception_only:
+                continue
+
+            else:
+                # Get the instruction
+                instructions = scene.instructions[:remaining]
+
+                for instruction_id, _, instruction in instructions:
+                    plan, _ = self.planner.create_plan(graph, instruction)
                     result = plan_to_result(instruction_id, plan, graph)
-                    error = None
+                    results.append(result)
 
-                except Exception as exception:
-                    # Invalid plans must never reach the robot as executable actions
-                    replies = []
-                    error = f"{type(exception).__name__}: {exception}"
-                    result = {
-                        "instruction_id": instruction_id,
-                        "target_pixel": None,
-                        "actions": [{"action": "refuse", "reason": "Planning failed validation; no robot motion was issued"}],
-                    }
+                if remaining is not None:
+                    remaining -= len(instructions)
 
-                results.append(result)
-                raw.append({"instruction_id": instruction_id, "instruction": instruction,
-                            "stage": "planning", "replies": replies, "error": error})
-
-            if remaining is not None:
-                remaining -= len(instructions)
-
-        return results, raw
+        return results

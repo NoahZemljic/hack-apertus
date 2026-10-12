@@ -1,74 +1,81 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "see-it-say-it-pick-it/scene_graph.schema.json",
-  "title": "Validated 2D robot workspace scene graph",
+  "title": "Scene Graph",
   "type": "object",
   "additionalProperties": false,
-  "required": ["image", "objects"],
+  "required": [
+    "objects",
+    "relations"
+  ],
   "properties": {
-    "image": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["width", "height"],
-      "properties": {
-        "width": {"type": "integer", "minimum": 1},
-        "height": {"type": "integer", "minimum": 1}
-      }
-    },
     "objects": {
       "type": "array",
-      "minItems": 1,
-      "items": {"$ref": "#/$defs/object"}
-    }
-  },
-  "$defs": {
-    "pixel": {
-      "type": "array",
-      "items": {"type": "integer", "minimum": 0},
-      "minItems": 2,
-      "maxItems": 2
-    },
-    "bbox": {
-      "type": "array",
-      "items": {"type": "integer", "minimum": 0},
-      "minItems": 4,
-      "maxItems": 4
-    },
-    "object": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "id",
-        "kind",
-        "label",
-        "color",
-        "bbox_2d",
-        "pick_point_2d",
-        "confidence",
-        "relations"
-      ],
-      "properties": {
-        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
-        "kind": {"enum": ["movable", "container", "surface", "human"]},
-        "label": {"type": "string", "minLength": 1},
-        "color": {"type": ["string", "null"]},
-        "bbox_2d": {"$ref": "#/$defs/bbox"},
-        "pick_point_2d": {"$ref": "#/$defs/pixel"},
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-        "relations": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["inside", "on_top_of", "supports", "held_by_human", "partially_occluded"],
-          "properties": {
-            "inside": {"type": ["string", "null"]},
-            "on_top_of": {"type": ["string", "null"]},
-            "supports": {
-              "type": "array",
-              "items": {"type": "string"},
-              "uniqueItems": true
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "target_pixel"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+          },
+          "label": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+          },
+          "target_pixel": {
+            "type": "array",
+            "items": {
+              "type": "integer"
             },
-            "held_by_human": {"type": "boolean"},
-            "partially_occluded": {"type": "boolean"}
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "width_mm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "graspable": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject",
+          "relation",
+          "object",
+          "confidence"
+        ],
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "relation": {
+            "enum": [
+              "image_left_of",
+              "image_right_of",
+              "image_up_from",
+              "image_down_from",
+              "inside"
+            ]
+          },
+          "object": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
           }
         }
       }

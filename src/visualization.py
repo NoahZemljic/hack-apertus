@@ -1,34 +1,57 @@
+"""Draw detection boxes, target points and measured widths for visual inspection"""
 from pathlib import Path
 
 import cv2
+import numpy as np
 
-COLORS = {
-    "movable": (0, 200, 0),
-    "container": (255, 120, 0),
-    "surface": (200, 0, 200),
-    "human": (0, 0, 255),
-}
 
-def write_scene_overlay(rgb, graph: dict, path: Path) -> None:
-    """Draw detected boxes, IDs, and pick points onto a scene image"""
+def write_scene_overlay(rgb: np.ndarray, objects: list[dict], path: Path) -> None:
+    """Save the original-resolution image with a box, ID and target for each object."""
+    # OpenCV expects BGR colors and draws on a separate copy of the source image
     canvas = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-
-    # Scale labels and markers so overlays remain readable at full resolution
     scale = max(canvas.shape[:2]) / 1600
-    thickness = max(2, round(2 * scale))
-    font_scale = max(0.6, 0.7 * scale)
+    thickness = max(1, round(2 * scale))
+    font_scale = max(0.6, 0.6 * scale)
+    marker_size = max(10, round(18 * scale))
+    colors = [(0, 220, 255), (255, 180, 0), (80, 230, 80), (220, 80, 220)]
 
-    for obj in graph["objects"]:
-        color = COLORS[obj["kind"]]
+    for index, obj in enumerate(objects):
+        color = colors[index % len(colors)]
         x1, y1, x2, y2 = obj["bbox_2d"]
-        u, v = obj["pick_point_2d"]
+        target_x, target_y = obj["target_pixel"]
 
-        cv2.rectangle(canvas, (x1, y1), (x2, y2), color, thickness)
-        cv2.drawMarker(canvas, (u, v), color, cv2.MARKER_CROSS, round(18 * scale), thickness)
-        cv2.putText(canvas, obj["id"], (x1, max(20, y1 - 8)), cv2.FONT_HERSHEY_SIMPLEX,
-                    font_scale, color, thickness, cv2.LINE_AA)
+        # Detection boxes exclude their right and bottom edges
+        cv2.rectangle(canvas, (x1, y1), (x2 - 1, y2 - 1), color, thickness)
+        cv2.drawMarker(
+            canvas, (target_x, target_y), color,
+            cv2.MARKER_CROSS, marker_size, thickness,
+        )
+
+        label = obj["id"]
+        if "width_mm" in obj:
+            label += f" | {obj['width_mm']:.1f} mm"
+
+            # Show the projected physical rectangle and its shorter dimension
+            rectangle = np.rint(obj["rectangle_2d"]).astype(np.int32)
+            cv2.polylines(canvas, [rectangle], True, color, thickness, cv2.LINE_AA)
+            start, end = np.rint(obj["width_line_2d"]).astype(np.int32)
+            for first, second in [(start, end), (end, start)]:
+                cv2.arrowedLine(
+                    canvas, tuple(first), tuple(second), color,
+                    thickness + 1, cv2.LINE_AA, tipLength=0.15,
+                )
+
+        # Outline the label in black so it remains readable on light backgrounds
+        label_position = (x1, max(round(20 * font_scale), y1 - 8))
+        cv2.putText(
+            canvas, label, label_position, cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale, (0, 0, 0), thickness + 2, cv2.LINE_AA,
+        )
+        cv2.putText(
+            canvas, label, label_position, cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale, color, thickness, cv2.LINE_AA,
+        )
 
     path.parent.mkdir(parents=True, exist_ok=True)
-
     if not cv2.imwrite(str(path), canvas):
-        raise OSError(f"could not write scene overlay to {path}")
+        raise OSError(f"Could not write scene overlay to {path}")
