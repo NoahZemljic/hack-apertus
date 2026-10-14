@@ -2,45 +2,14 @@ import json
 import math
 from pathlib import Path
 
-from .schemas import load_perception_schema
-
 PLANNING_PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "apertus_system.txt"
-
-PERCEPTION_RELATION_RULES = """Relationship semantics:
-- A.on_top_of = B means A rests directly on B, not that B rests on A
-- Output only inside, on_top_of, held_by_human, and partially_occluded in relations
-- Do not output supports; code derives that inverse relationship from on_top_of
-- Support is directional, never symmetric, and must not form cycles
-- A.inside = B means A is contained in B, not that B is inside A; containment must not form cycles
-- Containment alone does not establish physical support
-- An object may be both inside a tray and resting directly on its base
-- Only claim contacts supported by the image; use null for an unrepresented support such as the table
-When repairing a relationship, correct inside or on_top_of using the image. Recheck all affected objects.
-Do not remove true contacts or invent contacts. Preserve unrelated correct detections,
-IDs, boxes, and pick points unless the image or a reported error gives a reason to change them."""
-
-def prepare_perception_prompt(width: int, height: int) -> str:
-    """Builds the Qwen prompt for grounded scene-graph extraction"""
-    schema = json.dumps(load_perception_schema(), separators=(",", ":"))
-    return f"""Analyze this overhead robot-workspace image and construct a complete 2D scene graph.
-
-The original image is {width} x {height} pixels. Coordinates are [u, v], where u increases rightward and v increases downward. Return all coordinates in this original image space.
-
-Detect every movable object, grey or black tray, plate, saucer, mug, and visible human hand. Classify trays as container, plates and saucers as surface, hands as human, and graspable objects including mugs as movable. For repeated objects, create unique snake_case IDs numbered from left to right. A pick_point_2d must lie on a visible solid part of the object's top surface, never in a gear hole, empty bounding-box area, or an occluding object. For containers and surfaces, choose a representative interior point. Use on_top_of only for direct contact with a supporting detected object; omit the table relation by using null. Use inside for membership in a tray or other container.
-
-Object identification: this is a workspace containing physical parts, not a collection of pictograms. A circular mechanical part with regularly spaced teeth around its rim is a gear (cogwheel), not a sun, star, or flower. Gears may have a solid raised cylindrical hub, a central bore, or neither visible; a central hole is NOT required. A toothed part with a solid raised hub is still a gear. Identify it by its mechanical shape, not color alone. When these mechanical features are visible, use label "gear", kind "movable", and IDs such as "gear_1"; record its color separately. Do not assume a gear is present without visual evidence. Place its pick_point_2d on visible solid material, such as the top of a solid hub; avoid a central hole only if one is actually present.
-
-{PERCEPTION_RELATION_RULES}
-
-Report observations only. Do not plan actions, infer an instruction, or invent absent objects. Use null, [], false, or "unknown" rather than omitting a required field. Return exactly one JSON object matching this JSON Schema:
-{schema}"""
 
 
 def prepare_planning_prompt(
     graph: dict, instruction: str, gripper_mm: float | None, *, geometry: dict | None = None,
     policy: str | None = None,
 ) -> str:
-    """Describe only fields supplied by the current or saved grounded graph."""
+    """Describe the SAM-derived graph and its supplied spatial measurements."""
     opening = gripper_mm if gripper_mm is not None else 85
     geometry = derived_geometry(graph) if geometry is None else geometry
     policy = PLANNING_PROMPT_PATH.read_text().strip() if policy is None else policy.strip()
@@ -81,7 +50,6 @@ def planning_field_semantics(graph: dict) -> str:
         "label": "the observed object description; underscores separate words",
         "kind": "the object's role: movable, container, surface, or human",
         "color": "the observed color; null means it is not established",
-        "target_pixel": "a picking or destination point in image pixels, not physical size",
         "pick_point_2d": "a picking or destination point in image pixels, not the object's center or physical size",
         "bbox_2d": "the object's image bounds in pixels, not millimetres",
         "width_mm": "the estimated physical grasp width; a value above the gripper opening prevents picking",
@@ -92,14 +60,7 @@ def planning_field_semantics(graph: dict) -> str:
         f"- objects[].{key}: {description}."
         for key, description in descriptions.items() if key in fields
     ]
-    if isinstance(graph.get("relations"), list):
-        guidance.append(
-            "- relations is a list of subject/relation/object/confidence entries. "
-            "image_left_of, image_right_of, image_up_from, and image_down_from describe image-plane directions from subject to object; "
-            "their inverses are implicit. inside describes containment, not physical support. "
-            "Relation confidence measures geometric evidence, not action safety."
-        )
-    relation_fields = {key for obj in graph["objects"] for key in obj.get("relations", {})}
+    relation_fields = {key for obj in graph["objects"] for key in obj["relations"]}
     relation_descriptions = {
         "inside": "the containing object's ID; containment alone does not establish support",
         "on_top_of": "the estimated supporting object's ID: this object is on that object, not the reverse; geometry is not physical confirmation",
@@ -116,44 +77,10 @@ def planning_field_semantics(graph: dict) -> str:
     return "\n".join(guidance)
 
 
-def prepare_perception_messages(image_path: Path, width: int, height: int) -> list[dict]:
-    """Attach a scene image to its perception prompt in chat-message format"""
-    return [{
-        "role": "user",
-        "content": [
-            {"type": "image", "image": str(image_path.resolve())},
-            {"type": "text", "text": prepare_perception_prompt(width, height)},
-        ],
-    }]
-
-
-def append_validation_feedback(
-    messages: list[dict], response: str, error: ValueError, guidance: str = ""
-) -> None:
-    """Append a failed response and correction request to an existing conversation"""
-    # Preserve the conversation so either model can repair its previous response
-    messages.extend([
-        {"role": "assistant", "content": response},
-        {
-            "role": "user",
-            "content": (
-                f"The previous response failed validation:\n{error}\n\n"
-                f"{guidance}\n\n"
-                "Resolve every listed issue using the original input as evidence. "
-                "Return the complete corrected JSON object, not a patch or explanation. "
-                "Keep all required fields and recheck consistency across the entire response"
-            ),
-        },
-    ])
-
-
 def derived_geometry(graph: dict) -> dict:
     """Calculate image ordering/distances using the supplied picking points."""
     objects = graph["objects"]
-    points = {
-        obj["id"]: obj["target_pixel"] if "target_pixel" in obj else obj["pick_point_2d"]
-        for obj in objects
-    }
+    points = {obj["id"]: obj["pick_point_2d"] for obj in objects}
 
     # Calculate spatial facts in code instead of asking Apertus to compare coordinates
     ordered = sorted(objects, key=lambda obj: (*points[obj["id"]], obj["id"]))

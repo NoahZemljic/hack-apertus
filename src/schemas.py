@@ -10,11 +10,8 @@ def load_schema(filename: str) -> dict:
 
 
 def load_scene_graph_schema() -> dict:
+    """Load the single SAM-derived scene graph contract."""
     return load_schema("scene_graph.schema.json")
-
-
-def load_perception_schema() -> dict:
-    return load_schema("perception.schema.json")
 
 
 def load_plan_schema() -> dict:

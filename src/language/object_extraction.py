@@ -6,7 +6,7 @@ from src.schemas import load_object_extraction_schema
 
 
 BASE_URL = "http://localhost:8000/v1"
-MODEL = "swiss-ai/Apertus-v1.5-8B"
+MODEL = "swiss-ai/Apertus-v1.5-70B"
 
 PROMPT = """
 Extract every explicitly mentioned concrete object or object category from the instruction.
@@ -113,7 +113,7 @@ def main():
     parser.add_argument(
         "--schema",
         type=Path,
-        default=Path("schema/object_extraction.schema.json")
+        help="Override the object extraction schema; defaults to the project contract"
     )
 
     parser.add_argument(
@@ -124,7 +124,7 @@ def main():
 
     args = parser.parse_args()
 
-    schema = load_object_extraction_schema()
+    schema = json.loads(args.schema.read_text()) if args.schema else load_object_extraction_schema()
     instructions = load_instructions(args.data)
 
     results = []

@@ -1,153 +1,117 @@
-# Clariden: allocate, run all scenes, compare with baseline
+# Clariden: full run, planning replay and benchmark comparison
 
-Run each block in order and stop if a command fails. Assumes the repo is at
-`/users/noahzemljic/hack-apertus` and you are already on a Clariden login node.
-This comparison runs the complete Qwen + Apertus pipeline, not perception alone.
+The supported pipeline is Apertus extraction → Qwen category discovery and
+verification → Grounding DINO → SAM 2 → geometry → Apertus planning.
+`run_grounded.py` is its only entry point.
+The full build, cache and deployment instructions live in
+[docs/CLARIDEN.md](docs/CLARIDEN.md); prepare that image and its model caches first.
 
-## 1. Login node: update the repo and enter a compute-node container
+## 1. Open the four-GPU container
+
+From a Clariden login node, using your mounted checkout:
 
 ```bash
-cd /users/noahzemljic/hack-apertus
-git pull --ff-only
-
-srun --account=g239 --partition=debug --nodes=1 --ntasks=1 \
-  --time=01:30:00 --job-name=hack-apertus \
-  --environment=./containers/apertus.edf.toml --pty bash
+cd "$HOME/hack-apertus" || exit 1
+srun -A g239 --partition=debug --nodes=1 --ntasks=1 \
+  --gpus-per-node=4 --cpus-per-task=64 --time=01:30:00 \
+  --environment=./containers/clariden.edf.toml --pty bash
 ```
 
-Debug allows 90 minutes on one node, including startup/downloads. Keep this
-terminal open. All remaining commands run inside this same compute-node shell.
-For a longer comparison, request `--partition=normal --time=04:00:00` instead.
-[CSCS partition limits](https://docs.cscs.ch/clusters/clariden/#partitions)
+All remaining commands run inside this container. It already provides the
+matching engine and dependencies; do not create a second Qwen environment or
+replace the image's Torch, Transformers or vLLM packages.
 
-## 2. Compute node: prepare the environment
-
-Keep Apertus/vLLM in `/opt/venv`; use `.venv-clariden` for Qwen and evaluation.
-Do not install Transformers 4 into `/opt/venv` or reinstall PyTorch.
+## 2. Run every stage and evaluate
 
 ```bash
-cd /users/noahzemljic/hack-apertus
-export HF_HOME="${SCRATCH:?SCRATCH is not set}/hack-apertus/huggingface"
-set -o pipefail
+cd "$HOME/hack-apertus" || exit 1
+mkdir -p "$HACK_APERTUS_OUTPUT"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/full-XXXXXX")" || exit 1
 
-if [ ! -x .venv-clariden/bin/python ]; then
-  /opt/venv/bin/python -m venv --system-site-packages .venv-clariden
-fi
+time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --debug-visualizations \
+  --out "$run_dir/results.json"
 
-# Expose the container's CUDA PyTorch packages to the Qwen environment
-CONTAINER_SITE=$(/opt/venv/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
-VISION_SITE=$(.venv-clariden/bin/python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
-printf '%s\n' "$CONTAINER_SITE" > "$VISION_SITE/container-packages.pth"
-
-.venv-clariden/bin/python -m pip install \
-  "transformers==4.57.6" "qwen-vl-utils>=0.0.8,<1" \
-  "jsonschema>=4.23,<5" \
-  "numpy>=2,<3" "opencv-python-headless>=4.10,<5"
-
-CUDA_VISIBLE_DEVICES=1 .venv-clariden/bin/python -c \
-'import torch, torchvision, cv2; from transformers import Qwen2_5_VLForConditionalGeneration; from qwen_vl_utils import process_vision_info; print("GPU:", torch.cuda.get_device_name(0)); print("CUDA:", torch.ones(1, device="cuda").item())'
+python starter/evaluate.py "$run_dir/results.json" \
+  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
 ```
 
-If model downloads require authentication, run `/opt/venv/bin/hf auth login`
-interactively once. Run project tests with `.venv-clariden/bin/python -m unittest discover -s tests`.
-Always specify `-s tests` to avoid loading unrelated container tests.
+No `--limit` means all scenes and instructions. The launcher starts the local
+Apertus 70B and Qwen3-VL-32B servers, runs DINO/SAM on the fourth GPU, then stops
+the servers. Each run gets a separate output directory. The mounted checkout's
+code, schemas and prompts are used immediately; rebuild the image when changing
+dependencies.
 
-## 3. Start Apertus on GPU 0 and wait for readiness
+The output folder contains the intermediate detections, masks and geometry,
+one planner graph per scene, the submission and the exact planning requests.
+Review `run_manifest.json`, `planning_policy.txt`, `results.raw.jsonl` and
+`report.json` to connect a score to the code and prompt that produced it.
+Only the evaluator reads challenge ground truth.
 
-Run this once per allocation. The timestamp keeps previous outputs intact.
+## 3. Replan from a saved run
+
+To test planning changes while retaining the previous detections and masks:
 
 ```bash
-RUN_DIRECTORY="outputs/comparison-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$RUN_DIRECTORY/pipeline" "$RUN_DIRECTORY/baseline"
-git rev-parse HEAD > "$RUN_DIRECTORY/commit.txt"
-printf 'Outputs: %s\n' "$RUN_DIRECTORY"
+cd "$HOME/hack-apertus" || exit 1
+previous_run="$HACK_APERTUS_OUTPUT/full-<previous-run-name>"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/replan-XXXXXX")" || exit 1
 
-CUDA_VISIBLE_DEVICES=0 /opt/venv/bin/vllm serve swiss-ai/Apertus-v1.5-8B \
-  --host 127.0.0.1 --port 8000 \
-  --dtype bfloat16 --tensor-parallel-size 1 \
-  --max-model-len 32768 --gpu-memory-utilization 0.8 \
-  --chat-template-content-format string \
-  > "$RUN_DIRECTORY/apertus.log" 2>&1 &
-APERTUS_PID=$!
+time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --geometry-input "$previous_run/geometry_results.json" \
+  --out "$run_dir/results.json"
 
-curl --fail --silent --show-error --retry 120 --retry-connrefused \
-  --retry-delay 5 --max-time 5 --output /dev/null \
-  --write-out 'HTTP %{http_code}\n' http://127.0.0.1:8000/health
+python starter/evaluate.py "$run_dir/results.json" \
+  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
 ```
 
-Proceed only after `HTTP 200`. Startup can take several minutes. If it fails,
-inspect `tail -n 80 "$RUN_DIRECTORY/apertus.log"`. `localhost` must refer to this
-compute node, not a login node or a different allocation.
+Keep the previous mask files in place. This rebuilds the planner graphs and
+spatial context from saved geometry and runs Apertus only. Repeat the previous
+run's graph options, such as `--no-support-candidates`, when holding those inputs
+constant. Planning makes one decision per instruction, with one retry only for
+malformed JSON or schema structure.
 
-## 4. Run Qwen + Apertus across all 10 scenes / 50 instructions
-
-Use no `--limit` to process all instructions. Each scene graph is loaded or created
-once and shared by that scene's instructions. Graphs are saved under
-`$RUN_DIRECTORY/pipeline/scene_graphs` and reused if that output directory is used again.
+## 4. Copy the artifacts for inspection
 
 ```bash
-CUDA_VISIBLE_DEVICES=1 .venv-clariden/bin/python -u run_pipeline.py \
-  --data dataset \
-  --out "$RUN_DIRECTORY/pipeline/results.json" \
-  --qwen-model Qwen/Qwen2.5-VL-7B-Instruct \
-  --apertus-model swiss-ai/Apertus-v1.5-8B \
-  --apertus-base-url http://127.0.0.1:8000/v1 \
-  --attention sdpa --timeout 300 \
-  2>&1 | tee "$RUN_DIRECTORY/pipeline/run.log"
+mkdir -p "$HOME/hack-apertus/outputs"
+cp -r --no-preserve=mode,ownership "$run_dir" "$HOME/hack-apertus/outputs/"
 ```
 
-If perception fails, the command stops with the error. Final results are written
-only after the whole run completes.
+This avoids preserving permissions and ACLs that some container home mounts
+reject. The original run remains in scratch.
 
-## 5. Run the provided baseline against the same Apertus server
+## Optional: compare with the supplied benchmark
+
+`baseline/baseline.py` is the challenge's original Apertus-only benchmark. It
+is retained for score comparison and is separate from the supported pipeline.
+For its model setup and usage, see [JURY_README.md](JURY_README.md#quickstart-15-minutes).
+The benchmark's `--mock` option checks file loading and scoring without models:
 
 ```bash
-.venv-clariden/bin/python -u baseline/baseline.py \
-  --data dataset --out "$RUN_DIRECTORY/baseline/results.json" \
-  --model swiss-ai/Apertus-v1.5-8B \
-  --base-url http://127.0.0.1:8000/v1 --timeout 300 \
-  2>&1 | tee "$RUN_DIRECTORY/baseline/run.log"
+benchmark_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/benchmark-XXXXXX")" || exit 1
+python baseline/baseline.py --mock --data "$HACK_APERTUS_DATA" \
+  --out "$benchmark_dir/results.json"
+python starter/evaluate.py "$benchmark_dir/results.json" \
+  --data "$HACK_APERTUS_DATA" --report "$benchmark_dir/report.json"
 ```
 
-This is the supplied direct-image baseline, without the Qwen scene graph.
-
-## 6. Score both runs and print the comparison
+A mock run is a setup check, not a model score. To compare two actual reports:
 
 ```bash
-.venv-clariden/bin/python starter/evaluate.py \
-  "$RUN_DIRECTORY/pipeline/results.json" --data dataset \
-  --report "$RUN_DIRECTORY/pipeline/report.json" \
-  | tee "$RUN_DIRECTORY/pipeline/score.txt"
-
-.venv-clariden/bin/python starter/evaluate.py \
-  "$RUN_DIRECTORY/baseline/results.json" --data dataset \
-  --report "$RUN_DIRECTORY/baseline/report.json" \
-  | tee "$RUN_DIRECTORY/baseline/score.txt"
-
-.venv-clariden/bin/python - "$RUN_DIRECTORY" <<'PY'
+python - "$run_dir/report.json" "$benchmark_dir/report.json" <<'PY'
 import json
 import sys
 from pathlib import Path
 
-directory = Path(sys.argv[1])
-scores = {}
 print(f'{"Run":<12} {"Grounding /35":>14} {"Safety /30":>12} {"Total /65":>12}')
-for name in ("pipeline", "baseline"):
-    report = json.loads((directory / name / "report.json").read_text())
-    scores[name] = report["automatic_score"]
-    print(f'{name:<12} {35 * report["grounding"]:>14.1f} {30 * report["safety"]:>12.1f} {scores[name]:>12.1f}')
-print(f'Pipeline minus baseline: {scores["pipeline"] - scores["baseline"]:+.1f} points')
+for name, filename in zip(("pipeline", "benchmark"), sys.argv[1:]):
+    report = json.loads(Path(filename).read_text())
+    print(f'{name:<12} {35 * report["grounding"]:>14.1f} '
+          f'{30 * report["safety"]:>12.1f} {report["automatic_score"]:>12.1f}')
 PY
 ```
 
-These are end-to-end challenge scores, not standalone scene-graph accuracy.
-Compare saved scene graphs with the source images for perception quality.
-
-## 7. Release the allocation when finished
-
-```bash
-kill "$APERTUS_PID"
-exit
-```
-
-No inference, scoring, or baseline commands above execute robot motion.
+Replace `benchmark_dir` with the directory of the actual benchmark run before
+making that comparison. These are end-to-end challenge scores; inspect the
+saved detection and graph overlays separately for perception quality.

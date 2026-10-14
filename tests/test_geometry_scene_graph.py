@@ -13,7 +13,7 @@ import urllib.error
 import cv2
 import numpy as np
 
-from run_geometry import main
+from run_grounded import main
 from src.apertus import ApertusPlanner, PlanningGenerationError
 from src.geometry_scene_graph import GeometrySceneGraphBuilder
 from src.prompting import prepare_planning_prompt
@@ -179,10 +179,10 @@ class GeometrySceneGraphTests(unittest.TestCase):
         self.assertFalse(out.exists())
         self.assertIn("unreachable", out.with_suffix(".raw.jsonl").read_text())
 
-    def test_invalid_planner_replies_survive_retry(self):
+    def test_format_invalid_planner_replies_survive_retry(self):
         self.object("cube_1", "red cube", (10, 10, 30, 30))
         graph, _, _ = self.builder().build("scene_test", 100, 60)
-        invalid = {"decision": "plan", "steps": [{"action": "pick", "object_id": "missing"}],
+        invalid = {"decision": "plan", "steps": [{"action": "pick"}],
                    "question": None, "reason": None}
         with patch("urllib.request.urlopen", side_effect=lambda *a, **k: self.response(invalid)):
             with self.assertRaises(PlanningGenerationError) as error:

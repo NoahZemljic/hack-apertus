@@ -25,8 +25,7 @@ def plan_to_result(instruction_id: str, plan: dict, graph: dict) -> dict:
     # Ground the result from the graph rather than trusting the model to repeat coordinates
     return {
         "instruction_id": instruction_id,
-        "target_pixel": (first_picked_object["target_pixel"] if "target_pixel" in first_picked_object
-                         else first_picked_object["pick_point_2d"]),
+        "target_pixel": first_picked_object["pick_point_2d"],
         "actions": actions,
     }
 

@@ -10,7 +10,7 @@ and records a separate container package manifest.
 | Dependency group | What it provides |
 | --- | --- |
 | Base project | NumPy, headless OpenCV, Pillow, and dependency-version checking. Geometry, mask I/O, and saved-graph building need no model inference. |
-| `vision` extra | Transformers for DINO/SAM/Qwen, Qwen image utilities, constrained decoding, headless Matplotlib plots, and the OpenAI-compatible client used by standalone scene discovery. |
+| `vision` extra | Transformers for DINO/SAM, headless Matplotlib plots, and the OpenAI-compatible client used by standalone scene discovery. Apertus and Qwen generation run through local vLLM servers. |
 | `accelerator` extra | Torch and Torchvision, **only when the container does not already provide its matching builds**. |
 
 The upstream development lock resolves Transformers 5.18.0 within the root
@@ -75,17 +75,16 @@ python -m src.check_environment --json
 
 The default vision check validates versions against `pyproject.toml`, actual
 NumPy/OpenCV/Pillow operations, Torch-to-NumPy interoperability, compiled
-Torchvision NMS, DINO/SAM/Qwen class imports, SAM box processing and mask
-restoration, constrained-decoder utilities, headless PNG plotting, and project
+Torchvision NMS, DINO/Qwen3-VL/SAM class imports, SAM box processing and mask
+restoration, headless PNG plotting, and project
 imports. It downloads no weights and makes no model inference requests.
 Missing packages or incompatible binaries produce named failures and a nonzero
 exit status. A CPU result does not count as verified GPU execution.
 
-The decoder uses LM Format Enforcer's public core API through `src.decoding`.
-Its older Transformers adapter imports a tokenizer symbol removed in
-Transformers 5; the project wrapper avoids that import and keeps schema token
-filtering active. The preflight exercises a real tokenizer and allowed-token
-grammar, not just package metadata.
+Extraction, category discovery and final planning send JSON-schema
+`response_format` requests to the local vLLM servers. The application does not
+load a Qwen tokenizer or maintain a local token-filtering decoder. JSON parsing
+and structural validation still check each returned payload.
 
 `--require-cuda` additionally tests a CUDA tensor operation and Torchvision's
 CUDA operator. `--check-vllm` imports the container-provided engine. These checks

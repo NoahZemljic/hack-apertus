@@ -110,12 +110,12 @@ def check_environment(*, profile: str = "vision", require_cuda: bool = False,
             import torch
             from PIL import Image
             from transformers import (AutoModelForZeroShotObjectDetection, AutoProcessor,
-                                      GroundingDinoForObjectDetection, Qwen2_5_VLForConditionalGeneration,
+                                      GroundingDinoForObjectDetection, Qwen3VLForConditionalGeneration,
                                       Sam2ImageProcessor, Sam2Model, Sam2Processor)
 
             # Resolving lazy model classes checks their complete import trees.
             assert all(cls is not None for cls in (AutoModelForZeroShotObjectDetection, AutoProcessor,
-                       GroundingDinoForObjectDetection, Qwen2_5_VLForConditionalGeneration, Sam2Model))
+                       GroundingDinoForObjectDetection, Qwen3VLForConditionalGeneration, Sam2Model))
             processor = Sam2Processor(Sam2ImageProcessor(size={"height": 32, "width": 32}))
             inputs = processor(images=Image.new("RGB", (40, 30)),
                                input_boxes=[[[4, 4, 20, 20]]], return_tensors="pt")
@@ -128,27 +128,13 @@ def check_environment(*, profile: str = "vision", require_cuda: bool = False,
 
         probe("Transformers model integration", transformer_operations)
 
-        def decoder_imports() -> str:
-            import torch
-            from tokenizers import Tokenizer, decoders, models
-            from transformers import PreTrainedTokenizerFast
-            from qwen_vl_utils import process_vision_info
+        def server_client_imports() -> str:
             from openai import OpenAI
-            from .decoding import SchemaConstrainedDecoder
 
-            assert all(item is not None for item in (process_vision_info, OpenAI))
-            backend = Tokenizer(models.WordLevel({"[UNK]": 0, "[EOS]": 1, "0": 2, "true": 3, "false": 4},
-                                                unk_token="[UNK]"))
-            backend.decoder = decoders.Fuse()
-            tokenizer = PreTrainedTokenizerFast(tokenizer_object=backend, unk_token="[UNK]", eos_token="[EOS]")
-            allowed = SchemaConstrainedDecoder(tokenizer).build_token_filter({"type": "boolean"})
-            first = allowed(0, torch.tensor([1]))
-            last = allowed(0, torch.tensor([1, 3]))
-            if set(first) != {3, 4} or 1 not in last:
-                raise RuntimeError("Schema token filtering failed to restrict boolean output")
-            return "Actual tokenizer/schema filtering, Qwen image utilities and local-server client"
+            assert OpenAI is not None
+            return "OpenAI-compatible client for local discovery/extraction stage scripts"
 
-        probe("decoder and server-client imports", decoder_imports)
+        probe("local server-client import", server_client_imports)
 
         def plot_operation() -> str:
             from matplotlib.backends.backend_agg import FigureCanvasAgg
@@ -165,7 +151,7 @@ def check_environment(*, profile: str = "vision", require_cuda: bool = False,
 
         probe("headless debug plots", plot_operation)
 
-    for module in ("run_grounded", "run_geometry", "src.masking.sam", "src.scene_discovery"):
+    for module in ("run_grounded", "src.masking.sam", "src.scene_discovery"):
         probe(f"project import: {module}", lambda name=module: str(importlib.import_module(name).__file__))
 
     if check_vllm:

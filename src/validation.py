@@ -2,7 +2,7 @@ import json
 
 from jsonschema import Draft202012Validator
 
-from .schemas import load_perception_schema, load_plan_schema, load_scene_graph_schema, load_schema
+from .schemas import load_plan_schema, load_scene_graph_schema
 
 
 def validate_structure(value: dict, schema: dict, name: str) -> dict:
@@ -29,17 +29,10 @@ def validate_structure(value: dict, schema: dict, name: str) -> dict:
     return value
 
 
-def validate_perception(detections: dict) -> dict:
-    # Detection syntax: labels, four box coordinates, and two target coordinates.
-    return validate_structure(detections, load_perception_schema(), "Perception")
-
-
 def validate_scene_graph(graph: dict, width: int | None = None,
                          height: int | None = None) -> dict:
-    """Validate the compact contract or the grounded graph and its references."""
-    if "image" not in graph:
-        return validate_structure(graph, load_scene_graph_schema(), "Scene graph")
-    validate_structure(graph, load_schema("grounded_scene_graph.schema.json"), "Grounded scene graph")
+    """Validate the SAM-derived graph and its image coordinates and references."""
+    validate_structure(graph, load_scene_graph_schema(), "Grounded scene graph")
     image = graph["image"]
     width = image["width"] if width is None else width
     height = image["height"] if height is None else height

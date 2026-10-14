@@ -6,6 +6,7 @@ import tempfile
 import unittest
 import warnings
 from contextlib import chdir
+from importlib import util
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -171,6 +172,10 @@ class SegmentationTests(unittest.TestCase):
         x, y = saved["safe_pixel"]
         self.assertEqual(int(loaded[y, x]), 255)
 
+    @unittest.skipUnless(
+        all(util.find_spec(name) is not None for name in ("torch", "transformers")),
+        "Requires Torch and Transformers for actual SAM processor integration",
+    )
     def test_actual_sam2_processor_batches_boxes_and_restores_resolution(self) -> None:
         import torch
         from transformers import Sam2ImageProcessor, Sam2Processor

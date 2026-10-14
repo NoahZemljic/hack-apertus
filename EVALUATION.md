@@ -109,7 +109,7 @@ answers. Run your pipeline on them and submit `results_heldout.json` with your D
 entry by **16.10 at 12:00 CEST**:
 
 ```
-python run.py --data heldout --out results_heldout.json   # your own command
+python run_grounded.py --data heldout --out results_heldout.json
 ```
 
 We score it with the same script against answers that are not published. The answers

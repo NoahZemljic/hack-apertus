@@ -218,10 +218,8 @@ class GroundedPipelineTests(unittest.TestCase):
         self.assertFalse(self.out.exists())
 
     def test_default_entrypoint_runs_full_pipeline(self):
-        import run_geometry
         import run_grounded
 
-        self.assertIs(run_geometry.main, run_grounded.main)
         args = run_grounded.create_parser().parse_args([])
         self.assertIsNone(args.input)
         self.assertEqual(args.query_source, "qwen_objects")
@@ -270,6 +268,50 @@ class GroundedPipelineTests(unittest.TestCase):
         self.assertEqual(self.queries, [])
         self.assertTrue(all("apertus.test" in url for url, _ in self.requests))
         self.assertEqual(json.loads((self.output / "scene_graphs" / "scene_01.json").read_text()), saved_graph)
+
+
+class StageEntrypointTests(unittest.TestCase):
+    def test_stage_model_defaults_match_the_full_pipeline(self):
+        from run_grounded import create_parser
+        from src.apertus import ApertusPlanner
+        from src.language.object_extraction import MODEL
+        from src.scene_discovery import QWEN_MODEL
+
+        args = create_parser().parse_args([])
+        config = GroundedPerceptionConfig()
+        self.assertEqual(ApertusPlanner().model, args.apertus_model)
+        self.assertEqual(MODEL, args.apertus_model)
+        self.assertEqual(config.apertus_model, args.apertus_model)
+        self.assertEqual(QWEN_MODEL, args.qwen_model)
+        self.assertEqual(config.qwen_model, args.qwen_model)
+
+    def test_extraction_cli_uses_project_schema_or_explicit_override(self):
+        from src.language import object_extraction
+        from src.schemas import load_object_extraction_schema
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            schema_path = root / "custom.schema.json"
+            override = {"type": "object", "properties": {"objects": {
+                "type": "array", "items": {"type": "string", "enum": ["red gear"]},
+            }}, "required": ["objects"], "additionalProperties": False}
+            schema_path.write_text(json.dumps(override))
+            for explicit in (False, True):
+                with self.subTest(explicit=explicit):
+                    out = root / f"extractions-{explicit}.json"
+                    argv = ["object_extraction", "--data", str(root), "--out", str(out)]
+                    if explicit:
+                        argv.extend(["--schema", str(schema_path)])
+                    with patch("sys.argv", argv), \
+                            patch.object(object_extraction, "load_instructions", return_value=[{
+                                "scene": "scene_01", "category": "simple", "instruction": "pick the red gear",
+                            }]), \
+                            patch.object(object_extraction, "ask_apertus", return_value={"objects": ["red gear"]}) as ask, \
+                            redirect_stdout(io.StringIO()):
+                        object_extraction.main()
+                    self.assertEqual(ask.call_args.kwargs["schema"],
+                                     override if explicit else load_object_extraction_schema())
+                    self.assertEqual(json.loads(out.read_text())[0]["extracted_objects"], ["red gear"])
 
 
 if __name__ == "__main__":

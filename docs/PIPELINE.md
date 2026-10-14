@@ -24,7 +24,7 @@ Qwen's role in this workflow is limited to the two category-discovery calls per
 scene, both before DINO. The final Apertus prompt uses the validated graph,
 mask-derived spatial context and `prompts/apertus_system.txt`.
 
-`run_geometry.py` is a compatibility alias for `run_grounded.py`. The launcher
+`run_grounded.py` is the only pipeline entry point. The launcher
 supplies model/server/device settings from `containers/deployment.toml`; direct
 CLI defaults also use `swiss-ai/Apertus-v1.5-70B` and
 `Qwen/Qwen3-VL-32B-Instruct`.
@@ -65,14 +65,14 @@ without requiring unrelated certification of tray capacity or stability.
 policy hash. `planning_policy.txt` saves that policy. Each raw entry also contains
 the exact planning and repair requests, including validation failures.
 
-The archived full grounded runs save the exact graph in
+Runs save the exact planner graph in
 `<output-directory>/scene_graphs/scene_XX.json`, with the additional spatial
 input in `scene_XX.spatial.json`. The full per-instruction prompt and responses
-are in `results.raw.jsonl`. The compact `run_pipeline.py` pipeline saves its
-graph in `outputs/scene_graphs/scene_XX.json` by default, or beside a custom
-`--out` file in its `scene_graphs` subdirectory. Its objects contain `id`, `label`,
-`target_pixel`, and optional `width_mm` and `graspable`; relations are a top-level list. The prompt
-accepts this compact graph and the richer graphs from saved grounded runs.
+are in `results.raw.jsonl`. There is one planner format, defined in
+`schema/scene_graph.schema.json`: each object has a label, kind, color,
+inclusive `bbox_2d`, SAM-derived `pick_point_2d`, confidence and relation fields.
+The spatial file supplies mask-centroid comparisons, and `scene_XX.debug.json`
+stores diagnostics; neither is another planner graph.
 
 ## Pipeline options and replay behavior
 
@@ -159,9 +159,7 @@ Failed builds save `<scene>.failure.json` and stop before planning.
 Apertus receives the clean graph plus mask-centroid ordering, pairwise centroid
 distances, and image-plane directional/overlap/touching edges. Review flags,
 candidate scores, and rejected relationships stay outside the prompt. Centroids
-determine spatial comparisons; safe pixels determine submission targets. The
-earlier Qwen graph workflow retains its original planning prompt and
-pick-point-derived geometry.
+determine spatial comparisons; safe pixels determine submission targets.
 
 ## Checkpoints and failures
 
@@ -180,34 +178,17 @@ inspect these separately from model refusals. Connection/HTTP failures stop the
 run rather than refusing every instruction. Successful results are checkpointed
 after each instruction.
 
-## Earlier Qwen graph workflow
+## Schemas and benchmark
 
-`run.py` is a separate workflow: Qwen2.5-VL generates a scene graph directly,
-then Apertus plans from it. It does not run DINO, SAM or mask geometry, and its
-`--reuse-scene-graphs` option omits the grounded pipeline's separate spatial
-prompt context. For evaluating grounded perception, use `run_grounded.py`.
+Qwen discovers and verifies category names using `schema/scene_discovery.schema.json`;
+it does not generate the planner graph. DINO and SAM supply detections and masks,
+and Python builds `schema/scene_graph.schema.json`. Apertus extraction uses
+`schema/object_extraction.schema.json`, planning uses `schema/plan.schema.json`,
+and the final submission uses `schema/result.schema.json`.
 
-`run.py` retains its defaults (Qwen2.5-VL-7B-Instruct and Apertus 8B). Its
-`--reuse-scene-graphs` skips Qwen inference only when a cached graph exists and
-still validates that graph against the image dimensions. Default outputs are
-`outputs/results.json`, `outputs/results.raw.jsonl` and `outputs/scene_graphs/`.
-
-Qwen's perception contract uses `schema/scene_graph.schema.json` with `supports`
-excluded. It predicts `inside`, `on_top_of`, holding and occlusion flags. Code
-validates raw observations, derives inverse support lists from `on_top_of`,
-then validates the complete graph before caching or planning. Containment alone
-does not create support.
-
-`src.decoding.SchemaConstrainedDecoder` uses LM Format Enforcer through
-Transformers' `prefix_allowed_tokens_fn` to constrain JSON structure. Tokenizer
-data is cached, with a fresh schema parser per generation attempt. Missing
-dependencies stop generation; there is no automatic unconstrained fallback.
-Validators still check image bounds, references and relation cycles. Truncated
-JSON is rejected, and failed perception attempts save `<scene>.failure.json`
-before stopping. DINO/SAM construct graphs in code rather than generating JSON.
-
-Apertus planning uses `schema/plan.schema.json`; the final submission uses
-`schema/result.schema.json`.
+`baseline/baseline.py` is the challenge's supplied Apertus benchmark. It is kept
+for score comparison and does not participate in this pipeline. For benchmark
+instructions, see [the comparison guide](../instructions.md).
 
 ## Technical references
 

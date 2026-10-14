@@ -22,7 +22,7 @@ DATASET = Path("dataset")
 OUTPUT = Path("outputs/grounded_pipeline/scene_discovery.json")
 
 QWEN_URL = "http://127.0.0.1:8001/v1"
-QWEN_MODEL = "qwen-vl"
+QWEN_MODEL = "Qwen/Qwen3-VL-32B-Instruct"
 
 
 GENERIC_REFERENCES = {

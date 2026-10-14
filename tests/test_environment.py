@@ -1,7 +1,7 @@
 """Environment failures should be explicit without loading models or calling servers."""
 
 from contextlib import redirect_stdout
-from importlib import metadata
+from importlib import metadata, util
 import io
 import json
 import unittest
@@ -34,6 +34,10 @@ class EnvironmentTests(unittest.TestCase):
         self.assertIn("Pillow", failures[0]["check"])
         self.assertIn("PackageNotFoundError", failures[0]["detail"])
 
+    @unittest.skipUnless(
+        all(util.find_spec(name) is not None for name in ("torch", "torchvision", "transformers", "openai")),
+        "Requires the vision and accelerator dependencies",
+    )
     def test_cuda_requirement_cannot_pass_on_cpu(self) -> None:
         with patch("torch.cuda.is_available", return_value=False):
             report = check_environment(require_cuda=True)

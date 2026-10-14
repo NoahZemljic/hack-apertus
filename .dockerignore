@@ -3,9 +3,7 @@
 **
 !pyproject.toml
 !uv.lock
-!run.py
 !run_grounded.py
-!run_geometry.py
 !src/
 !src/**
 !prompts/

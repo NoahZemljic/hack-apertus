@@ -17,13 +17,18 @@ def action_plan(*steps):
 
 class SinglePassPlanningTests(unittest.TestCase):
     def setUp(self):
-        self.graph = {"objects": [
-            {"id": "bolt", "label": "bolt", "kind": "movable", "pick_point_2d": [10, 10],
-             "relations": {"supports": ["nut"], "on_top_of": None}},
-            {"id": "nut", "label": "nut", "kind": "movable", "pick_point_2d": [20, 20],
-             "relations": {"supports": [], "on_top_of": "bolt"}},
-            {"id": "tray", "label": "tray", "kind": "container", "pick_point_2d": [30, 30]},
-        ], "relations": []}
+        self.graph = {"image": {"width": 100, "height": 80}, "objects": [
+            {"id": oid, "label": oid, "kind": kind, "color": None,
+             "pick_point_2d": [point, point], "bbox_2d": [point - 5, point - 5, point + 5, point + 5],
+             "confidence": 0.9,
+             "relations": {"inside": None, "on_top_of": support, "supports": supported,
+                           "held_by_human": False, "partially_occluded": False}}
+            for oid, kind, point, support, supported in (
+                ("bolt", "movable", 10, None, ["nut"]),
+                ("nut", "movable", 20, "bolt", []),
+                ("tray", "container", 30, None, []),
+            )
+        ]}
         self.valid = action_plan(("pick", "bolt"))
 
     def test_graph_support_estimates_do_not_trigger_a_second_decision(self):

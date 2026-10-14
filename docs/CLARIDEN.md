@@ -1,6 +1,6 @@
 # Single-container Clariden deployment
 
-The launcher runs the existing `run_grounded.py` pipeline: Apertus extraction →
+The launcher runs `run_grounded.py`: Apertus extraction →
 Qwen discovery/verification → DINO → cleaned detections → SAM 2 → geometry → scene
 graph → Apertus planning → results. All inference stays local. Normal startup forces
 offline model loading and binds both servers to `127.0.0.1`.
@@ -517,7 +517,7 @@ settings, which belong in deployment config. Replay skips unused servers:
 bash containers/start_pipeline.sh -- --geometry-input /mounted/geometry_results.json
 # Geometry → graphs only: no model servers or weights needed.
 bash containers/start_pipeline.sh -- --geometry-input /mounted/geometry_results.json --build-only
-# Original CPU replay also remains available directly.
+# CPU graph replay also runs directly, without the launcher.
 python run_grounded.py --geometry-input /mounted/geometry_results.json --build-only \
   --data "$HACK_APERTUS_DATA"
 ```
@@ -527,12 +527,11 @@ The deployment/pipeline never reads challenge ground truth.
 
 ## Plan and evaluate from saved grounding artifacts
 
-`run_grounded.py --geometry-input` preserves the grounded pipeline's additional
-spatial prompt context. It rebuilds and validates graphs from saved geometry and
+`run_grounded.py --geometry-input` rebuilds and validates graphs from saved geometry and
 SAM mask PNGs, then calls Apertus; extraction, Qwen, DINO and SAM inference are
-skipped. Saved geometry replay uses geometry and masks only.
-`run.py --reuse-scene-graphs` is the earlier Qwen graph workflow and
-omits the grounded pipeline's separate spatial context.
+skipped. The rebuilt graphs and mask-centroid spatial context are the same inputs
+used for final planning in a full run. Saved geometry replay uses geometry and
+masks only.
 
 With a manually started Apertus server, use a second shell in the same node
 allocation. From the **login node**, substituting your running job ID:
@@ -545,18 +544,18 @@ srun --jobid="$job_id" --overlap --ntasks=1 \
 ```
 
 Use the unified EDF for every shell. It supplies `/opt/hack-apertus`, the
-application dependencies and `HACK_APERTUS_DATA`/`HACK_APERTUS_OUTPUT`; the
-superseded separate EDFs had different paths/caches. In the new container shell:
+application dependencies and `HACK_APERTUS_DATA`/`HACK_APERTUS_OUTPUT`.
+In the new container shell, use the mounted checkout:
 
 ```sh
-cd /opt/hack-apertus || exit 1
+cd "$HOME/hack-apertus" || exit 1
 curl --fail http://127.0.0.1:8000/health
 curl --fail http://127.0.0.1:8000/v1/models
 
-# Legacy artifact path from the tested replay. For new artifacts use
-# $HOME/hack-apertus/outputs/grounded_pipeline/geometry_results.json instead.
-geometry_input="$HOME/hack-apertus/geometry_results.json"
-run_dir="$HACK_APERTUS_OUTPUT/grounded70b-$(date -u +%Y%m%dT%H%M%S)-$$"
+previous_run="$HACK_APERTUS_OUTPUT/full-<previous-run-name>"
+geometry_input="$previous_run/geometry_results.json"
+mkdir -p "$HACK_APERTUS_OUTPUT"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/replan-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
 
 python run_grounded.py \
   --geometry-input "$geometry_input" --data "$HACK_APERTUS_DATA" \

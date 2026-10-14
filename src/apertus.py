@@ -20,7 +20,7 @@ class ApertusPlanner:
     def __init__(
         self,
         base_url: str = "http://localhost:8000/v1",
-        model: str = "swiss-ai/Apertus-v1.5-8B",
+        model: str = "swiss-ai/Apertus-v1.5-70B",
         timeout: float = 180,
         retries: int = 1,
         constrained: bool = True,

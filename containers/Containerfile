@@ -19,7 +19,7 @@ COPY src/ src/
 COPY prompts/ prompts/
 COPY starter/ starter/
 COPY schema/ schema/
-COPY run.py run_grounded.py run_geometry.py ./
+COPY run_grounded.py ./
 COPY containers/ containers/
 COPY tests/ tests/
 COPY docs/ docs/
