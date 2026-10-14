@@ -3,38 +3,13 @@
 This follows the published challenge criteria. The automatic part runs with
 
 ```
-uv run starter/evaluate.py results.json --data dataset
+python starter/evaluate.py results.json --data dataset
 ```
 
 in seconds, with no GPU and no robot, so every team gets a comparable score.
 
 100 points in total: **65 from the script** (grounding 35, safety 30) and **35 from the
 jury** (pipeline logic 20, runs locally 10, code quality 5).
-
-## Setup and quick start
-
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run
-these commands from the repository root:
-
-```sh
-uv sync --locked
-uv run run.py --mock
-uv run starter/evaluate.py outputs/results.json --data dataset
-```
-
-uv manages Python (3.11 is selected in `.python-version`) and the `.venv`
-environment. Dependencies are declared in `pyproject.toml` and pinned in
-`uv.lock`; no manual environment activation is needed. Use `uv add <package>`
-to add a dependency and commit both files.
-
-The mock run checks the pipeline without a model. To serve Apertus locally on a
-supported GPU machine, run the optional server in a separate uv environment:
-
-```sh
-uv tool run --from vllm vllm serve swiss-ai/Apertus-v1.5-8B --chat-template-content-format string
-```
-
-Then run `uv run run.py` to use the server.
 
 ## What you submit
 
@@ -129,12 +104,12 @@ choice.
 
 ## The held-out test
 
-On **15.10 at 12:00** five new scenes with 40 instructions appear in `heldout/`, without
+On **14.10 at 12:00 CEST** five new scenes with 40 instructions appear in `heldout/`, without
 answers. Run your pipeline on them and submit `results_heldout.json` with your Devpost
-entry by **16.10 at 12:00**:
+entry by **16.10 at 12:00 CEST**:
 
 ```
-uv run run.py --data heldout --out results_heldout.json   # your own command
+python run.py --data heldout --out results_heldout.json   # your own command
 ```
 
 We score it with the same script against answers that are not published. The answers
