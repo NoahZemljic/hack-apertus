@@ -1,16 +1,117 @@
 """Regression checks for conservative DINO cleanup and its script integration."""
 
 import copy
+from contextlib import nullcontext
 import json
+import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from PIL import Image
 
 from src.grounding.grounding_dino import GroundingDinoDetector, main
 from src.grounding.postprocess_grounding import process_scene, query_candidates
+
+
+class GroundingInferenceTests(unittest.TestCase):
+    """Exercise real detection orchestration with fake model tensor outputs."""
+
+    class Inputs(dict):
+        def __init__(self):
+            super().__init__(input_ids=[17, 23])
+            self.input_ids = self["input_ids"]
+            self.device = None
+
+        def to(self, device):
+            self.device = device
+            return self
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.image = Path(self.directory.name) / "rgb.png"
+        Image.new("RGB", (100, 60)).save(self.image)
+        self.detector = object.__new__(GroundingDinoDetector)
+        self.inputs = []
+
+        def prepare(**kwargs):
+            inputs = self.Inputs()
+            self.inputs.append(inputs)
+            return inputs
+
+        self.detector.processor = Mock(side_effect=prepare)
+        self.detector.model = Mock(device="cuda:0")
+        self.torch_patch = patch.dict(sys.modules, {
+            "torch": SimpleNamespace(inference_mode=nullcontext),
+        })
+        self.torch_patch.start()
+        self.addCleanup(self.torch_patch.stop)
+        self.addCleanup(self.directory.cleanup)
+
+    @staticmethod
+    def predictions(*labels):
+        return [{
+            "boxes": [Mock(tolist=Mock(return_value=[1.234, 2.0, 15.0, 22.0])) for _ in labels],
+            "scores": [Mock(item=Mock(return_value=0.876543)) for _ in labels],
+            "text_labels": list(labels),
+        }]
+
+    def test_categories_use_isolated_captions_and_preserve_all_instances(self):
+        self.detector.processor.post_process_grounded_object_detection.side_effect = [
+            self.predictions("gear", "red gear"), self.predictions("yellow"),
+        ]
+        detections = self.detector.detect(
+            self.image, ["Red gears", "yellow gear", " red gear. "],
+            box_threshold=0.4, text_threshold=0.2,
+        )
+        self.assertEqual(
+            [call.kwargs["text"] for call in self.detector.processor.call_args_list],
+            ["red gear.", "yellow gear."],
+        )
+        self.assertEqual([row["id"] for row in detections],
+                         ["red_gear_1", "red_gear_2", "yellow_gear_1"])
+        self.assertEqual([row["label"] for row in detections],
+                         ["red gear", "red gear", "yellow gear"])
+        self.assertEqual([row["text_label"] for row in detections],
+                         ["gear", "red gear", "yellow"])
+        self.assertEqual([row["query"] for row in detections],
+                         ["red gear", "red gear", "yellow gear"])
+        self.assertEqual(detections[0]["box"], [1.23, 2.0, 15.0, 22.0])
+        self.assertEqual(detections[0]["score"], 0.8765)
+        self.assertEqual(self.detector.model.call_count, 2)
+        self.assertTrue(all(inputs.device == "cuda:0" for inputs in self.inputs))
+        processor_calls = self.detector.processor.call_args_list
+        self.assertIs(processor_calls[0].kwargs["images"], processor_calls[1].kwargs["images"])
+        for call in self.detector.processor.post_process_grounded_object_detection.call_args_list:
+            self.assertEqual(call.kwargs, {
+                "threshold": 0.4, "text_threshold": 0.2, "target_sizes": [(60, 100)],
+            })
+
+    def test_empty_queries_do_not_open_image_or_infer(self):
+        for queries in ([], ["", " . ", "\t"]):
+            with self.subTest(queries=queries):
+                self.assertEqual(self.detector.detect(Path("does-not-exist.png"), queries), [])
+        self.detector.processor.assert_not_called()
+        self.detector.model.assert_not_called()
+
+    def test_missing_detections_are_not_created_from_queries(self):
+        self.detector.processor.post_process_grounded_object_detection.side_effect = [
+            self.predictions(), self.predictions(),
+        ]
+        self.assertEqual(self.detector.detect(self.image, ["blue cube", "black tray"]), [])
+        self.assertEqual(self.detector.model.call_count, 2)
+
+    def test_ids_repeat_deterministically_when_queries_are_normalized(self):
+        self.detector.processor.post_process_grounded_object_detection.side_effect = [
+            self.predictions("gray tray"), self.predictions("gear", "gear"),
+            self.predictions("gray tray"), self.predictions("gear", "gear"),
+        ]
+        first = self.detector.detect(self.image, ["gray trays", "gears"])
+        second = self.detector.detect(self.image, ["grey tray", "gear"])
+        self.assertEqual(first, second)
+        self.assertEqual([row["id"] for row in first], ["grey_tray_1", "gear_1", "gear_2"])
 
 
 class GroundingCleanupTests(unittest.TestCase):

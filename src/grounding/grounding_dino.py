@@ -102,51 +102,53 @@ class GroundingDinoDetector:
         box_threshold: float = 0.3,
         text_threshold: float = 0.25,
     ) -> list[dict]:
-        """Run Grounding DINO on one image."""
+        """Ground each verified category independently using the same loaded model.
+
+        A joint caption can produce phrases containing multiple categories and
+        suppress separate instances. Isolated captions keep the detected object
+        category unambiguous; backend phrases remain available for diagnosis.
+        """
 
         queries = normalize_queries(queries)
         if not queries:
             return []
 
-        image = Image.open(image_path).convert("RGB")
-
-        # Grounding DINO works well with a dot-separated text prompt
-        text = ". ".join(queries) + "."
-
-        inputs = self.processor(
-            images=image,
-            text=text,
-            return_tensors="pt",
-        )
+        with Image.open(image_path) as source:
+            image = source.convert("RGB")
 
         import torch
 
-        inputs = inputs.to(self.model.device)
-        with torch.inference_mode():
-            outputs = self.model(**inputs)
-
-        results = self.processor.post_process_grounded_object_detection(
-            outputs,
-            inputs.input_ids,
-            threshold=box_threshold,
-            text_threshold=text_threshold,
-            target_sizes=[image.size[::-1]],
-        )[0]
-
         detections = []
+        for query in queries:
+            inputs = self.processor(
+                images=image,
+                text=f"{query}.",
+                return_tensors="pt",
+            )
+            inputs = inputs.to(self.model.device)
+            with torch.inference_mode():
+                outputs = self.model(**inputs)
 
-        for box, score, label in zip(
-            results["boxes"],
-            results["scores"],
-            results["text_labels"],
-        ):
-            detections.append(
-                {
-                    "label": label,
+            results = self.processor.post_process_grounded_object_detection(
+                outputs,
+                inputs.input_ids,
+                threshold=box_threshold,
+                text_threshold=text_threshold,
+                target_sizes=[image.size[::-1]],
+            )[0]
+
+            for box, score, text_label in zip(
+                results["boxes"],
+                results["scores"],
+                results["text_labels"],
+            ):
+                detections.append({
+                    "label": query,
+                    "query": query,
+                    "text_label": text_label,
                     "box": [round(x, 2) for x in box.tolist()],
                     "score": round(score.item(), 4),
-                }
-            )
+                })
 
         return assign_detection_ids(detections)
 
