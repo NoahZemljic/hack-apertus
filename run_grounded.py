@@ -13,6 +13,7 @@ from src.geometry_scene_graph import GeometrySceneGraphBuilder
 from src.geometry import GeometryConfig
 from src.grounded_perception import GroundedPerceptionConfig, generate_geometry
 from src.prompting import prepare_planning_prompt
+from src.provenance import sha256_text, write_run_manifest
 from src.results import plan_to_result, write_submission_files
 from src.visualization import write_scene_overlay
 
@@ -96,7 +97,13 @@ def main(argv: list[str] | None = None) -> int:
     # Keep intermediate artifacts and graphs beside the submission by default.
     artifact_dir = args.artifact_dir or args.out.parent
     graph_dir = args.scene_graph_dir or args.out.parent / "scene_graphs"
-    if args.input is None:
+    fresh_perception = args.input is None
+    manifest = write_run_manifest(args.out.parent, {
+        key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()
+    })
+    # A run uses one policy snapshot even if the mounted prompt changes mid-run.
+    planning_policy = (args.out.parent / "planning_policy.txt").read_text()
+    if fresh_perception:
         # Fresh run: extraction → Qwen → DINO → cleanup → SAM → mask geometry.
         # generate_geometry saves checkpoints and returns the geometry JSON path.
         try:
@@ -129,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
     # A build-only run never overwrites an existing submission or pretends to have model results.
     built = []
     graph_dir.mkdir(parents=True, exist_ok=True)
-    for scene_dir, scene in scenes:
+    for _, scene in scenes:
         try:
             graph, spatial, debug = builder.build(scene.name, *scene.size)
         except (ValueError, OSError, KeyError, TypeError) as error:
@@ -156,7 +163,8 @@ def main(argv: list[str] | None = None) -> int:
         # Attach this scene's mask-derived spatial context to each planning prompt.
         planner = ApertusPlanner(base_url=args.apertus_base_url, model=args.apertus_model,
                                  timeout=args.timeout, constrained=not args.no_constrained_decoding,
-                                 prompt_builder=partial(prepare_planning_prompt, geometry=spatial))
+                                 prompt_builder=partial(prepare_planning_prompt, geometry=spatial,
+                                                       policy=planning_policy))
         instructions = scene.instructions if remaining is None else scene.instructions[:remaining]
         for instruction_id, _, instruction in instructions:
             prompt = planner.prompt_builder(graph, instruction, scene.gripper_max_opening_mm)
@@ -167,8 +175,12 @@ def main(argv: list[str] | None = None) -> int:
                 result = plan_to_result(instruction_id, plan, graph)
             except (urllib.error.URLError, TimeoutError, ConnectionError) as exception:
                 # Save available progress and stop if the server cannot be reached.
+                if planner.last_trace and planner.last_trace[0].get("messages"):
+                    prompt = planner.last_trace[0]["messages"][0]["content"]
                 raw.append({"instruction_id": instruction_id, "stage": "planning", "instruction": instruction,
-                            "prompt": prompt, "error": f"{type(exception).__name__}: {exception}"})
+                            "prompt": prompt, "prompt_sha256": sha256_text(prompt),
+                            "requests": planner.last_trace,
+                            "error": f"{type(exception).__name__}: {exception}"})
                 if results:
                     write_submission_files(args.out, args.team, results, raw)
                 else:
@@ -183,12 +195,16 @@ def main(argv: list[str] | None = None) -> int:
                 result = {"instruction_id": instruction_id, "target_pixel": None,
                           "actions": [{"action": "refuse", "reason": "Planning failed validation; no robot motion was issued"}]}
             # Check the final challenge answer format before checkpointing it.
+            if planner.last_trace and planner.last_trace[0].get("messages"):
+                prompt = planner.last_trace[0]["messages"][0]["content"]
             kind, validation_error = answer_type(result)
             if validation_error:
                 raise ValueError(f"{instruction_id}: invalid submission: {validation_error}")
             results.append(result)
             raw.append({"instruction_id": instruction_id, "stage": "planning", "instruction": instruction,
-                        "prompt": prompt, "replies": replies, "error": error})
+                        "prompt": prompt, "prompt_sha256": sha256_text(prompt),
+                        "planning_policy_sha256": manifest["planning_policy_sha256"],
+                        "requests": planner.last_trace, "replies": replies, "error": error})
             # Preserve partial progress if a later request fails or the process stops.
             write_submission_files(args.out, args.team, results, raw)
             print(f"[{len(results)}] {instruction_id}: {kind}" + (f" ({error})" if error else ""), flush=True)

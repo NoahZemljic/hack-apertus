@@ -2,6 +2,7 @@
 
 from contextlib import redirect_stdout, redirect_stderr
 import io
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -40,6 +41,7 @@ class GroundedPipelineTests(unittest.TestCase):
         self.queries = []
         self.events = []
         self.discovery_replies = 0
+        self.extra_detections = []
 
     def http_response(self, request, **kwargs):
         body = json.loads(request.data)
@@ -55,20 +57,27 @@ class GroundedPipelineTests(unittest.TestCase):
             reply = {"objects": ["red cube", "mug"] if self.discovery_replies % 2 else ["red cube"]}
         else:
             self.events.append("planning")
-            reply = {"decision": "plan", "steps": [{"action": "pick", "object_id": "red_cube_1"}],
-                     "question": None, "reason": None}
+            if 'Instruction: "pick the blue cube"' in prompt:
+                reply = {"decision": "refuse", "steps": [], "question": None,
+                         "reason": "The blue cube is absent from the supplied scene."}
+            elif 'Instruction: "throw the red cube"' in prompt:
+                reply = {"decision": "refuse", "steps": [], "question": None,
+                         "reason": "Throwing is not a controlled pick/place operation."}
+            else:
+                reply = {"decision": "plan", "steps": [{"action": "pick", "object_id": "red_cube_1"}],
+                         "question": None, "reason": None}
         return io.BytesIO(json.dumps({"choices": [{"message": {"content": json.dumps(reply)}}]}).encode())
 
     def detections(self, image_path, queries, box_threshold, text_threshold):
         self.events.append("grounding")
         self.queries.append(queries)
         return [{"id": f"raw_{i}", "label": "red cube", "box": [20, 20, 40, 40], "score": 0.9}
-                for i in (1, 2)]
+                for i in (1, 2)] + self.extra_detections
 
     def masks(self, segmenter, image_path, detections):
         self.events.append("segmentation")
         # Actual cleanup must have merged the duplicate boxes before SAM.
-        self.assertEqual(len(detections), 1)
+        self.assertEqual(len(detections), 1 + len(self.extra_detections))
         shape = cv2.imread(str(image_path)).shape[:2]
         objects = []
         for detection in detections:
@@ -111,15 +120,56 @@ class GroundedPipelineTests(unittest.TestCase):
         for filename in ("object_extractions.json", "scene_discovery.json", "grounding_detections.json",
                          "grounding_detections_clean.json", "grounding_cleanup_report.json",
                          "segmentation_results.json", "geometry_results.json", "geometry_debug.json",
-                         "perception_config.json", "results.json", "results.raw.jsonl"):
+                         "perception_config.json", "run_manifest.json",
+                         "planning_policy.txt", "results.json", "results.raw.jsonl"):
             self.assertTrue((self.output / filename).exists(), filename)
         segmentation = json.loads((self.output / "segmentation_results.json").read_text())[0]
         obj = segmentation["objects"][0]
         self.assertNotIn("mask", obj)
         self.assertTrue(Path(obj["mask_path"]).is_file())
         self.assertTrue((self.output / "scene_graphs" / "scene_01.json").is_file())
-        result = json.loads(self.out.read_text())["results"][0]
-        self.assertEqual(result["target_pixel"], obj["safe_pixel"])
+        results = json.loads(self.out.read_text())["results"]
+        self.assertEqual(results[0]["target_pixel"], obj["safe_pixel"])
+        self.assertEqual(results[1]["actions"][0]["action"], "refuse")
+        self.assertIn("blue cube", results[1]["actions"][0]["reason"])
+        self.assertIsNone(results[1]["target_pixel"])
+        manifest = json.loads((self.output / "run_manifest.json").read_text())
+        policy = (self.output / "planning_policy.txt").read_text()
+        policy_hash = hashlib.sha256(policy.encode()).hexdigest()
+        self.assertEqual(manifest["planning_policy_sha256"], policy_hash)
+        self.assertEqual(Path(manifest["repository_root"]), Path(__file__).resolve().parents[1])
+        self.assertEqual(manifest["source_sha256"]["run_grounded.py"],
+                         hashlib.sha256((Path(__file__).resolve().parents[1] / "run_grounded.py")
+                                        .read_bytes()).hexdigest())
+        raw = [json.loads(line) for line in self.out.with_suffix(".raw.jsonl").read_text().splitlines()]
+        planning_requests = [body for _, body in self.requests if
+                             body.get("response_format", {}).get("json_schema", {}).get("name") == "robot_plan"]
+        self.assertEqual(len(raw), 2)
+        self.assertEqual(len(planning_requests), 2)
+        for entry in raw:
+            self.assertEqual(entry["planning_policy_sha256"], policy_hash)
+            self.assertEqual(entry["prompt_sha256"], hashlib.sha256(entry["prompt"].encode()).hexdigest())
+            self.assertIn(policy.strip(), entry["prompt"])
+            self.assertEqual(entry["requests"][0]["messages"], [{"role": "user", "content": entry["prompt"]}])
+            self.assertEqual([trace["reply"] for trace in entry["requests"]], entry["replies"])
+        planned, absent = raw
+        self.assertEqual([trace["stage"] for trace in planned["requests"]], ["draft"])
+        self.assertEqual([trace["attempt"] for trace in planned["requests"]], [1])
+        for trace, body in zip(planned["requests"], planning_requests):
+            self.assertEqual(trace["messages"], body["messages"])
+            self.assertEqual(trace["model"], body["model"])
+            self.assertEqual(trace["temperature"], body["temperature"])
+            self.assertEqual(trace["max_tokens"], body["max_tokens"])
+            self.assertTrue(trace["constrained_decoding"])
+            self.assertIsNone(trace["validation_error"])
+        self.assertEqual([trace["stage"] for trace in absent["requests"]], ["draft"])
+        self.assertEqual(absent["requests"][0]["model"], "test-apertus")
+        self.assertTrue(absent["requests"][0]["constrained_decoding"])
+        self.assertEqual(json.loads(absent["requests"][0]["reply"])["decision"], "refuse")
+        for entry in raw:
+            self.assertNotIn("Deterministic reference check", entry["prompt"])
+            self.assertEqual(len(entry["requests"]), 1)
+        self.assertIsNone(absent["error"])
 
     def test_limit_skips_later_scenes_but_extracts_all_selected_scene_instructions(self):
         self.run_pipeline("--limit", "1")
@@ -177,6 +227,49 @@ class GroundedPipelineTests(unittest.TestCase):
         self.assertEqual(args.query_source, "qwen_objects")
         self.assertEqual(args.out, Path("outputs/grounded_pipeline/results.json"))
         self.assertEqual(GroundedPerceptionConfig().query_source, "qwen_objects")
+    def test_default_run_uses_one_planning_pass_and_logs_its_actual_prompt(self):
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--limit", "1"), 0)
+        self.assertEqual(self.events.count("planning"), 1)
+        raw = json.loads(self.out.with_suffix(".raw.jsonl").read_text())
+        self.assertEqual([trace["stage"] for trace in raw["requests"]], ["draft"])
+        body = next(body for _, body in self.requests if
+                    body.get("response_format", {}).get("json_schema", {}).get("name") == "robot_plan")
+        self.assertEqual(raw["prompt"], body["messages"][0]["content"])
+        self.assertNotIn("Deterministic reference check", raw["prompt"])
+        self.assertEqual(raw["prompt_sha256"], hashlib.sha256(raw["prompt"].encode()).hexdigest())
+
+    def test_unsafe_requested_operation_is_decided_by_apertus(self):
+        (self.data / "scene_01" / "instructions.txt").write_text("secret_category\tthrow the red cube\n")
+        self.assertEqual(self.run_pipeline("--scene", "scene_01"), 0)
+        results = json.loads(self.out.read_text())["results"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["instruction_id"], "scene_01_i1")
+        self.assertIsNone(results[0]["target_pixel"])
+        self.assertEqual(results[0]["actions"][0]["action"], "refuse")
+        self.assertIn("Throwing", results[0]["actions"][0]["reason"])
+        raw = json.loads(self.out.with_suffix(".raw.jsonl").read_text())
+        self.assertEqual([trace["stage"] for trace in raw["requests"]], ["draft"])
+        self.assertEqual(json.loads(raw["requests"][0]["reply"])["decision"], "refuse")
+        self.assertEqual(raw["requests"][0]["model"], "test-apertus")
+        self.assertEqual(self.events.count("planning"), 1)
+        self.assertIsNone(raw["error"])
+        for _, body in self.requests:
+            self.assertNotIn("secret_category", json.dumps(body))
+
+    def test_saved_geometry_preserves_graph_and_skips_upstream_perception(self):
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--build-only"), 0)
+        geometry = self.output / "geometry_results.json"
+        saved_graph = json.loads((self.output / "scene_graphs" / "scene_01.json").read_text())
+        self.requests.clear()
+        self.events.clear()
+        self.queries.clear()
+        self.output = self.root / "replay"
+        self.out = self.output / "results.json"
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--geometry-input", str(geometry)), 0)
+        self.assertEqual(self.events, ["planning", "planning"])
+        self.assertEqual(self.queries, [])
+        self.assertTrue(all("apertus.test" in url for url, _ in self.requests))
+        self.assertEqual(json.loads((self.output / "scene_graphs" / "scene_01.json").read_text()), saved_graph)
 
 
 if __name__ == "__main__":
