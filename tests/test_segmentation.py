@@ -86,8 +86,34 @@ class SegmentationTests(unittest.TestCase):
             self.assertEqual(result[key], value)
         self.assertEqual(result["sam_score"], 0.8)
         self.assertEqual(result["dino_score"], original["score"])
+        self.assertEqual(result["detector_score"], original["score"])
         np.testing.assert_array_equal(result["mask"], masks[0])
         self.assertEqual(result["validation_warnings"], [])
+
+    def test_qwen_unknown_confidence_stays_separate_from_sam_quality(self) -> None:
+        detection = {**self.detection, "score": None, "backend": "qwen"}
+        path = self.root / "detections.json"
+        path.write_text(json.dumps([{"scene": "example", "detections": [detection]}]))
+        loaded = self.segmenter.load_detections(path)[0]["detections"][0]
+        result = self.segmenter.segment_object(loaded, self.mask()[None], np.array([0.94]))
+        self.assertIsNone(result["score"])
+        self.assertIsNone(result["detector_score"])
+        self.assertEqual(result["backend"], "qwen")
+        self.assertNotIn("dino_score", result)
+        self.assertEqual(result["sam_score"], 0.94)
+        output = self.root / "segmentation.json"
+        self.segmenter.save_results([{"scene": "example", "objects": [result]}], output)
+        saved = json.loads(output.read_text())[0]["objects"][0]
+        self.assertIsNone(saved["detector_score"])
+        self.assertEqual(saved["sam_score"], 0.94)
+
+    def test_invalid_detection_confidence_is_rejected(self) -> None:
+        path = self.root / "detections.json"
+        for score in (float("nan"), float("inf"), "0.9", True):
+            with self.subTest(score=score):
+                path.write_text(json.dumps([{"scene": "example", "detections": [{**self.detection, "score": score}]}]))
+                with self.assertRaisesRegex(ValueError, "finite number or null"):
+                    self.segmenter.load_detections(path)
 
     def test_empty_candidates_fail_with_id_instead_of_skipping_detection(self) -> None:
         with self.assertRaisesRegex(ValueError, "object_1.*no nonempty mask"):

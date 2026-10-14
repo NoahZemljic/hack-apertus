@@ -1,15 +1,18 @@
 # Single-container Clariden deployment
 
-The launcher runs `run_grounded.py`: Apertus extraction →
-Qwen discovery/verification → DINO → cleaned detections → SAM 2 → geometry → scene
-graph → Apertus planning → results. All inference stays local. Normal startup forces
+The launcher runs `run_grounded.py`: Apertus extraction → selectable object detector
+→ cleaned detections → SAM 2 → geometry → scene graph → Apertus planning → results.
+`--box-detector dino` is the default: Qwen discovery/verification → DINO boxes.
+`--box-detector qwen` combines object-instance discovery and boxes in one Qwen
+request per scene. Both paths use the same cleanup, masks, geometry and planner.
+All inference stays local. Normal startup forces
 offline model loading and binds both servers to `127.0.0.1`.
 
 | Allocation GPU positions | Process | Default model | TP | Port |
 | --- | --- | --- | --- | --- |
 | 0, 1 | Persistent vLLM | `swiss-ai/Apertus-v1.5-70B` | 2 | 8000 |
 | 2 | Persistent vLLM | `Qwen/Qwen3-VL-32B-Instruct` | 1 | 8001 |
-| 3 | Pipeline PyTorch | Grounding DINO + SAM 2 | — | — |
+| 3 | Pipeline PyTorch | SAM 2; Grounding DINO when selected | — | — |
 
 Positions refer to **Slurm's visible allocation**. The launcher maps through the
 original `CUDA_VISIBLE_DEVICES` ordering, including GPU UUIDs. The perception child
@@ -127,12 +130,25 @@ HF_HUB_OFFLINE=0 hf auth login  # only if needed for Apertus access
 bash containers/start_pipeline.sh --prepare-cache
 ```
 
-This explicit mode downloads the four configured checkpoints, checks their weight
+This explicit mode downloads the four configured checkpoints by default, checks their weight
 shards, and records `HF_HOME/hack_apertus_cache_manifest.json`, including resolved
 snapshot paths. Choose a longer preparation allocation if large downloads require
 it. Pin the four revision fields to the snapshot commits, or use absolute snapshot
 directories as model IDs, for repeatable runs. Normal startup fails clearly when
 weights are missing instead of downloading them.
+
+To prepare only the checkpoints needed by the Qwen detector, use the mounted
+checkout containing this detector option:
+
+```sh
+cd "$HOME/hack-apertus" || exit 1
+bash containers/start_pipeline.sh --prepare-cache -- --box-detector qwen
+```
+
+This prepares Apertus, Qwen and SAM; it neither resolves nor downloads DINO.
+Existing complete caches can be reused. Normal full-run preflight likewise
+requires only the checkpoints for the selected detector. `--check-engine`
+still verifies all supported model implementations in the image without weights.
 
 For planning replay, prepare only Apertus inside the container:
 
@@ -206,7 +222,7 @@ The 15-minute default is the acceptance target, not a measured complete-run time
 ## Run the full pipeline
 
 Use this section for a fresh run of every stage. First build/export the current
-image and prepare all four model caches using the sections above. Open the
+image and prepare the selected detector's model caches using the sections above. Open the
 four-GPU container shell from the login node; the shell itself starts no servers.
 Inside the container, with ports 8000 and 8001 free, run from the mounted
 checkout so source and prompt edits take effect without rebuilding:
@@ -217,6 +233,7 @@ mkdir -p "$HACK_APERTUS_OUTPUT"
 run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/full-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
 
 time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --box-detector dino \
   --debug-visualizations \
   --out "$run_dir/results.json"
 ```
@@ -248,11 +265,42 @@ run directory when you omit `--out` or supply a fixed path. Do not redirect
 Repeat the entire block for each run: rerunning only the launcher with the old
 `$run_dir` value reuses that directory.
 
+To test Qwen's boxes, use the same entry point and fresh-run structure:
+
+```sh
+cd "$HOME/hack-apertus" || exit 1
+mkdir -p "$HACK_APERTUS_OUTPUT"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/qwen-boxes-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
+time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --box-detector qwen --debug-visualizations \
+  --out "$run_dir/results.json"
+python starter/evaluate.py "$run_dir/results.json" \
+  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
+```
+
+Qwen uses the scene image and Apertus's instruction object hints to discover every
+visible relevant instance, including objects beyond those hints, and return one
+descriptive label and one box per instance. Boxes use a normalized 0–1000 scale
+and are converted once to image pixels. Qwen's detection confidence is unknown
+and saved as `null`; SAM still generates masks and picking points. There is one
+Qwen detection pass per scene with one format-only retry by default
+(`--qwen-box-retries 1`), without an inventory review or visual stacking request.
+The command sets Qwen's context to 16384 tokens for the full-size image, detection
+prompt and up to 4096 output tokens; the default DINO-mode Qwen context stays 8192.
+This backend uses the existing Qwen server, so no additional environment, model
+server or image rebuild is needed for these source changes in the mounted checkout.
+Run a fresh DINO baseline with `--box-detector dino` in a different output
+directory to compare the two detection approaches. Saved geometry replay skips
+detection and cannot measure this change. [instructions.md](../instructions.md)
+includes a comparison command for the previous 39.35/65 DINO run.
+
 The launcher checks the environment and local model caches, starts Apertus 70B
 on GPUs 0–1 and Qwen3-VL-32B on GPU 2, waits for readiness, and executes the full
-pipeline. Apertus extracts instruction objects; Qwen discovers and verifies
-visible objects; Grounding DINO detects boxes and SAM 2 segments the cleaned
-detections on GPU 3. Cleanup, mask geometry and scene-graph construction are
+pipeline. Apertus extracts instruction objects. With DINO selected, Qwen discovers
+and verifies visible categories, then Grounding DINO detects boxes. With Qwen
+selected, one image request discovers and localizes instances; DINO weights are
+not resolved or loaded. SAM 2 segments either backend's cleaned detections on
+GPU 3. Cleanup, mask geometry and scene-graph construction are
 deterministic Python operations. Apertus decides every instruction from the
 graphs and spatial context in one planning pass. Code checks JSON format and
 schema structure, allowing the original one retry for malformed responses.
@@ -335,7 +383,7 @@ time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
   --out "$run_dir/results.json"
 ```
 
-This skips extraction, discovery, DINO and SAM, rebuilds and validates the graphs,
+This skips extraction, object detection and SAM, rebuilds and validates the graphs,
 and plans all selected instructions using Apertus only. Keep the previous run's
 mask files in place because the geometry JSON references them. Evaluate and
 copy this new run using the commands above.
@@ -421,6 +469,7 @@ launcher starts its own servers and will reject the ports already occupied by yo
 ```sh
 CUDA_VISIBLE_DEVICES="${allocated_gpus[3]}" python run_grounded.py \
   --data "$HACK_APERTUS_DATA" --out "$manual_logs/results.json" \
+  --box-detector dino \
   --apertus-model swiss-ai/Apertus-v1.5-70B \
   --qwen-model Qwen/Qwen3-VL-32B-Instruct \
   --dino-device cuda:0 --sam-device cuda:0
@@ -433,6 +482,11 @@ wait "$apertus_pid" "$qwen_pid"
 Manual mode leaves readiness, GPU-budget checks, monitoring and server lifecycle
 management to you. The automatic launcher provides those when you want a complete
 supervised run.
+
+Replace `--box-detector dino` with `--box-detector qwen` in the same command to
+use the already-running Qwen server for boxes and skip DINO loading.
+For Qwen boxes, start that server with `--max-model-len 16384` to provide the same
+image and output headroom as the automatic Qwen run command.
 
 If manual startup crashes, do not start another server until GPU memory is free:
 

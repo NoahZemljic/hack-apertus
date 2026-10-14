@@ -42,6 +42,7 @@ class GroundedPipelineTests(unittest.TestCase):
         self.events = []
         self.discovery_replies = 0
         self.extra_detections = []
+        self.expected_clean_count = None
 
     def http_response(self, request, **kwargs):
         body = json.loads(request.data)
@@ -77,7 +78,8 @@ class GroundedPipelineTests(unittest.TestCase):
     def masks(self, segmenter, image_path, detections):
         self.events.append("segmentation")
         # Actual cleanup must have merged the duplicate boxes before SAM.
-        self.assertEqual(len(detections), 1 + len(self.extra_detections))
+        expected = 1 + len(self.extra_detections) if self.expected_clean_count is None else self.expected_clean_count
+        self.assertEqual(len(detections), expected)
         shape = cv2.imread(str(image_path)).shape[:2]
         objects = []
         for detection in detections:
@@ -95,6 +97,7 @@ class GroundedPipelineTests(unittest.TestCase):
                 patch("src.grounding.grounding_dino.GroundingDinoDetector") as backend, \
                 patch.object(SamSegmenter, "segment_scene", new=segment), \
                 redirect_stdout(io.StringIO()):
+            self.detector_backend = backend
             backend.return_value.detect.side_effect = self.detections
             result = main(["--data", str(self.data), "--out", str(self.out),
                            "--apertus-base-url", "http://apertus.test/v1",
@@ -102,6 +105,86 @@ class GroundedPipelineTests(unittest.TestCase):
                            "--qwen-base-url", "http://qwen.test/v1", "--qwen-model", "test-qwen",
                            *extra])
         return result
+
+    def use_qwen_boxes(self, reply):
+        original = self.http_response
+
+        def boxes_response(request, **kwargs):
+            if "qwen.test" not in request.full_url:
+                return original(request, **kwargs)
+            body = json.loads(request.data)
+            self.requests.append((request.full_url, body))
+            self.events.append("qwen_boxes")
+            return io.BytesIO(json.dumps({"choices": [{"message": {
+                "content": json.dumps(reply)}}]}).encode())
+
+        self.http_response = boxes_response
+
+    def test_qwen_boxes_replace_discovery_and_dino_but_keep_sam_and_planning(self):
+        self.use_qwen_boxes({"objects": [
+            {"label": "red_cube", "bbox_2d": [100, 100, 300, 300]},
+            {"label": "red_cube", "bbox_2d": [400, 100, 600, 300]},
+            {"label": "white_part", "bbox_2d": [700, 600, 900, 800]},
+            {"label": "orange", "bbox_2d": [100, 700, 300, 900]},
+        ]})
+        self.expected_clean_count = 4
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--box-detector", "qwen",
+                                           "--debug-visualizations"), 0)
+        self.assertEqual(self.events, ["extraction", "extraction", "qwen_boxes",
+                                       "segmentation", "planning", "planning"])
+        self.detector_backend.assert_not_called()
+        self.assertEqual(self.queries, [])
+        graph = json.loads((self.output / "scene_graphs" / "scene_01.json").read_text())
+        self.assertEqual([o["id"] for o in graph["objects"]], ["red_cube_1", "red_cube_2", "white_part_1", "orange_1"])
+        self.assertEqual([o["label"] for o in graph["objects"]], ["red cube", "red cube", "white part", "orange"])
+        self.assertEqual(graph["objects"][3]["kind"], "movable")
+        self.assertIsNone(graph["objects"][3]["color"])
+        self.assertTrue(all(o["confidence"] is None for o in graph["objects"]))
+        raw = json.loads((self.output / "grounding_detections.json").read_text())[0]
+        self.assertEqual(raw["backend"], "qwen")
+        self.assertEqual(raw["detections"][0]["box"], [12, 8, 36, 24])
+        segmentation = json.loads((self.output / "segmentation_results.json").read_text())[0]
+        self.assertTrue(all(o["detector_score"] is None and "dino_score" not in o
+                            for o in segmentation["objects"]))
+        results = json.loads(self.out.read_text())["results"]
+        self.assertEqual(results[0]["target_pixel"], segmentation["objects"][0]["safe_pixel"])
+        trace = json.loads((self.output / "qwen_boxes.raw.json").read_text())[0]
+        self.assertEqual(len(trace["requests"]), 1)
+        self.assertEqual(trace["errors"], [])
+        self.assertNotIn("data:image", json.dumps(trace))
+        self.assertTrue((self.output / "grounding_debug" / "scene_01.png").is_file())
+        discovery = json.loads((self.output / "scene_discovery.json").read_text())[0]
+        self.assertNotIn("white part", discovery["instruction_objects"])
+        self.assertIn("white part", discovery["qwen_objects"])
+        planning_prompt = next(body["messages"][0]["content"] for url, body in self.requests
+                               if "apertus.test" in url and isinstance(body["messages"][0]["content"], str)
+                               and 'Instruction: "pick the red cube"' in body["messages"][0]["content"])
+        self.assertIn("null when the detector supplies none", planning_prompt)
+
+    def test_qwen_empty_inventory_builds_empty_graph_without_dino(self):
+        self.use_qwen_boxes({"objects": []})
+        self.expected_clean_count = 0
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--box-detector", "qwen",
+                                           "--build-only"), 0)
+        self.detector_backend.assert_not_called()
+        graph = json.loads((self.output / "scene_graphs" / "scene_01.json").read_text())
+        self.assertEqual(graph["objects"], [])
+        self.assertEqual(self.events, ["extraction", "extraction", "qwen_boxes", "segmentation"])
+
+    def test_invalid_qwen_boxes_stop_and_keep_failed_response(self):
+        self.use_qwen_boxes({"objects": [123]})
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.run_pipeline("--scene", "scene_01", "--box-detector", "qwen", "--qwen-box-retries", "0")
+        self.detector_backend.assert_not_called()
+        self.assertNotIn("segmentation", self.events)
+        self.assertNotIn("planning", self.events)
+        failure = json.loads((self.output / "perception.failure.json").read_text())
+        self.assertEqual((failure["stage"], failure["scene"]), ("qwen_boxes", "scene_01"))
+        trace = json.loads((self.output / "qwen_boxes.raw.json").read_text())[0]
+        self.assertEqual(len(trace["requests"]), 1)
+        self.assertEqual(len(trace["errors"]), 1)
+        self.assertEqual(json.loads(trace["replies"][0]), {"objects": [123]})
+        self.assertFalse(self.out.exists())
 
     def test_full_entrypoint_hands_verified_labels_to_dino_and_saves_all_stages(self):
         self.assertEqual(self.run_pipeline("--scene", "scene_01"), 0)

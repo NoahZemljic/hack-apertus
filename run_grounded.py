@@ -1,4 +1,4 @@
-"""Run Apertus extraction → Qwen → DINO → SAM → geometry → graphs → Apertus planning."""
+"""Run Apertus hints → DINO or Qwen boxes → SAM → geometry → Apertus planning."""
 
 import argparse
 from functools import partial
@@ -35,8 +35,12 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--apertus-model", "--model", default="swiss-ai/Apertus-v1.5-70B")
     parser.add_argument("--qwen-base-url", default="http://127.0.0.1:8001/v1")
     parser.add_argument("--qwen-model", default="Qwen/Qwen3-VL-32B-Instruct")
+    parser.add_argument("--box-detector", choices=("dino", "qwen"), default="dino",
+                        help="DINO grounds verified categories; Qwen discovers instances and boxes together")
+    parser.add_argument("--qwen-box-retries", type=int, default=1,
+                        help="Format-only retries for Qwen boxes after the initial visual request")
     parser.add_argument("--query-source", choices=("qwen_objects", "grounding_queries"), default="qwen_objects",
-                        help="Use verified visible labels, or combine them with Apertus instruction terms")
+                        help="DINO only: verified visible labels, or combine them with instruction terms")
     parser.add_argument("--dino-model", default="IDEA-Research/grounding-dino-base")
     parser.add_argument("--dino-device", help="DINO device, e.g. cuda:0; its existing CPU default otherwise")
     parser.add_argument("--sam-model", default="facebook/sam2.1-hiera-small")
@@ -44,7 +48,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--box-threshold", type=float, default=0.3)
     parser.add_argument("--text-threshold", type=float, default=0.25)
     parser.add_argument("--geometry-config", type=Path, help="JSON GeometryConfig overrides")
-    parser.add_argument("--debug-visualizations", action="store_true", help="Also save upstream stage plots (DINO/SAM plots need matplotlib)")
+    parser.add_argument("--debug-visualizations", action="store_true", help="Also save detector/SAM stage plots (requires matplotlib)")
     parser.add_argument("--no-constrained-decoding", action="store_true")
     parser.add_argument("--timeout", type=float, default=180)
     parser.add_argument("--limit", type=int, help="Maximum number of instructions, across selected scenes")
@@ -68,6 +72,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--limit must be positive")
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
+    if args.qwen_box_retries < 0:
+        parser.error("--qwen-box-retries must be nonnegative")
+    if not args.input and args.box_detector == "qwen" and args.query_source != "qwen_objects":
+        parser.error("--query-source applies only to --box-detector dino")
     if not 0 <= args.box_threshold <= 1 or not 0 <= args.text_threshold <= 1:
         parser.error("Detection thresholds must be between 0 and 1")
     if args.base_dir and not args.input:
@@ -104,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
     # A run uses one policy snapshot even if the mounted prompt changes mid-run.
     planning_policy = (args.out.parent / "planning_policy.txt").read_text()
     if fresh_perception:
-        # Fresh run: extraction → Qwen → DINO → cleanup → SAM → mask geometry.
+        # Fresh run: extraction → selected detector → cleanup → SAM → mask geometry.
         # generate_geometry saves checkpoints and returns the geometry JSON path.
         try:
             overrides = json.loads(args.geometry_config.read_text()) if args.geometry_config else {}
@@ -114,6 +122,7 @@ def main(argv: list[str] | None = None) -> int:
                 apertus_base_url=args.apertus_base_url, apertus_model=args.apertus_model,
                 qwen_base_url=args.qwen_base_url, qwen_model=args.qwen_model,
                 timeout=args.timeout, constrained=not args.no_constrained_decoding,
+                box_detector=args.box_detector, qwen_box_retries=args.qwen_box_retries,
                 query_source=args.query_source, dino_model=args.dino_model, dino_device=args.dino_device,
                 sam_model=args.sam_model, sam_device=args.sam_device,
                 box_threshold=args.box_threshold, text_threshold=args.text_threshold,

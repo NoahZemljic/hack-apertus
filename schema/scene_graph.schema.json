@@ -28,7 +28,7 @@
         "color": {"type": ["string", "null"]},
         "bbox_2d": {"$ref": "#/$defs/bbox"},
         "pick_point_2d": {"$ref": "#/$defs/pixel"},
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
         "width_mm": {"type": "number", "minimum": 0},
         "graspable": {"type": "boolean"},
         "relations": {

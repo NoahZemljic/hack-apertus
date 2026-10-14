@@ -15,8 +15,9 @@ from unittest.mock import patch
 
 from containers.install_dependencies import installation_files
 from src.clariden import (ROOT, RuntimeConfig, Supervisor, child_environment, gpu_assignments,
-                          load_config, main, memory_estimate, needed_servers, pipeline_command,
-                          server_command, server_ready, snapshot_metadata, validate_pipeline)
+                          load_config, main, memory_estimate, model_definitions, needed_servers,
+                          pipeline_command, prepare_cache, run, server_command, server_ready,
+                          snapshot_metadata, validate_pipeline)
 
 
 class ConfigurationTests(unittest.TestCase):
@@ -73,6 +74,15 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(needed_servers(SimpleNamespace(input=Path("saved.json"), build_only=False)), ["apertus"])
         self.assertEqual(needed_servers(SimpleNamespace(input=Path("saved.json"), build_only=True)), [])
         self.assertEqual(needed_servers(SimpleNamespace(input=Path("saved.json"), build_only=True), smoke=True), ["apertus", "qwen"])
+
+    def test_detector_selection_preserves_replay_model_requirements(self):
+        for backend in ("dino", "qwen"):
+            args = SimpleNamespace(input=Path("saved.json"), build_only=False, box_detector=backend)
+            self.assertEqual([name for name, _, _ in model_definitions(self.config, args)], ["apertus"])
+            args.build_only = True
+            self.assertEqual(model_definitions(self.config, args), [])
+            self.assertEqual([name for name, _, _ in model_definitions(self.config, args, smoke=True)],
+                             ["apertus", "qwen"])
     def test_pipeline_validation_fails_before_model_start(self):
         with TemporaryDirectory() as folder:
             data = Path(folder)
@@ -83,6 +93,35 @@ class ConfigurationTests(unittest.TestCase):
             for extra in (["--scene", "missing"], ["--limit", "0"], ["--geometry-input", str(data / "absent.json")]):
                 with self.assertRaises(ValueError):
                     validate_pipeline(pipeline_command(self.config, ["--data", folder, *extra]))
+            with self.assertRaisesRegex(ValueError, "retries"):
+                validate_pipeline(pipeline_command(self.config, ["--data", folder, "--qwen-box-retries", "-1"]))
+            with self.assertRaisesRegex(ValueError, "query-source"):
+                validate_pipeline(pipeline_command(self.config, ["--data", folder, "--box-detector", "qwen",
+                                                                 "--query-source", "grounding_queries"]))
+
+    def test_qwen_preflight_never_resolves_dino_weights(self):
+        with TemporaryDirectory() as folder:
+            data = Path(folder) / "data"
+            (data / "scene_x").mkdir(parents=True)
+            (data / "scene_x/rgb.png").write_bytes(b"fixture")
+            gpus = [{"capability": [9, 0], "memory_bytes": 96 * 2**30}] * 4
+            engine = {"architectures": ["Apertus1p5ForConditionalGeneration", "Qwen3VLForConditionalGeneration"]}
+            with patch.dict(os.environ, {"HF_HOME": str(Path(folder) / "cache"), "CUDA_VISIBLE_DEVICES": "0,1,2,3"}), \
+                    patch("src.clariden.platform.machine", return_value="aarch64"), \
+                    patch("src.clariden.subprocess_json", side_effect=[gpus, engine]), \
+                    patch("src.clariden.subprocess.run", return_value=SimpleNamespace(returncode=0, stdout="", stderr="")), \
+                    patch("src.clariden.resolve_snapshot", side_effect=lambda model, revision: Path(folder) / model) as resolve, \
+                    patch("src.clariden.snapshot_metadata", side_effect=lambda path: {
+                        "path": str(path), "architectures": engine["architectures"], "config": {}, "weight_bytes": 1}), \
+                    patch("src.clariden.memory_estimate", return_value={}), \
+                    patch("src.clariden.port_available"), redirect_stdout(io.StringIO()):
+                status = run(self.config, ["--data", str(data), "--box-detector", "qwen",
+                                          "--out", str(Path(folder) / "out/results.json")], preflight_only=True)
+            self.assertEqual(status, 0)
+            self.assertEqual([call.args[0] for call in resolve.call_args_list],
+                             [self.config.apertus.model, self.config.qwen.model, self.config.perception.sam_model])
+            record = next((Path(folder) / "out/deployment_logs").glob("*/deployment.json"))
+            self.assertEqual(set(json.loads(record.read_text())["models"]), {"apertus", "qwen", "sam"})
 
     def test_dry_run_has_no_torch_imports_or_model_downloads(self):
         with patch("src.clariden.subprocess_json") as probe, patch("src.clariden.resolve_snapshot") as snapshot, \
@@ -105,6 +144,27 @@ class ConfigurationTests(unittest.TestCase):
 
 
 class CacheTests(unittest.TestCase):
+    def test_cache_preparation_uses_only_selected_backend_checkpoints(self):
+        config = load_config(ROOT / "containers/deployment.toml", {})
+        for backend, expected in (("dino", {"apertus", "qwen", "dino", "sam"}),
+                                  ("qwen", {"apertus", "qwen", "sam"})):
+            with self.subTest(backend=backend), TemporaryDirectory() as folder, \
+                    patch.dict(os.environ, {"HF_HOME": folder}), \
+                    patch("src.clariden.resolve_snapshot", return_value=Path(folder)) as resolve, \
+                    patch("src.clariden.snapshot_metadata", return_value={"path": folder}), redirect_stdout(io.StringIO()):
+                prepare_cache(config, backend)
+                manifest = json.loads((Path(folder) / "hack_apertus_cache_manifest.json").read_text())
+                self.assertEqual(set(manifest), expected)
+                self.assertEqual(resolve.call_count, len(expected))
+                self.assertTrue(all(call.kwargs["download"] for call in resolve.call_args_list))
+                if backend == "qwen":
+                    self.assertNotIn(config.perception.dino_model, [call.args[0] for call in resolve.call_args_list])
+
+    def test_prepare_cache_accepts_forwarded_detector_without_dataset_validation(self):
+        with patch("src.clariden.prepare_cache") as prepare, redirect_stdout(io.StringIO()):
+            self.assertEqual(main(["--prepare-cache", "--", "--box-detector=qwen", "--data", "/missing/dataset"]), 0)
+        self.assertEqual(prepare.call_args.args[1], "qwen")
+
     def test_incomplete_cached_shards_are_rejected_without_loading_weights(self):
         with TemporaryDirectory() as directory:
             path = Path(directory)

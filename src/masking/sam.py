@@ -1,4 +1,4 @@
-"""Segment cleaned DINO boxes with SAM 2 and calculate mask geometry.
+"""Segment cleaned detection boxes with SAM 2 and calculate mask geometry.
 
 Run from the repository root: python -m src.masking.sam
 """
@@ -82,10 +82,10 @@ class SamSegmenter:
 
     @staticmethod
     def load_detections(path: Path = DEFAULT_DETECTIONS) -> list[dict[str, Any]]:
-        """Load cleaned DINO scenes, requiring their metadata and unique IDs."""
+        """Load cleaned detection scenes, requiring their metadata and unique IDs."""
         scenes = json.loads(path.read_text())
         if not isinstance(scenes, list):
-            raise ValueError("Expected a list of cleaned DINO scene records")
+            raise ValueError("Expected a list of cleaned detection scene records")
         seen_scenes = set()
         required = {"id", "label", "aliases", "score", "box"}
         for item in scenes:
@@ -100,7 +100,7 @@ class SamSegmenter:
             for detection in item["detections"]:
                 missing = required - detection.keys()
                 if missing:
-                    raise ValueError(f"{scene}: missing {sorted(missing)}; use cleaned DINO detections")
+                    raise ValueError(f"{scene}: missing {sorted(missing)}; use cleaned detections")
                 validate_component(detection["id"], "Object ID")
                 if detection["id"] in seen_ids:
                     raise ValueError(f"{scene}: duplicate object ID {detection['id']!r}")
@@ -111,8 +111,11 @@ class SamSegmenter:
                     isinstance(alias, str) for alias in detection["aliases"]
                 ):
                     raise ValueError(f"{scene}: aliases must be a list of strings")
-                if not math.isfinite(detection["score"]):
-                    raise ValueError(f"{scene}: score must be finite")
+                score = detection["score"]
+                if score is not None and (
+                    isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score)
+                ):
+                    raise ValueError(f"{scene}: score must be a finite number or null")
         return scenes
 
     @staticmethod
@@ -175,11 +178,11 @@ class SamSegmenter:
         far_outside_fraction = (area - near_box) / area
         messages = []
         if box_fraction < self.min_box_fraction:
-            messages.append(f"Mask fills only {box_fraction:.1%} of its DINO box")
+            messages.append(f"Mask fills only {box_fraction:.1%} of its detector box")
         if far_outside_fraction > self.max_outside_fraction:
-            messages.append(f"{far_outside_fraction:.1%} of mask pixels lie far outside its DINO box")
+            messages.append(f"{far_outside_fraction:.1%} of mask pixels lie far outside its detector box")
         if list(box) != [x1, y1, x2, y2]:
-            messages.append("DINO prompt was clipped to image bounds; original box metadata is preserved")
+            messages.append("Detector prompt was clipped to image bounds; original box metadata is preserved")
         return {
             "box_mask_fraction": box_fraction,
             "outside_box_fraction": outside_fraction,
@@ -209,7 +212,8 @@ class SamSegmenter:
             warnings.warn(f"{detection['id']}: {message}", RuntimeWarning, stacklevel=2)
         return {
             **detection,
-            "dino_score": detection["score"],
+            "detector_score": detection["score"],
+            **({"dino_score": detection["score"]} if detection.get("backend", "dino") == "dino" else {}),
             "sam_score": float(scores[index]),
             **geometry,
             **validation,
@@ -232,7 +236,7 @@ class SamSegmenter:
         predictions = outputs.pred_masks.detach().cpu()
         scores = outputs.iou_scores[0].detach().cpu().numpy()
         if predictions.shape[1] != len(detections) or scores.shape[0] != len(detections):
-            raise ValueError("SAM returned a different number of prompts than DINO detections")
+            raise ValueError("SAM returned a different number of prompts than detections")
         objects = []
         for index, detection in enumerate(detections):
             # Restore candidates one object at a time to limit full-size memory.

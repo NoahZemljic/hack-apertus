@@ -1,8 +1,10 @@
 # Clariden: full run, planning replay and benchmark comparison
 
-The supported pipeline is Apertus extraction → Qwen category discovery and
-verification → Grounding DINO → SAM 2 → geometry → Apertus planning.
-`run_grounded.py` is its only entry point.
+The supported pipeline is Apertus extraction → selectable object detector →
+SAM 2 → geometry → Apertus planning. `run_grounded.py` is its only entry point.
+`--box-detector dino` (the default) uses Qwen category discovery and verification
+followed by Grounding DINO boxes. `--box-detector qwen` asks the existing Qwen
+server for all visible object instances and their boxes in one request per scene.
 The full build, cache and deployment instructions live in
 [docs/CLARIDEN.md](docs/CLARIDEN.md); prepare that image and its model caches first.
 
@@ -29,6 +31,7 @@ mkdir -p "$HACK_APERTUS_OUTPUT"
 run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/full-XXXXXX")" || exit 1
 
 time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --box-detector dino \
   --debug-visualizations \
   --out "$run_dir/results.json"
 
@@ -37,8 +40,8 @@ python starter/evaluate.py "$run_dir/results.json" \
 ```
 
 No `--limit` means all scenes and instructions. The launcher starts the local
-Apertus 70B and Qwen3-VL-32B servers, runs DINO/SAM on the fourth GPU, then stops
-the servers. Each run gets a separate output directory. The mounted checkout's
+Apertus 70B and Qwen3-VL-32B servers, runs SAM (and DINO when selected) on the
+fourth GPU, then stops the servers. Each run gets a separate output directory. The mounted checkout's
 code, schemas and prompts are used immediately; rebuild the image when changing
 dependencies.
 
@@ -47,6 +50,64 @@ one planner graph per scene, the submission and the exact planning requests.
 Review `run_manifest.json`, `planning_policy.txt`, `results.raw.jsonl` and
 `report.json` to connect a score to the code and prompt that produced it.
 Only the evaluator reads challenge ground truth.
+
+### Compare the Qwen detector
+
+Inside the same four-GPU container, run the complete pipeline with Qwen boxes:
+
+```bash
+cd "$HOME/hack-apertus" || exit 1
+mkdir -p "$HACK_APERTUS_OUTPUT"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/qwen-boxes-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
+
+time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --box-detector qwen --debug-visualizations \
+  --out "$run_dir/results.json"
+
+python starter/evaluate.py "$run_dir/results.json" \
+  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
+```
+
+This backend combines discovery and localization. Apertus's object terms guide
+attention; they do not restrict Qwen's inventory. Each visible instance gets one
+descriptive label and one normalized 0–1000 box, converted once to image pixels.
+There is one detection pass, with one retry for malformed output by default
+(`--qwen-box-retries 1`); no inventory review or visual stacking request is added.
+Qwen provides no calibrated detection score, so its confidence is saved as `null`.
+Both detectors share box cleanup, SAM masks and picking points, geometry, scene
+graphs and the Apertus planning policy. The Qwen option does not load or require
+DINO weights. It uses the existing server and dependencies, so these source changes
+do not require an image rebuild when running from the mounted checkout.
+The command gives Qwen a 16384-token context to leave room for the full image,
+detection prompt and up to 4096 output tokens for the instance boxes.
+The detector prompt now follows `feature/qwen-only`'s object and box guidance:
+region-by-region scanning, separate repeated instances, low-contrast tray contents,
+snake_case labels and fruit names without color prefixes. Labels are normalized
+before SAM and graph construction; the flat black placement surface retains
+the instruction name `black tray`. Picking points still come from SAM.
+
+Compare against the latest DINO discovery run (39.35/65), if copied locally:
+
+```bash
+previous_report="$HOME/hack-apertus/outputs/discovery-20261014T191752-JeM4C7/report.json"
+python - "$previous_report" "$run_dir/report.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+for name, filename in zip(("DINO", "Qwen"), sys.argv[1:]):
+    report = json.loads(Path(filename).read_text())
+    refusals = sum(item["expected"] == "plan" and item["answer"] == "refuse"
+                   for item in report["instructions"])
+    print(f'{name}: grounding {35 * report["grounding"]:.2f}/35, '
+          f'safety {30 * report["safety"]:.2f}/30, '
+          f'total {report["automatic_score"]:.2f}/65, false refusals {refusals}')
+PY
+```
+
+For a comparison using the current checkout for both detectors, repeat the fresh
+run block with `--box-detector dino` and a separate `dino-boxes-...` directory.
+Changing the detector requires a full run; `--geometry-input` skips detection.
 
 ## 3. Replan from a saved run
 

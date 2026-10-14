@@ -262,17 +262,25 @@ def pipeline_command(config: DeploymentConfig, extra: list[str], paths: dict[str
     return command + extra
 
 
-def validate_pipeline(command: list[str]) -> Any:
+def parse_pipeline(command: list[str]) -> Any:
     from run_grounded import create_parser
 
     # Disable abbreviations so isolation flags cannot be overridden indirectly.
     parser = create_parser()
     parser.allow_abbrev = False
-    args = parser.parse_args(command[2:])
+    return parser.parse_args(command[2:])
+
+
+def validate_pipeline(command: list[str]) -> Any:
+    args = parse_pipeline(command)
     if args.limit is not None and args.limit < 1 or args.timeout <= 0:
         raise ValueError("Pipeline limit and timeout must be positive")
     if not 0 <= args.box_threshold <= 1 or not 0 <= args.text_threshold <= 1:
         raise ValueError("Pipeline detection thresholds must lie in [0,1]")
+    if args.qwen_box_retries < 0:
+        raise ValueError("Qwen box retries must be nonnegative")
+    if not args.input and args.box_detector == "qwen" and args.query_source != "qwen_objects":
+        raise ValueError("--query-source applies only to --box-detector dino")
     if args.base_dir and not args.input:
         raise ValueError("--base-dir requires --geometry-input")
     if not args.data.is_dir():
@@ -292,6 +300,25 @@ def needed_servers(args: Any, *, smoke: bool = False) -> list[str]:
     if smoke or args.input is None:
         return ["apertus", "qwen"]
     return [] if args.build_only else ["apertus"]
+
+
+def perception_model_definitions(config: DeploymentConfig, box_detector: str) -> list[tuple[str, str, str]]:
+    """Qwen boxes use the existing server; only DINO needs local detector weights."""
+    if box_detector not in {"dino", "qwen"}:
+        raise ValueError(f"Unknown box detector: {box_detector}")
+    definitions = []
+    if box_detector == "dino":
+        definitions.append(("dino", config.perception.dino_model, config.perception.dino_revision))
+    definitions.append(("sam", config.perception.sam_model, config.perception.sam_revision))
+    return definitions
+
+
+def model_definitions(config: DeploymentConfig, args: Any, *, smoke: bool = False) -> list[tuple[str, str, str]]:
+    definitions = [(name, getattr(config, name).model, getattr(config, name).revision)
+                   for name in needed_servers(args, smoke=smoke)]
+    if args.input is None:
+        definitions += perception_model_definitions(config, args.box_detector)
+    return definitions
 
 
 def port_available(port: int) -> None:
@@ -496,11 +523,7 @@ def run(config: DeploymentConfig, extra: list[str], *, dry_run: bool = False,
         raise RuntimeError(f"Environment/CUDA preflight failed:\n{checker.stdout}\n{checker.stderr}")
     models: dict[str, Any] = {}
     estimates = {}
-    definitions = [(name, getattr(config, name).model, getattr(config, name).revision) for name in names]
-    if args.input is None:
-        definitions += [("dino", config.perception.dino_model, config.perception.dino_revision),
-                        ("sam", config.perception.sam_model, config.perception.sam_revision)]
-    for name, model, revision in definitions:
+    for name, model, revision in model_definitions(config, args, smoke=smoke):
         models[name] = snapshot_metadata(resolve_snapshot(model, revision))
         if name in names:
             server = getattr(config, name)
@@ -539,7 +562,7 @@ def run(config: DeploymentConfig, extra: list[str], *, dry_run: bool = False,
         log(f"Total deployment elapsed including preflight: {total_elapsed:.1f}s (image build excluded)")
 
 
-def prepare_cache(config: DeploymentConfig) -> None:
+def prepare_cache(config: DeploymentConfig, box_detector: str = "dino") -> None:
     """Explicit preparation operation, separate from offline startup/build."""
     if not os.environ.get("HF_HOME"):
         raise ValueError("Set HF_HOME to a persistent mounted directory before preparing models")
@@ -547,10 +570,10 @@ def prepare_cache(config: DeploymentConfig) -> None:
     os.environ["HF_HUB_OFFLINE"] = "0"
     os.environ["TRANSFORMERS_OFFLINE"] = "0"
     records = {}
-    for name, model, revision in (("apertus", config.apertus.model, config.apertus.revision),
-            ("qwen", config.qwen.model, config.qwen.revision),
-            ("dino", config.perception.dino_model, config.perception.dino_revision),
-            ("sam", config.perception.sam_model, config.perception.sam_revision)):
+    definitions = [("apertus", config.apertus.model, config.apertus.revision),
+                   ("qwen", config.qwen.model, config.qwen.revision)]
+    definitions += perception_model_definitions(config, box_detector)
+    for name, model, revision in definitions:
         log(f"Preparing {name}: {model}@{revision} into HF_HOME={os.environ['HF_HOME']}")
         records[name] = snapshot_metadata(resolve_snapshot(model, revision, download=True))
     path = Path(os.environ["HF_HOME"]) / "hack_apertus_cache_manifest.json"
@@ -594,7 +617,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         config = load_config(args.config)
         if args.prepare_cache:
-            prepare_cache(config)
+            pipeline_args = parse_pipeline(pipeline_command(config, extra))
+            prepare_cache(config, pipeline_args.box_detector)
             return 0
         for signum in (signal.SIGINT, signal.SIGTERM):
             old_handlers[signum] = signal.signal(signum, stop)

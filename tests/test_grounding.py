@@ -199,6 +199,33 @@ class GroundingCleanupTests(unittest.TestCase):
         self.assertEqual(report["merged_count"], 2)
         self.assertTrue(all(d["drop_reason"] == "duplicate_box" for d in report["dropped"]))
 
+    def test_unknown_confidence_retains_instances_and_stable_duplicate_selection(self):
+        detections = [
+            {**self.detection("red gear", [50, 10, 70, 30], None, "right"), "backend": "qwen"},
+            {**self.detection("red gear", [10, 10, 30, 30], None, "left"), "backend": "qwen"},
+            {**self.detection("yellow gear", [50, 10, 70, 30], None, "duplicate"), "backend": "qwen"},
+        ]
+        cleaned, report = self.process(["red gear", "yellow gear"], detections)
+        self.assertEqual([d["id"] for d in cleaned], ["red_gear_1", "red_gear_2"])
+        self.assertEqual([d["source_ids"] for d in cleaned], [["left"], ["right", "duplicate"]])
+        self.assertTrue(all(d["score"] is None and d["backend"] == "qwen" for d in cleaned))
+        self.assertEqual(report["dropped"][0]["kept_source_id"], "right")
+        self.assertEqual(self.process(["red gear", "yellow gear"], detections)[0], cleaned)
+
+    def test_numeric_confidence_still_selects_strongest_duplicate(self):
+        cleaned, _ = self.process(["plate", "saucer"], [
+            {**self.detection("plate", score=None, object_id="unknown"), "backend": "qwen"},
+            {**self.detection("saucer", score=0.7, object_id="known"), "backend": "dino"},
+        ])
+        self.assertEqual(cleaned[0]["label"], "saucer")
+        self.assertEqual(cleaned[0]["score"], 0.7)
+        self.assertEqual(cleaned[0]["backend"], "dino")
+
+    def test_invalid_detection_confidence_fails_without_inventing_a_score(self):
+        for score in (float("nan"), float("inf"), "0.9", True):
+            with self.subTest(score=score), self.assertRaisesRegex(ValueError, "finite number or null"):
+                process_scene({"scene": "example", "detections": [self.detection("mug", score=score)]}, self.image)
+
     def test_iou_chains_do_not_merge_distinct_endpoints(self):
         cleaned, _ = self.process(["mug"], [
             self.detection("mug", [0, 0, 20, 20], 0.9, "mug_1"),

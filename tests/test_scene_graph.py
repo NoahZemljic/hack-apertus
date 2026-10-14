@@ -62,6 +62,16 @@ class SceneGraphTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not valid JSON"):
             validate_scene_graph(invalid)
 
+    def test_unknown_confidence_is_valid_but_numeric_bounds_remain_enforced(self):
+        self.graph["objects"][0]["confidence"] = None
+        self.assertIs(validate_scene_graph(self.graph), self.graph)
+        for confidence in (-0.01, 1.01, "unknown", True):
+            with self.subTest(confidence=confidence):
+                invalid = deepcopy(self.graph)
+                invalid["objects"][0]["confidence"] = confidence
+                with self.assertRaises(ValueError):
+                    validate_scene_graph(invalid)
+
     def test_references_ids_and_inverse_supports_are_checked(self):
         invalid = deepcopy(self.graph)
         invalid["objects"].append(deepcopy(invalid["objects"][0]))

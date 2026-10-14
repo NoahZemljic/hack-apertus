@@ -15,7 +15,10 @@ import numpy as np
 
 from run_grounded import main
 from src.apertus import ApertusPlanner, PlanningGenerationError
+from src.geometry import GeometryReasoner
 from src.geometry_scene_graph import GeometrySceneGraphBuilder
+from src.grounding.postprocess_grounding import process_scene
+from src.masking.sam import SamSegmenter
 from src.prompting import prepare_planning_prompt
 from src.validation import validate_scene_graph
 
@@ -63,6 +66,48 @@ class GeometrySceneGraphTests(unittest.TestCase):
         self.assertEqual(graph["objects"][0]["bbox_2d"], [80, 40, 99, 59])
         self.assertEqual(graph["objects"][0]["pick_point_2d"], obj["safe_pixel"])
         self.assertNotEqual(obj["safe_pixel"], obj["centroid"])
+        validate_scene_graph(graph, 100, 60)
+
+    def test_graph_detector_confidence_prefers_explicit_null_with_legacy_fallbacks(self):
+        unknown = self.object("gear_1", "red gear", (10, 10, 30, 30))
+        unknown.update(detector_score=None, dino_score=0.8, sam_score=0.99, backend="qwen")
+        legacy = self.object("gear_2", "yellow gear", (50, 10, 70, 30))
+        legacy["dino_score"] = 0.7
+        graph, _, _ = self.builder().build("scene_test", 100, 60)
+        self.assertIsNone(graph["objects"][0]["confidence"])
+        self.assertEqual(graph["objects"][1]["confidence"], 0.7)
+        validate_scene_graph(graph, 100, 60)
+
+    def test_qwen_null_confidence_survives_cleanup_sam_geometry_and_graph(self):
+        image_path = self.root / "rgb.png"
+        cv2.imwrite(str(image_path), np.zeros((60, 100, 3), np.uint8))
+        raw = {"scene": "scene_test", "backend": "qwen", "queries": ["red gear"], "detections": [
+            {"id": "right", "label": "red gear", "box": [50, 10, 70, 30], "score": None},
+            {"id": "left", "label": "red gear", "box": [10, 10, 30, 30], "score": None},
+        ]}
+        cleaned, _ = process_scene(raw, image_path)
+        clean_path = self.root / "clean.json"
+        clean_path.write_text(json.dumps([cleaned]))
+        segmenter = SamSegmenter()
+        objects = []
+        for detection in segmenter.load_detections(clean_path)[0]["detections"]:
+            mask = np.zeros((60, 100), bool)
+            x1, y1, x2, y2 = map(int, detection["box"])
+            mask[y1:y2, x1:x2] = True
+            segmented = segmenter.segment_object(detection, mask[None], np.array([0.99]))
+            segmented["mask_path"] = str(segmenter.save_mask(mask, self.root / f"{detection['id']}.png"))
+            objects.append({k: v for k, v in segmented.items() if k != "mask"})
+        geometry, _ = GeometryReasoner(base_dir=self.root).analyze_scene({
+            "scene": "scene_test", "image_path": str(image_path), "objects": objects,
+        })
+        self.input.write_text(json.dumps([geometry]))
+        graph, _, _ = GeometrySceneGraphBuilder(self.input).build("scene_test", 100, 60)
+        self.assertEqual([obj["id"] for obj in graph["objects"]], ["red_gear_1", "red_gear_2"])
+        self.assertTrue(all(obj["confidence"] is None for obj in graph["objects"]))
+        self.assertTrue(all(obj["backend"] == "qwen" and obj["detector_score"] is None for obj in geometry["objects"]))
+        self.assertTrue(all(obj["sam_score"] == 0.99 and "dino_score" not in obj for obj in geometry["objects"]))
+        self.assertEqual([obj["pick_point_2d"] for obj in graph["objects"]],
+                         [obj["safe_pixel"] for obj in objects])
         validate_scene_graph(graph, 100, 60)
 
     def test_membership_requires_container_and_does_not_create_support(self):

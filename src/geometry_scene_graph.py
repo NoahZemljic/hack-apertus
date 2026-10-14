@@ -88,7 +88,7 @@ class GeometrySceneGraphBuilder:
                 "id": obj["id"], "kind": kind, "label": obj["label"], "color": color,
                 "bbox_2d": planner_box(mask.bounds, width, height),
                 "pick_point_2d": list(obj["safe_pixel"]),
-                "confidence": obj.get("dino_score", obj.get("score")),
+                "confidence": obj.get("detector_score", obj.get("dino_score", obj.get("score"))),
                 "relations": {"inside": None, "on_top_of": None, "supports": [],
                               "held_by_human": False, "partially_occluded": False},
             })

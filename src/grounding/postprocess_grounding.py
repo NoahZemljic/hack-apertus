@@ -88,8 +88,12 @@ def query_candidates(label: str, queries: Iterable[str]) -> list[str]:
 
 
 def cluster_by_iou(detections: list[dict], threshold: float) -> list[list[dict]]:
-    """Group boxes against the strongest box, avoiding transitive IoU chains."""
-    remaining = sorted(detections, key=lambda d: float(d["score"]), reverse=True)
+    """Group boxes against the strongest box, avoiding transitive IoU chains.
+
+    Some detectors do not supply confidence. Their boxes retain input order;
+    no confidence is manufactured for duplicate selection.
+    """
+    remaining = sorted(detections, key=score_priority, reverse=True)
     clusters = []
     while remaining:
         representative = remaining.pop(0)
@@ -103,6 +107,11 @@ def cluster_by_iou(detections: list[dict], threshold: float) -> list[list[dict]]
         clusters.append(cluster)
         remaining = separate
     return clusters
+
+
+def score_priority(detection: dict) -> tuple[bool, float]:
+    score = detection["score"]
+    return score is not None, float(score) if score is not None else 0.0
 
 
 def resolve_label(label: str, candidates: list[str]) -> str:
@@ -149,6 +158,14 @@ def process_scene(
 
     for raw in item.get("detections", []):
         d = dict(raw)
+        score = d.get("score")
+        if score is not None and (
+            isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score)
+        ):
+            raise ValueError(f"{item['scene']}: detection score must be a finite number or null")
+        d["score"] = score
+        if "backend" not in d and "backend" in item:
+            d["backend"] = item["backend"]
         try:
             d["box"] = clip_box(d["box"], width, height)
         except (TypeError, ValueError, OverflowError):
@@ -191,7 +208,7 @@ def process_scene(
 
     cleaned = []
     for cluster in clusters:
-        representative = max(cluster, key=lambda d: float(d["score"]))
+        representative = cluster[0]
         aliases = sorted({q for d in cluster for q in d["query_candidates"]})
         canonical = resolve_label(representative["label"], representative["query_candidates"])
         raw_labels = list(dict.fromkeys(d["label"] for d in cluster))
@@ -216,7 +233,9 @@ def process_scene(
                 "raw_labels": raw_labels,
                 "source_ids": [d["id"] for d in cluster if "id" in d],
                 "box": representative["box"],
-                "score": round(max(float(d["score"]) for d in cluster), 4),
+                "score": round(float(representative["score"]), 4) if representative["score"] is not None else None,
+                **({"backend": representative["backend"]} if "backend" in representative else {}),
+                **({"detector_score": representative["detector_score"]} if "detector_score" in representative else {}),
                 "area_ratio": representative["area_ratio"],
                 "merged_count": len(cluster),
                 "needs_review": bool(review_reasons),
@@ -241,6 +260,7 @@ def process_scene(
 
     return {
         "scene": item["scene"],
+        **({"backend": item["backend"]} if "backend" in item else {}),
         "queries": item.get("queries", []),
         "detections": cleaned,
     }, stats
