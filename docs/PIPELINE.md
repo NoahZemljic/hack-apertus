@@ -20,22 +20,29 @@ Qwen3-VL-32B-Instruct. Its stages are:
    outside the hints. Repeated instances receive separate boxes and IDs.
 4. Both modes use the same deterministic box cleanup and duplicate merging.
 5. SAM segments cleaned boxes and selects foreground safe pixels.
-6. Geometry calculates spatial relations and selected support hypotheses.
-7. The deterministic builder constructs and strictly validates the planner graph.
+6. Geometry calculates projected spatial relations. A separate Qwen request
+   inspects touching/overlapping object pairs and reports directed physical
+   support links, including one object resting across multiple supports.
+7. The deterministic builder combines membership, visual support and spatial
+   measurements, then strictly validates the planner graph.
 8. Apertus makes one planning decision per instruction; code parses its JSON and writes the submission.
 
 In DINO mode Qwen makes two category-discovery calls per scene. In Qwen box mode
 the category-only calls and DINO are skipped: a valid box response completes
-the visual task immediately. `--qwen-box-retries` defaults to one retry for
-malformed JSON, schema or coordinate format; it adds no inventory review,
-stacking observer or planner check. Qwen uses the existing local HTTP server.
+the box-detection task immediately. `--qwen-box-retries` defaults to one retry for
+malformed JSON, schema or coordinate format; it adds no inventory review.
+`--stacking-source qwen` is the default for both box detectors: one separate,
+batched image request per scene with candidate pairs asks only which existing
+objects physically rest on others. Scenes without touching/overlapping candidates
+make no stacking request. `--qwen-stacking-retries` defaults to one format retry.
+Qwen uses the existing local HTTP server.
 No second local Qwen model is loaded. The final Apertus prompt uses the validated
 graph, mask-derived spatial context and `prompts/apertus_system.txt`.
 
 Qwen outputs normalized half-open `[x_min,y_min,x_max,y_max]` boxes on a 0–1000
 scale; the adapter validates bounds and converts once to source-image pixels.
 SAM receives those pixel boxes and supplies the same masks, centroids and picking
-points as in DINO mode. Qwen is not asked for target points or relations. It
+points as in DINO mode. The box request does not ask for target points or relations. It
 supplies no detector confidence: `score` and graph `confidence` are `null`, while
 SAM quality is recorded separately as `sam_score`. Legacy numeric DINO scores
 remain supported.
@@ -48,8 +55,9 @@ the adapter normalizes labels to the shared space-separated graph format.
 The bounded black placement mat keeps the benchmark name `black_tray`.
 Generation uses temperature zero, a 4096-token output budget and
 `enable_thinking=false`, matching the branch's non-sampling, non-thinking setup.
-The branch's target-point output, separate inventory review and stacking calls
-are omitted so SAM still supplies picking points in this single-pass experiment.
+The branch's target-point output and separate inventory review are omitted;
+SAM supplies picking points. Physical stacking is a distinct visual task with
+its own request and prompt; it does not revise the object inventory or boxes.
 
 `run_grounded.py` is the only pipeline entry point. The launcher
 supplies model/server/device settings from `containers/deployment.toml`; direct
@@ -72,8 +80,13 @@ explicitly unsafe operations in that same decision. Field guidance is generated 
 the supplied graph, so optional or unavailable fields are not described as
 observations. Pixel geometry alone cannot establish physical support or grasp
 width. Missing measurements and low detection confidence alone do not justify
-refusing ordinary abstract pick/place requests. Geometry support links are
-estimates used to interpret stacking and plan access.
+refusing ordinary abstract pick/place requests. `support_source` in the spatial
+context distinguishes Qwen visual support observations from geometry hypotheses.
+The policy distinguishes source qualifiers from desired new arrangements, asks
+when a singular request still identifies multiple instances, and preserves
+constraints such as "without moving". It clears upper blockers before moving
+lower objects, tracks completed prerequisites internally, and refuses explicitly
+unsafe operations rather than rewriting the task into a different one.
 
 Apertus receives every instruction and chooses plan, ask_user or refuse. There
 is one planning pass with the original one-retry allowance for malformed JSON
@@ -110,10 +123,18 @@ settings belong in the deployment config; other pipeline flags follow the
 launcher's `--` separator.
 
 The default starts from instructions and images each time. `--geometry-input`
-(also `--input`) explicitly skips all upstream perception and reuses saved
+(also `--input`) skips object detection and segmentation and reuses saved
 geometry and masks. Relative paths in that file resolve against its directory,
 or `--base-dir`. Fresh runs write absolute image/mask paths so their generated
 geometry can be replayed from another working directory.
+
+Normal replay preserves any saved visual support observations and makes no Qwen
+request. Add `--refresh-stacking` to run only the separate Qwen support task on
+the saved objects and original RGB images, replace previous support observations,
+and rebuild graphs before planning. This requires `--geometry-input` and
+`--stacking-source qwen`; it does not rerun extraction, discovery, boxes or SAM.
+Fresh runs can use `--stacking-source geometry` to keep the older geometry-only
+support experiment without the new Qwen request.
 
 Only Qwen's verified categories reach DINO by default. `--query-source
 grounding_queries` combines them with Apertus-extracted descriptions as an
@@ -145,8 +166,9 @@ unconditionally from instruction hints.
 instruction in each included scene is still extracted to build a shared scene
 inventory. `--build-only` skips final planning; fresh perception still calls
 Apertus for extraction and Qwen for discovery. Pair it with `--geometry-input`
-for a graph check with no model calls. `--no-constrained-decoding` applies to
-extraction, discovery, and final planning; validators remain active.
+for a graph check with no model calls, unless `--refresh-stacking` is requested.
+`--no-constrained-decoding` applies to extraction, discovery, Qwen boxes,
+stacking and final planning; validators remain active.
 
 `--artifact-dir` changes the intermediate-file directory (default: the output
 directory). `--debug-visualizations` also saves stage plots; DINO/SAM plotting
@@ -165,17 +187,25 @@ destinations, or consult ground truth or instruction categories.
 SAM masks are reloaded and checked for size, binary foreground, saved area,
 centroid, bounds, and safe-pixel membership. Boxes use mask bounds converted
 from exclusive SAM endpoints to inclusive planner endpoints. `confidence`
-carries the DINO score for compatibility, not a calibrated probability.
+carries the detector score when available, or null for Qwen boxes, not a
+calibrated probability.
 
 Projected `inside` edges become membership only for a nonhuman source and a
 container target. If multiple containers qualify, the smallest mask wins.
 Containment never creates support.
 
-By default, selected geometry `on` hypotheses become first-pass `on_top_of`
-estimates for movable objects on nonhuman objects. `supports` is derived in
-code. These are **not physical confirmation**: single-view masks can be wrong
-about stacking. `--no-support-candidates` omits them for comparison. Cyclic or
-conflicting relationships are omitted with reasons in debug output.
+When a record contains `visual_supports`, those directed Qwen links provide
+`on_top_of`; an empty visual result stays empty and does not fall back to mask
+overlap guesses. `on_top_of` is a list of supporting IDs, and `supports` is its
+inverse. This represents a cube bridging two objects and enables either lower
+object to share the same access prerequisite. Legacy single-ID/null graph values
+remain accepted when reading older graphs. Visual observations remain fallible.
+
+Older records without visual support retain the geometry-only behavior: selected
+`on` hypotheses become estimates for movable objects on nonhuman objects.
+`--no-support-candidates` omits these legacy guesses for comparison; it does not
+discard separately observed Qwen links. Cyclic, duplicate or invalid references
+are rejected or omitted with reasons in debug output.
 
 Human-holding and occlusion flags are copied only from explicit upstream boolean
 observations, defaulting to false when absent. Current geometry does not detect
@@ -183,8 +213,8 @@ either condition. Overlap or touching alone never creates a holding claim.
 
 Human-contact safety depends on any explicit upstream flags and the instruction
 text; absent flags do not confirm the absence of human contact. Geometry replay
-uses saved geometry and masks only. `--geometry-input --build-only` needs no
-models.
+normally uses saved geometry and masks only. `--geometry-input --build-only`
+needs no models unless paired with `--refresh-stacking`.
 
 Every graph passes the existing strict validator: IDs, required fields, image
 bounds, box/point consistency, references, support inverses, and relationship
@@ -203,6 +233,12 @@ For the output file tree and evaluation command, see
 Standalone perception scripts default to `outputs/grounded_pipeline/`; the
 Clariden full-run command overrides this with a unique scratch run directory.
 
+`stacking_relations.json` saves the per-scene directed support results;
+`qwen_stacking.raw.json` records the exact prompts, replies and errors. The same
+results are stored in `geometry_results.json` as
+`visual_supports={"backend":"qwen","supports":[{"upper":...,"lower":...}]}`,
+so later planning replay can retain the observation without another vision call.
+
 Intermediate outputs are checkpointed after each instruction or scene. Upstream
 errors save `perception.failure.json` with the failing stage and scene, and stop
 the run. All selected graphs are checked before final planning. `--build-only`
@@ -217,7 +253,9 @@ after each instruction.
 
 In DINO mode Qwen discovers and verifies category names using
 `schema/scene_discovery.schema.json`, then DINO supplies detections. In Qwen box
-mode Qwen supplies instances using `schema/qwen_boxes.schema.json`. Both use SAM
+mode Qwen supplies instances using `schema/qwen_boxes.schema.json`. The separate
+support task uses `schema/qwen_stacking.schema.json` and
+`prompts/qwen_stacking_system.txt`. Both detector modes use SAM
 for masks, and Python builds `schema/scene_graph.schema.json`. Apertus extraction uses
 `schema/object_extraction.schema.json`, planning uses `schema/plan.schema.json`,
 and the final submission uses `schema/result.schema.json`.
