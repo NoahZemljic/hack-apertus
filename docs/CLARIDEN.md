@@ -61,7 +61,7 @@ Use an ARM64 compute node and configure rootless Podman as in the
 
 ```sh
 cd "$HOME/hack-apertus"
-srun -A <project_account> --partition=debug --nodes=1 --ntasks=1 \
+srun -A g239 --partition=debug --nodes=1 --ntasks=1 \
   --cpus-per-task=64 --time=00:30:00 --pty bash
 ```
 
@@ -98,7 +98,7 @@ If your account's debug time limit is shorter, use a permitted longer build
 allocation. Import before leaving: Podman's local storage is temporary. The image
 build runs import checks and CPU tests; it never downloads weights. `.dockerignore`
 excludes datasets, cached models, credentials, generated artifacts and `.git`.
-Sources and schemas are baked into `/opt/hack-apertus`.
+Sources, schemas and prompts are baked into `/opt/hack-apertus`.
 
 ## Persistent cache preparation
 
@@ -157,7 +157,7 @@ From the login node with the image and cache already prepared:
 
 ```sh
 cd "$HOME/hack-apertus"
-srun -A <project-account> --partition=debug --nodes=1 --ntasks=1 \
+srun -A g239 --partition=debug --nodes=1 --ntasks=1 \
   --gpus-per-node=4 --cpus-per-task=64 --time=01:30:00 \
   --environment=./containers/clariden.edf.toml --pty bash
 ```
@@ -187,7 +187,7 @@ time bash containers/start_pipeline.sh -- --scene scene_01 --limit 1 \
 # Full offline acceptance run including preflight/server startup/shutdown.
 mkdir -p "$HACK_APERTUS_OUTPUT"
 run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/full-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
-time bash containers/start_pipeline.sh -- \
+time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
   --out "$run_dir/results.json"
 ```
 
@@ -208,17 +208,36 @@ The 15-minute default is the acceptance target, not a measured complete-run time
 Use this section for a fresh run of every stage. First build/export the current
 image and prepare all four model caches using the sections above. Open the
 four-GPU container shell from the login node; the shell itself starts no servers.
-Inside the container, with ports 8000 and 8001 free, run:
+Inside the container, with ports 8000 and 8001 free, run from the mounted
+checkout so source and prompt edits take effect without rebuilding:
 
 ```sh
-cd /opt/hack-apertus || exit 1
+cd "$HOME/hack-apertus" || exit 1
 mkdir -p "$HACK_APERTUS_OUTPUT"
 run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/full-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
 
-time bash containers/start_pipeline.sh -- \
+time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
   --debug-visualizations \
   --out "$run_dir/results.json"
 ```
+
+The image supplies dependencies; this launcher executes the mounted checkout's
+`src/`, schemas and prompts. Repeat the command after editing them. Rebuild for
+dependency changes. To run the image's baked sources instead, start this block
+with `cd /opt/hack-apertus`; source/prompt changes then require a rebuilt and
+re-exported image plus a fresh container. The batch script also runs the checkout
+from which you submit it, so submit from the repository root under a mounted path.
+
+Check `$run_dir/run_manifest.json` for `repository_root`, the policy path and
+its SHA256. `planning_policy.txt` saves the exact policy, and
+`results.raw.jsonl` records planning and repair requests. These distinguish
+an unchanged model decision from accidentally running older code.
+
+The current deployment config gives Apertus a 16384-token context for the prompt
+plus generated output, including rich graphs and validation-repair history.
+Planning output is separately capped at 2048 tokens; the context limit does not
+request longer answers. Preflight still checks the configured GPU memory budget.
+The command above sets this limit explicitly, overriding an earlier 8192 setting.
 
 `mktemp -d` creates a new directory on every invocation, with an atomic uniqueness
 check. This command keeps each run's artifacts separate. A fixed path such as
@@ -234,8 +253,11 @@ on GPUs 0–1 and Qwen3-VL-32B on GPU 2, waits for readiness, and executes the f
 pipeline. Apertus extracts instruction objects; Qwen discovers and verifies
 visible objects; Grounding DINO detects boxes and SAM 2 segments the cleaned
 detections on GPU 3. Cleanup, mask geometry and scene-graph construction are
-deterministic Python operations. Apertus then plans from the graphs and spatial
-context. All model inference is local and offline; no saved perception artifacts
+deterministic Python operations. Apertus decides every instruction from the
+graphs and spatial context in one planning pass. Code checks JSON format and
+schema structure, allowing the original one retry for malformed responses.
+DINO now uses one caption per detected category to avoid fused object labels.
+All model inference is local and offline; no saved perception artifacts
 are reused in this fresh run. See [the stage overview](PIPELINE.md#grounded-pipeline)
 for the processing contracts and intermediate files.
 
@@ -261,6 +283,8 @@ $SCRATCH/hack-apertus/outputs/full-<UTC timestamp>-<random suffix>/
   scene_graphs/                 # graphs, spatial context, diagnostics and overlays
   results.json                 # evaluator submission
   results.raw.jsonl            # final planning prompts, replies and errors
+  run_manifest.json            # source paths/hashes and effective run settings
+  planning_policy.txt          # exact planning policy used for this run
   deployment_logs/<run_id>/     # server/pipeline logs, GPU usage and timing
 ```
 
@@ -279,6 +303,42 @@ python starter/evaluate.py "$run_dir/results.json" \
 
 Evaluation adds `report.json` to this run's folder and uses challenge ground
 truth only in the evaluator. It is a separate command from pipeline inference.
+
+To copy the complete run, including the evaluation report, from scratch into
+the repository's `outputs/` folder, run in the same shell:
+
+```sh
+mkdir -p "$HOME/hack-apertus/outputs"
+cp -r --no-preserve=mode,ownership "$run_dir" "$HOME/hack-apertus/outputs/"
+```
+
+This copies the files without preserving scratch permissions, ACLs or ownership.
+Some container home mounts reject that metadata with `Invalid argument` when
+using `cp -a`.
+
+The copied files are under `$HOME/hack-apertus/outputs/<run-directory-name>/`,
+ready to open in your IDE. The original run remains in scratch. Adjust the
+repository path if your checkout is elsewhere.
+
+If a run stops after all geometry records
+have been saved, reuse that run's geometry and masks. In the container shell,
+set `previous_run` to the failed scratch run and create a separate output folder:
+
+```sh
+cd "$HOME/hack-apertus" || exit 1
+previous_run="$HACK_APERTUS_OUTPUT/full-<failed-run-name>"
+mkdir -p "$HACK_APERTUS_OUTPUT"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/resume-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
+
+time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --geometry-input "$previous_run/geometry_results.json" \
+  --out "$run_dir/results.json"
+```
+
+This skips extraction, discovery, DINO and SAM, rebuilds and validates the graphs,
+and plans all selected instructions using Apertus only. Keep the previous run's
+mask files in place because the geometry JSON references them. Evaluate and
+copy this new run using the commands above.
 
 ## Open a shell and launch servers manually
 
@@ -324,7 +384,7 @@ VLLM_CACHE_ROOT="$VLLM_CACHE_ROOT/apertus" \
 vllm serve "$apertus_path" \
   --served-model-name swiss-ai/Apertus-v1.5-70B \
   --host 127.0.0.1 --port 8000 --tensor-parallel-size 2 \
-  --dtype bfloat16 --max-model-len 8192 --max-num-seqs 1 \
+  --dtype bfloat16 --max-model-len 16384 --max-num-seqs 1 \
   --gpu-memory-utilization 0.90 --chat-template-content-format string \
   --limit-mm-per-prompt '{"image":0,"audio":0}' \
   --compilation-config.pass_config.fuse_allreduce_rms false \
@@ -390,8 +450,9 @@ does not stop a server. Avoid GPU resets or broad process-kill commands.
 The host dataset defaults to `$HOME/hack-apertus/dataset`. Set `HACK_APERTUS_DATA`
 or pass `-- --data /mounted/dataset` to change it. Add filesystem mounts for any
 dataset/cache/replay path outside `$HOME`/`$SCRATCH`. Baked code runs from
-`/opt/hack-apertus`; repository edits require a rebuild. No startup installation
-is needed. Check that both servers load and TP2 collectives initialize, that GPU
+`/opt/hack-apertus`; edits require a rebuild when using that copy. The mounted
+checkout workflow in the full-run section loads current source and prompts.
+No startup installation is needed. Check that both servers load and TP2 collectives initialize, that GPU
 usage matches the map, that Qwen accepts image/schema requests, and that full
 results are produced.
 
@@ -411,7 +472,7 @@ environment overrides. Every field accepts uppercase `<SECTION>_<FIELD>`:
 
 ```sh
 export APERTUS_GPUS=0,1 APERTUS_TENSOR_PARALLEL=2 QWEN_GPUS=2 PERCEPTION_GPU=3
-export APERTUS_MAX_MODEL_LEN=8192 QWEN_MAX_MODEL_LEN=8192
+export APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=8192
 export APERTUS_MEMORY_UTILIZATION=0.90 QWEN_MEMORY_UTILIZATION=0.90
 export RUNTIME_STARTUP_TIMEOUT=600
 export APERTUS_EXTRA_ARGS='["--chat-template-content-format","string","--limit-mm-per-prompt","{\"image\":0,\"audio\":0}","--compilation-config.pass_config.fuse_allreduce_rms","false","--enforce-eager"]'
@@ -469,7 +530,8 @@ The deployment/pipeline never reads challenge ground truth.
 `run_grounded.py --geometry-input` preserves the grounded pipeline's additional
 spatial prompt context. It rebuilds and validates graphs from saved geometry and
 SAM mask PNGs, then calls Apertus; extraction, Qwen, DINO and SAM inference are
-skipped. `run.py --reuse-scene-graphs` is the earlier Qwen graph workflow and
+skipped. Saved geometry replay uses geometry and masks only.
+`run.py --reuse-scene-graphs` is the earlier Qwen graph workflow and
 omits the grounded pipeline's separate spatial context.
 
 With a manually started Apertus server, use a second shell in the same node

@@ -6,7 +6,8 @@ revision = "main"
 gpus = [0, 1]
 port = 8000
 tensor_parallel = 2
-max_model_len = 8192
+# Headroom for rich scene graphs and validation-repair history; output is capped separately.
+max_model_len = 16384
 memory_utilization = 0.90
 max_num_seqs = 1
 # This pipeline sends only text to Apertus; skip image/audio profiling.

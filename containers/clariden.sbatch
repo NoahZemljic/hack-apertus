@@ -10,4 +10,4 @@
 #SBATCH --output=hack-apertus-%j.log
 set -euo pipefail
 srun --environment=./containers/clariden.edf.toml \
-  bash /opt/hack-apertus/containers/start_pipeline.sh "$@"
+  bash "${SLURM_SUBMIT_DIR:?Submit from the repository root}/containers/start_pipeline.sh" "$@"

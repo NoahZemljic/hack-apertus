@@ -73,7 +73,6 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(needed_servers(SimpleNamespace(input=Path("saved.json"), build_only=False)), ["apertus"])
         self.assertEqual(needed_servers(SimpleNamespace(input=Path("saved.json"), build_only=True)), [])
         self.assertEqual(needed_servers(SimpleNamespace(input=Path("saved.json"), build_only=True), smoke=True), ["apertus", "qwen"])
-
     def test_pipeline_validation_fails_before_model_start(self):
         with TemporaryDirectory() as folder:
             data = Path(folder)
@@ -126,7 +125,9 @@ class CacheTests(unittest.TestCase):
             "num_hidden_layers": 80, "num_key_value_heads": 8, "head_dim": 128}}}
         estimate = memory_estimate(model, config.apertus, [96 * 2**30] * 2)
         self.assertEqual(estimate["weights_per_rank_GiB"], 70)
-        self.assertEqual(estimate["kv_per_rank_GiB"], 1.25)
+        self.assertEqual(estimate["kv_per_rank_GiB"], 2.5)
+        shorter = memory_estimate(model, replace(config.apertus, max_model_len=8192), [96 * 2**30] * 2)
+        self.assertEqual(shorter["kv_per_rank_GiB"], 1.25)
         with self.assertRaisesRegex(RuntimeError, "lower bound"):
             memory_estimate(model, config.apertus, [72 * 2**30] * 2)
 

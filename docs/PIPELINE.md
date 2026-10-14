@@ -14,11 +14,15 @@ Qwen3-VL-32B-Instruct. Its stages are:
 1. Apertus extracts object descriptions from each instruction.
 2. Descriptions are combined per scene and passed to Qwen with the image.
 3. Qwen discovers visible objects and verifies its list in a second pass.
-4. Grounding DINO detects those verified categories; deterministic cleanup merges duplicates.
+4. Grounding DINO detects each verified category with its own caption; deterministic cleanup merges duplicates.
 5. SAM segments cleaned boxes and selects foreground safe pixels.
 6. Geometry calculates spatial relations and selected support hypotheses.
 7. The deterministic builder constructs and strictly validates the planner graph.
-8. Apertus receives that graph and each instruction to produce the submission.
+8. Apertus makes one planning decision per instruction; code parses its JSON and writes the submission.
+
+Qwen's role in this workflow is limited to the two category-discovery calls per
+scene, both before DINO. The final Apertus prompt uses the validated graph,
+mask-derived spatial context and `prompts/apertus_system.txt`.
 
 `run_geometry.py` is a compatibility alias for `run_grounded.py`. The launcher
 supplies model/server/device settings from `containers/deployment.toml`; direct
@@ -31,6 +35,44 @@ Apertus selects object IDs and actions. Code copies the first picked object's
 SAM-derived safe pixel into the submission's `target_pixel`; Apertus does not
 choose pixel coordinates. Pixel-to-robot conversion is outside this evaluation
 pipeline. Challenge ground truth is used only by the evaluator.
+
+## Planning prompt and saved input
+
+The planning policy lives in `prompts/apertus_system.txt` and is loaded by
+`src/prompting.py`. It asks Apertus to resolve the instruction's references,
+choose a decision, and produce the complete requested plan. The model handles
+explicitly unsafe operations in that same decision. Field guidance is generated from
+the supplied graph, so optional or unavailable fields are not described as
+observations. Pixel geometry alone cannot establish physical support or grasp
+width. Missing measurements and low detection confidence alone do not justify
+refusing ordinary abstract pick/place requests. Geometry support links are
+estimates used to interpret stacking and plan access.
+
+Apertus receives every instruction and chooses plan, ask_user or refuse. There
+is one planning pass with the original one-retry allowance for malformed JSON
+or schema structure. A valid response returns immediately. The original flat
+plan schema checks fields and types; code does not interpret the instruction,
+bind a source, simulate actions, or revise the model's semantic decision. The
+format-repair message only asks for corrected JSON. Repeated format failures
+still become logged fail-safe refusals in the existing runner. An HTTP 400 from
+schema decoding retains the existing unconstrained transport fallback.
+
+The prompt ends with the exact instruction and supplies computed distance
+ordering based on mask centroids. It defines ordinary abstract tray placement
+without requiring unrelated certification of tray capacity or stability.
+
+`run_manifest.json` records source paths and hashes, settings and the planning
+policy hash. `planning_policy.txt` saves that policy. Each raw entry also contains
+the exact planning and repair requests, including validation failures.
+
+The archived full grounded runs save the exact graph in
+`<output-directory>/scene_graphs/scene_XX.json`, with the additional spatial
+input in `scene_XX.spatial.json`. The full per-instruction prompt and responses
+are in `results.raw.jsonl`. The compact `run_pipeline.py` pipeline saves its
+graph in `outputs/scene_graphs/scene_XX.json` by default, or beside a custom
+`--out` file in its `scene_graphs` subdirectory. Its objects contain `id`, `label`,
+`target_pixel`, and optional `width_mm` and `graspable`; relations are a top-level list. The prompt
+accepts this compact graph and the richer graphs from saved grounded runs.
 
 ## Pipeline options and replay behavior
 
@@ -50,6 +92,19 @@ Only Qwen's verified categories reach DINO by default. `--query-source
 grounding_queries` combines them with Apertus-extracted descriptions as an
 explicit experiment. An instruction mentioning an absent object therefore
 does not automatically add it to the default detector vocabulary.
+
+DINO runs one forward pass per category using the same loaded model and image.
+Each returned box receives exactly one `label`: the normalized category used
+for that pass. This prevents text spans from adjacent categories being fused
+into labels such as `red gear yellow gear`. Returned backend text is saved
+separately as `text_label`, alongside the requested `query`, for diagnosis.
+Cleanup merges boxes with IoU at least 0.90 across all categories and keeps the
+highest-scoring box's single label; alternative names stay in diagnostic
+metadata rather than the planner graph. This guarantees one label per cleaned
+detection, but boxes below that overlap threshold may still represent the same
+physical object. A query returning no detections stays absent. Discovery also
+checks large black trays and cropped container boundaries instead of
+automatically treating every dark surface as background.
 
 `--limit` caps final planning and skips perception for later scenes. Every
 instruction in each included scene is still extracted to build a shared scene
@@ -91,6 +146,11 @@ Human-holding and occlusion flags are copied only from explicit upstream boolean
 observations, defaulting to false when absent. Current geometry does not detect
 either condition. Overlap or touching alone never creates a holding claim.
 
+Human-contact safety depends on any explicit upstream flags and the instruction
+text; absent flags do not confirm the absence of human contact. Geometry replay
+uses saved geometry and masks only. `--geometry-input --build-only` needs no
+models.
+
 Every graph passes the existing strict validator: IDs, required fields, image
 bounds, box/point consistency, references, support inverses, and relationship
 cycles. This establishes structural consistency, not correct perception.
@@ -114,8 +174,8 @@ Intermediate outputs are checkpointed after each instruction or scene. Upstream
 errors save `perception.failure.json` with the failing stage and scene, and stop
 the run. All selected graphs are checked before final planning. `--build-only`
 does not write or overwrite a submission. Planning reuses the existing Apertus
-client, constrained decoding, retry, and plan validation. Raw logs include the
-prompt, replies, and errors. Invalid plans after retry become fail-safe refusals;
+client, constrained decoding, one format retry, and JSON schema validation.
+Raw logs include the prompt, replies, and errors. Invalid plans after retry become fail-safe refusals;
 inspect these separately from model refusals. Connection/HTTP failures stop the
 run rather than refusing every instruction. Successful results are checkpointed
 after each instruction.
