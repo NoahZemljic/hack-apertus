@@ -56,6 +56,11 @@ def planning_field_semantics(graph: dict) -> str:
         "graspable": "whether the measured width fits the gripper; an absent measurement does not establish that picking is impossible",
         "confidence": "a detector score; a low score alone does not prevent a plan",
     }
+    if any("confidence" in obj and obj["confidence"] is None for obj in graph["objects"]):
+        descriptions["confidence"] = (
+            "a detector score, or null when the detector supplies none; "
+            "unknown or low confidence alone does not prevent a plan"
+        )
     guidance = [
         f"- objects[].{key}: {description}."
         for key, description in descriptions.items() if key in fields
@@ -98,34 +103,48 @@ def derived_geometry(graph: dict) -> dict:
             "left_to_right": [obj["id"] for obj in ordered], "pairwise_distances": distances}
 
 
+_SCENE_DISCOVERY_RULES = """
+OBJECT NAMES
+- Use <visible color> <singular physical category> whenever the color is discernible: red gear, yellow gear, red cube, green mug, white plate, grey metal part, white industrial component.
+- Color is required when visibly established, even when a hint only says "gear", "mug", or "part". Use one dominant distinguishing color per label and use grey consistently rather than gray. Do not guess a color from a hint, shadow, or reflection.
+- If color is unclear, retain the visible category without inventing a color. Human hand and human arm are valid categories without a color prefix.
+- Keep distinct colors separate. If all visible gears are represented by red gear and yellow gear, do not also return gear or gears. Retain an uncolored category only when a separate visible object cannot be described by the colored categories.
+- Use the most specific category supported by the image. An unfamiliar component should receive a broad physical name such as grey industrial component rather than being omitted. Distinguish grey metal parts from white parts and trays. Do not use object, item, thing, it, or one as categories.
+- Identify visible fruit by its specific category and observed color, such as yellow banana or orange mandarin. Do not add fruit as an alias for already identified fruits or give the same fruit multiple category names.
+- Return each distinct color/category label once. Repeated instances with the same color and category need one label; instances with different colors need separate labels.
+- Use short lowercase words separated by spaces. No underscores, IDs, numbering, plural categories, relative-position phrases, or action descriptions. Resolve phrases such as "object on top of" into the visible physical category.
+
+WORKSPACE NAMING CONVENTION
+- The challenge calls the grey plastic container with raised walls, usually on the left, the grey tray.
+- The challenge calls the flat black placement mat or surface, usually on the right, the black tray. It need not have raised walls or a visible rim. Include this visible placement region as black tray even when empty or partly cropped; do not discard it as background or rename it table or work mat.
+- Grey tray and black tray are separate physical regions. Include both when both are visible; one must never replace the other. Partial occlusion does not change their names.
+- Establish their presence from the image. A hint alone is not evidence that an object exists. Ignore the underlying workbench, floor, shadows, printed markings, and reflections.
+
+IMAGE COVERAGE
+- Scan the whole image region by region, including edges and each placement region's interior. The hints are not exhaustive; include additional visibly present objects.
+- Inspect small, low-contrast industrial components, brackets, and metal parts separately from the tray beneath them. Keep attached assemblies as one object.
+- Search carefully for partly covered gears, cubes, and objects beneath or beside overlapping objects. Include visible objects, but do not invent hidden objects or relations.
+- A mechanical wheel with repeated teeth around its rim is a gear, even with a solid raised hub rather than a hole.
+- Include visible human hands and arms, including those holding an object, and include the held object when it remains visibly identifiable.
+"""
+
+
 def prepare_scene_discovery_prompt(hints: list[str]) -> str:
-    """Build the Qwen prompt for visible-object discovery."""
+    """Build the Qwen prompt for visible categories and workspace regions."""
     return f"""
 You are the visual perception module for a tabletop robot.
+Inspect the image and identify all visibly present object categories and named placement regions.
 
-Inspect the entire image and identify the object categories that are actually visible in the robot workspace.
-
-To do so you will be provided with a list of possible objects present in the image:
-
+Possible object names extracted from instructions:
 {json.dumps(hints, ensure_ascii=False)}
 
-Important rules:
--Try to describe the objects by their color and their category: <color> <object category>
-- The hints are clues only. Only return objects that are actually visible in the image.
-- The hints are not exhaustive. Search the entire image carefully for additional visible objects, including small, partially occluded, stacked, or peripheral objects.
-- Hints may contain task relations, synonyms, or absent objects. Describe the visible physical category and color; do not copy relational phrases from a hint into an object label.
-- Return object labels in singular form. Multiple visible instances of the same category require only one label.
-- Use normal lowercase words separated by spaces. Never use snake_case, underscores, IDs, numbering, or plural instance names.
-- Do not use generic referential terms that do not identify a visual object category.
-- Do not add unnecessary visual attributes to a label when a matching hint already provides an adequate name.
-- Do not use phrases such as "object on top of", "under the", "the one", or "part next to" as categories. Resolve the visible object type instead.
-- A mechanical part with repeated teeth around its rim is a gear, even with a solid raised hub rather than a hole. Check carefully for small or partly covered gears and cubes.
-- Inspect human hands and arms as separate visible categories, including those gripping an object.
-- Inspect container rims and boundaries at the image edges. A dark or black tray may fill most of the image and contain the smaller objects; identify it when its physical rim or tray shape is visible. Distinguish it from the background table, and include it even if partially cropped.
-- Keep grey and black tray categories separate when both are visibly present; do not infer an absent tray from an instruction.
-- For visible objects that do not match any hint, use a short, specific, detector-friendly object name based only on what is visually observable.
-- Include visually distinguishable containers and other relevant physical objects, but do not include the table or workbench itself.
-- Return each object label only once.
+Use these hints to guide attention, not to restrict the inventory. They may contain
+synonyms, relational phrases, or absent objects. Derive names and colors from the image.
+
+{_SCENE_DISCOVERY_RULES}
+
+Return only JSON with an objects list of category labels. Do not return boxes,
+coordinates, instance counts, scene relations, plans, or explanations.
 """
 
 def prepare_verification_prompt(
@@ -133,25 +152,20 @@ def prepare_verification_prompt(
     objects: list[str],
 ) -> str:
     return f"""
-Reinspect the entire image and if necessary correct this proposed list of visible objects:
-
+Reinspect the image and correct this proposed list of visible categories and placement regions:
 {json.dumps(objects, ensure_ascii=False)}
 
-Check for:
-- visible object types that are missing
-- incorrect object names
-- objects that are not actually visible
-
-The list may already contain every visible category. Hints may name absent objects; verify against the image:
+Instruction hints, which may name absent objects:
 {json.dumps(hints, ensure_ascii=False)}
 
-Resolve relational phrases into physical categories. Keep colors tied to the actual object.
-Search for small and partly covered gears, cubes, hands and arms throughout the image.
-Check the dark surface beneath the objects for a visible tray rim or boundary. A large black tray must not be omitted as background when its tray shape is visible; do not invent one when it is only a table.
-Do not remove a real physical category merely because it is not in the hints.
+{_SCENE_DISCOVERY_RULES}
 
-Use short detector-friendly phrases such as the ones given in the list.
-Do not use plural for any of the objects, always return object names in their singular form.
+Keep correct visible categories, add missed ones, correct names and missing visible
+colors, and remove absent objects or redundant aliases. Do not remove a visible
+category merely because it is absent from the hints. Check the grey tray and the
+flat black tray independently; the lack of raised walls on the black tray is not
+a reason to omit it or replace it with grey tray.
 
-Return the complete corrected list.
+Return only JSON with the complete corrected objects list. Do not return boxes,
+coordinates, instance counts, scene relations, plans, or explanations.
 """

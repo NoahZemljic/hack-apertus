@@ -13,16 +13,43 @@ Qwen3-VL-32B-Instruct. Its stages are:
 
 1. Apertus extracts object descriptions from each instruction.
 2. Descriptions are combined per scene and passed to Qwen with the image.
-3. Qwen discovers visible objects and verifies its list in a second pass.
-4. Grounding DINO detects each verified category with its own caption; deterministic cleanup merges duplicates.
+3. The box detector is selected with `--box-detector dino|qwen` (default `dino`).
+   DINO mode uses Qwen category discovery and verification, then grounds each
+   verified category with its own DINO caption. Qwen mode uses one joint visual
+   request to discover individual objects and their boxes, including categories
+   outside the hints. Repeated instances receive separate boxes and IDs.
+4. Both modes use the same deterministic box cleanup and duplicate merging.
 5. SAM segments cleaned boxes and selects foreground safe pixels.
 6. Geometry calculates spatial relations and selected support hypotheses.
 7. The deterministic builder constructs and strictly validates the planner graph.
 8. Apertus makes one planning decision per instruction; code parses its JSON and writes the submission.
 
-Qwen's role in this workflow is limited to the two category-discovery calls per
-scene, both before DINO. The final Apertus prompt uses the validated graph,
-mask-derived spatial context and `prompts/apertus_system.txt`.
+In DINO mode Qwen makes two category-discovery calls per scene. In Qwen box mode
+the category-only calls and DINO are skipped: a valid box response completes
+the visual task immediately. `--qwen-box-retries` defaults to one retry for
+malformed JSON, schema or coordinate format; it adds no inventory review,
+stacking observer or planner check. Qwen uses the existing local HTTP server.
+No second local Qwen model is loaded. The final Apertus prompt uses the validated
+graph, mask-derived spatial context and `prompts/apertus_system.txt`.
+
+Qwen outputs normalized half-open `[x_min,y_min,x_max,y_max]` boxes on a 0–1000
+scale; the adapter validates bounds and converts once to source-image pixels.
+SAM receives those pixel boxes and supplies the same masks, centroids and picking
+points as in DINO mode. Qwen is not asked for target points or relations. It
+supplies no detector confidence: `score` and graph `confidence` are `null`, while
+SAM quality is recorded separately as `sam_score`. Legacy numeric DINO scores
+remain supported.
+
+The box-detector prompt in `prompts/qwen_boxes_system.txt` is adapted from
+`feature/qwen-only`: it preserves the region-by-region scan, repeated and
+partially occluded instances, low-contrast components, and tight visible boxes.
+Qwen emits snake_case labels (identified fruits use just their fruit name);
+the adapter normalizes labels to the shared space-separated graph format.
+The bounded black placement mat keeps the benchmark name `black_tray`.
+Generation uses temperature zero, a 4096-token output budget and
+`enable_thinking=false`, matching the branch's non-sampling, non-thinking setup.
+The branch's target-point output, separate inventory review and stacking calls
+are omitted so SAM still supplies picking points in this single-pass experiment.
 
 `run_grounded.py` is the only pipeline entry point. The launcher
 supplies model/server/device settings from `containers/deployment.toml`; direct
@@ -91,7 +118,9 @@ geometry can be replayed from another working directory.
 Only Qwen's verified categories reach DINO by default. `--query-source
 grounding_queries` combines them with Apertus-extracted descriptions as an
 explicit experiment. An instruction mentioning an absent object therefore
-does not automatically add it to the default detector vocabulary.
+does not automatically add it to the default detector vocabulary. This option
+applies only to DINO; the Qwen box detector uses hints as attention guidance and
+discovers every visibly relevant instance in the full image.
 
 DINO runs one forward pass per category using the same loaded model and image.
 Each returned box receives exactly one `label`: the normalized category used
@@ -102,9 +131,15 @@ Cleanup merges boxes with IoU at least 0.90 across all categories and keeps the
 highest-scoring box's single label; alternative names stay in diagnostic
 metadata rather than the planner graph. This guarantees one label per cleaned
 detection, but boxes below that overlap threshold may still represent the same
-physical object. A query returning no detections stays absent. Discovery also
-checks large black trays and cropped container boundaries instead of
-automatically treating every dark surface as background.
+physical object. A query returning no detections stays absent. Discovery and
+verification share naming rules: observed color plus singular physical category,
+without redundant bare categories when all visible instances have colored names.
+Unknown colors and human body parts do not require invented color prefixes.
+Both prompts scan small components, occlusions and placement-region interiors.
+They follow the challenge's workspace convention: the raised grey container is
+the `grey tray`, and the flat black placement mat is the `black tray`, even without
+raised walls. These regions are included when visible, rather than inserted
+unconditionally from instruction hints.
 
 `--limit` caps final planning and skips perception for later scenes. Every
 instruction in each included scene is still extracted to build a shared scene
@@ -180,9 +215,10 @@ after each instruction.
 
 ## Schemas and benchmark
 
-Qwen discovers and verifies category names using `schema/scene_discovery.schema.json`;
-it does not generate the planner graph. DINO and SAM supply detections and masks,
-and Python builds `schema/scene_graph.schema.json`. Apertus extraction uses
+In DINO mode Qwen discovers and verifies category names using
+`schema/scene_discovery.schema.json`, then DINO supplies detections. In Qwen box
+mode Qwen supplies instances using `schema/qwen_boxes.schema.json`. Both use SAM
+for masks, and Python builds `schema/scene_graph.schema.json`. Apertus extraction uses
 `schema/object_extraction.schema.json`, planning uses `schema/plan.schema.json`,
 and the final submission uses `schema/result.schema.json`.
 
