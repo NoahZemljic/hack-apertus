@@ -16,6 +16,7 @@ COPY containers/install_dependencies.py containers/install_dependencies.py
 # Install application packages only; never fetch model weights during the build.
 RUN python containers/install_dependencies.py
 COPY src/ src/
+COPY prompts/ prompts/
 COPY starter/ starter/
 COPY schema/ schema/
 COPY run.py run_grounded.py run_geometry.py ./

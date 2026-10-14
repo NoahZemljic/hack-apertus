@@ -8,6 +8,8 @@
 !run_geometry.py
 !src/
 !src/**
+!prompts/
+!prompts/**
 !starter/
 !starter/**
 !schema/

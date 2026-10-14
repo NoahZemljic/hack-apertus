@@ -2,8 +2,10 @@ import json
 import urllib.error
 import urllib.request
 from collections.abc import Callable
+from copy import deepcopy
 
 from .json_tools import parse_json_object
+from .prompting import prepare_planning_prompt
 from .schemas import load_plan_schema
 from .validation import validate_plan
 
@@ -31,13 +33,14 @@ class ApertusPlanner:
         self.retries = retries
         self.constrained = constrained
         self.prompt_builder = prompt_builder or prepare_planning_prompt
+        self.last_trace: list[dict] = []
 
     def generate_response(self, messages: list[dict], constrained_decoding: bool) -> str:
         """Send one planning request to Apertus and return its text response"""
         body = {
             "model": self.model,
             "temperature": 0,
-            "max_tokens": 800,
+            "max_tokens": 2048,
             "messages": messages
             }
 
@@ -56,34 +59,38 @@ class ApertusPlanner:
         with urllib.request.urlopen(request, timeout=self.timeout) as response:
             return json.loads(response.read())["choices"][0]["message"]["content"]
 
-    def create_plan(self, graph: dict, instruction: str) -> tuple[dict, list[str]]:
-        """Generate and validate one plan, clarification question, or refusal."""
+    def create_plan(self, graph: dict, instruction: str, gripper_mm: float | None = None) -> tuple[dict, list[str]]:
+        """Ask Apertus once and retry only malformed JSON or schema structure."""
+        self.last_trace = []
+        prompt = self.prompt_builder(graph, instruction, gripper_mm)
         messages = [{
             "role": "user",
-            "content": self.prompt_builder(graph, instruction, gripper_mm),
+            "content": prompt,
         }]
         replies = []
         last_error = None
-        constrained_decoding = self.constrained_decoding
+        constrained_decoding = self.constrained
 
         for attempt in range(self.retries + 1):
             try:
-                reply = self.generate_response(messages, constrained_decoding)
+                reply, trace = self._request_with_trace(messages, constrained_decoding, "draft", attempt + 1)
             except urllib.error.HTTPError as error:
                 if constrained_decoding and error.code == 400:
                     constrained_decoding = False
-                    reply = self.generate_response(messages, constrained_decoding)
+                    reply, trace = self._request_with_trace(messages, False, "draft", attempt + 1, fallback=True)
                 else:
                     raise
 
             replies.append(reply)
 
             try:
-                return validate_plan(parse_json_object(reply)), replies
+                plan = validate_plan(parse_json_object(reply))
+                trace["validation_error"] = None
+                return plan, replies
             except ValueError as error:
                 last_error = error
+                trace["validation_error"] = str(error)
 
-                # Give the model one chance to correct a structurally invalid response
                 if attempt < self.retries:
                     messages.extend([
                         {"role": "assistant", "content": reply},
@@ -91,3 +98,24 @@ class ApertusPlanner:
                     ])
 
         raise PlanningGenerationError(f"Apertus did not return a valid plan: {last_error}", replies)
+
+    def plan(self, graph: dict, instruction: str, gripper_mm: float | None = None) -> tuple[dict, list[str]]:
+        """Compatibility entry point used by the grounded pipeline."""
+        return self.create_plan(graph, instruction, gripper_mm)
+
+    def _request_with_trace(self, messages: list[dict], constrained: bool, stage: str,
+                            attempt: int, *, fallback: bool = False) -> tuple[str, dict]:
+        """Record each actual request before inference or feedback changes messages."""
+        trace = {"stage": stage, "attempt": attempt, "messages": deepcopy(messages),
+                 "constrained_decoding": constrained, "model": self.model,
+                 "temperature": 0, "max_tokens": 2048}
+        if fallback:
+            trace["schema_fallback"] = True
+        self.last_trace.append(trace)
+        try:
+            reply = self.generate_response(messages, constrained)
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+            trace["request_error"] = f"{type(error).__name__}: {error}"
+            raise
+        trace["reply"] = reply
+        return reply, trace

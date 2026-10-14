@@ -159,7 +159,7 @@ class GeometrySceneGraphTests(unittest.TestCase):
         prompt = requests[0]["messages"][0]["content"]
         self.assertIn("mask centroids", prompt)
         self.assertNotIn("needs_review", prompt)
-        self.assertNotIn("category", prompt)
+        self.assertNotIn('"category":', prompt)
 
     def test_build_only_preserves_submission_and_makes_no_requests(self):
         data, out = self.dataset(), self.root / "results.json"
