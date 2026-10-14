@@ -65,8 +65,11 @@ class GeometryTests(unittest.TestCase):
         outline = cv2.boxPoints(((160, 120), (120, 40), 30)).astype(np.int32)
         cv2.fillConvexPoly(sample.rgb, outline, (230, 35, 30))
         contour = object_contour(sample.rgb, [95, 65, 225, 175], [160, 120])
-        width = measure_width(sample, contour, [160, 120])
+        width, measurement_rectangle, width_line = measure_width(sample, contour, [160, 120])
         self.assertAlmostEqual(width, 40, delta=2)
+        self.assertEqual(measurement_rectangle.shape, (4, 2))
+        self.assertEqual(width_line.shape, (2, 2))
+        self.assertAlmostEqual(float(np.linalg.norm(width_line[1] - width_line[0])), width, places=3)
         self.assertGreater(cv2.boundingRect(contour)[3], 80)
 
     def test_target_selects_one_of_disconnected_foreground_regions(self):
@@ -74,7 +77,10 @@ class GeometryTests(unittest.TestCase):
         cv2.rectangle(sample.rgb, (90, 90), (120, 120), (230, 35, 30), -1)
         cv2.rectangle(sample.rgb, (160, 90), (220, 130), (230, 35, 30), -1)
         contour = object_contour(sample.rgb, [80, 80, 230, 140], [190, 110])
-        self.assertAlmostEqual(measure_width(sample, contour, [190, 110]), 40, delta=1)
+        width, measurement_rectangle, width_line = measure_width(sample, contour, [190, 110])
+        self.assertAlmostEqual(width, 40, delta=1)
+        self.assertEqual(measurement_rectangle.shape, (4, 2))
+        self.assertEqual(width_line.shape, (2, 2))
         self.assertGreaterEqual(float(contour[:, 0, 0].min()), 160)
 
     def test_graspability_threshold_includes_exactly_85(self):
@@ -88,7 +94,10 @@ class GeometryTests(unittest.TestCase):
         sample = scene()
         sample.depth_mm = np.full((240, 320), 1000, np.uint16)
         sample.depth_mm[115:126, 155:166] = 500
-        self.assertAlmostEqual(measure_width(sample, rectangle(80), [160, 120]), 40, places=3)
+        width, measurement_rectangle, width_line = measure_width(sample, rectangle(80), [160, 120])
+        self.assertAlmostEqual(width, 40, places=3)
+        self.assertEqual(measurement_rectangle.shape, (4, 2))
+        self.assertAlmostEqual(float(np.linalg.norm(width_line[1] - width_line[0])), 80, places=3)
 
     def test_missing_calibration_does_not_invent_graspability(self):
         sample = scene()
@@ -132,13 +141,13 @@ class RelationTests(unittest.TestCase):
         ]
         relations = compute_relations(objects)
         self.assertEqual(len(relations), 2)
-        self.assertEqual({r['relation'] for r in relations}, {'left', 'above'})
+        self.assertEqual({r['relation'] for r in relations}, {'image_left_of', 'image_up_from'})
         self.assertTrue(all(r['subject'] == 'red_cube_1' for r in relations))
         self.assertTrue(all(r['object'] == 'green_mug_1' for r in relations))
 
         reversed_relations = compute_relations(list(reversed(objects)))
         self.assertEqual(len(reversed_relations), 2)
-        self.assertEqual({r['relation'] for r in reversed_relations}, {'right', 'below'})
+        self.assertEqual({r['relation'] for r in reversed_relations}, {'image_right_of', 'image_down_from'})
         self.assertEqual(
             [r['confidence'] for r in reversed_relations],
             [r['confidence'] for r in relations],
@@ -155,7 +164,7 @@ class RelationTests(unittest.TestCase):
         ]
         relations = compute_relations(objects)
         edges = {(r['subject'], r['relation'], r['object']) for r in relations}
-        self.assertEqual(edges, {('grey_tray_1', 'left', 'red_cube_1')})
+        self.assertEqual(edges, {('grey_tray_1', 'image_left_of', 'red_cube_1')})
 
     def test_objects_in_same_tray_keep_their_relative_direction(self):
         objects = [
@@ -168,7 +177,7 @@ class RelationTests(unittest.TestCase):
         self.assertEqual({(r['subject'], r['relation'], r['object']) for r in relations}, {
             ('green_mug_1', 'inside', 'grey_tray_1'),
             ('yellow_gear_1', 'inside', 'grey_tray_1'),
-            ('green_mug_1', 'above', 'yellow_gear_1'),
+            ('green_mug_1', 'image_up_from', 'yellow_gear_1'),
         })
 
     def test_inside_uses_target_not_whole_box(self):
@@ -212,7 +221,7 @@ class ValidationTests(unittest.TestCase):
                 validate_scene_graph(graph)
 
     def test_non_json_numbers_are_rejected(self):
-        graph = {'objects': [], 'relations': [{'subject': 'a', 'object': 'b', 'relation': 'left', 'confidence': float('nan')}]}
+        graph = {'objects': [], 'relations': [{'subject': 'a', 'object': 'b', 'relation': 'image_left_of', 'confidence': float('nan')}]}
         with self.assertRaises(ValueError):
             validate_scene_graph(graph)
 
@@ -382,9 +391,13 @@ class PipelineTests(unittest.TestCase):
         planner = ApertusPlanner()
         graph = {'objects': [], 'relations': []}
         response = {'decision': 'ask_user', 'steps': [], 'question': 'Which object?', 'reason': None}
-        with patch.object(planner, 'generate_response', return_value=json.dumps(response)):
-            actual, _ = planner.create_plan(graph, 'Pick it')
+        with patch.object(planner, 'generate_response', return_value=json.dumps(response)) as server:
+            actual, _ = planner.create_plan(graph, 'Pick the object closest to the mug')
         self.assertEqual(actual, response)
+        server.assert_called_once()
+        prompt = server.call_args.args[0][0]['content']
+        self.assertIn(json.dumps(graph, separators=(',', ':')), prompt)
+        self.assertIn('Instruction: "Pick the object closest to the mug"', prompt)
 
     def test_planning_failure_raises_without_logs(self):
         with tempfile.TemporaryDirectory() as directory:

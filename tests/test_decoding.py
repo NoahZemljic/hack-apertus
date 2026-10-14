@@ -76,17 +76,14 @@ class DecodingTests(unittest.TestCase):
         allowed = decoder.build_token_filter({"type": "boolean"})
         self.assertIn(3, allowed(0, torch.tensor([tokenizer.eos_token_id])))
 
-    def test_actual_perception_schema_accepts_complete_graph_and_blocks_early_eos(self) -> None:
+    def test_actual_perception_schema_accepts_compact_detections_and_blocks_early_eos(self) -> None:
         symbols = ["[UNK]", "[EOS]"] + list(string.printable)
         backend = Tokenizer(models.WordLevel({symbol: i for i, symbol in enumerate(symbols)}, unk_token="[UNK]"))
         backend.decoder = decoders.Fuse()
         tokenizer = PreTrainedTokenizerFast(tokenizer_object=backend, unk_token="[UNK]", eos_token="[EOS]")
         allowed = SchemaConstrainedDecoder(tokenizer).build_token_filter(load_perception_schema())
-        graph = {"image": {"width": 80, "height": 60}, "objects": [{
-            "id": "red_cube_1", "kind": "movable", "label": "red cube", "color": "red",
-            "bbox_2d": [10, 10, 30, 30], "pick_point_2d": [12, 12], "confidence": 0.8,
-            "relations": {"inside": None, "on_top_of": None,
-                          "held_by_human": False, "partially_occluded": False},
+        graph = {"objects": [{
+            "label": "red_cube", "bbox_2d": [10, 10, 30, 30], "target_pixel": [12, 12],
         }]}
         sent = [tokenizer.eos_token_id]
         for symbol in json.dumps(graph):

@@ -25,7 +25,8 @@ def plan_to_result(instruction_id: str, plan: dict, graph: dict) -> dict:
     # Ground the result from the graph rather than trusting the model to repeat coordinates
     return {
         "instruction_id": instruction_id,
-        "target_pixel": first_picked_object["target_pixel"],
+        "target_pixel": (first_picked_object["target_pixel"] if "target_pixel" in first_picked_object
+                         else first_picked_object["pick_point_2d"]),
         "actions": actions,
     }
 
@@ -34,3 +35,9 @@ def write_submission(out: Path, team: str, results: list[dict]) -> None:
     """Write the final challenge submission."""
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"team": team, "results": results}, indent=2) + "\n")
+
+
+def write_submission_files(out: Path, team: str, results: list[dict], raw: list[dict]) -> None:
+    """Checkpoint the submission and the exact planning requests together."""
+    write_submission(out, team, results)
+    out.with_suffix(".raw.jsonl").write_text("".join(json.dumps(entry) + "\n" for entry in raw))
