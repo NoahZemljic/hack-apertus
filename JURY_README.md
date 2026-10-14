@@ -8,6 +8,14 @@ grey tray"*. You return the pixel of the object the robot should pick first, and
 ordered actions. If the instruction is ambiguous, you ask a question instead. If it is
 impossible or unsafe, you refuse. No training and no robot needed.
 
+This checkout's grounded pipeline runs through `run_grounded.py`: Apertus
+extracts instruction objects, Qwen or DINO supplies boxes, SAM supplies masks and
+picking points, a separate Qwen image request supplies stacking relationships,
+and Apertus plans from the enriched graph. For the mounted Clariden image and
+reproducible run commands, use [instructions.md](instructions.md) and
+[docs/CLARIDEN.md](docs/CLARIDEN.md). The quickstart below describes the supplied
+challenge benchmark rather than that full pipeline.
+
 ## Quickstart (15 minutes)
 
 ```

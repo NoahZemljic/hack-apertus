@@ -180,9 +180,14 @@ in `schema/scene_graph.schema.json`. The existing `GeometrySceneGraphBuilder` in
 `src/geometry_scene_graph.py` preserves IDs, derives semantic properties from
 labels, uses tight mask bounds for `bbox_2d` and the safe pixel for `pick_point_2d`,
 and validates the resulting graph. Projected containment is filtered by object
-kinds. Selected support hypotheses become first-pass `on_top_of` estimates by
-default; `--no-support-candidates` omits them. Inverse support lists are derived
-in code. The geometry module itself makes no LLM calls or confirmed physical
-support claims. See [Graph construction](PIPELINE.md#graph-construction) for the
+kinds. Fresh runs separately ask Qwen for direct visual support relationships
+between the detected objects. These observations replace geometry support guesses,
+including when the visual result is empty. `on_top_of` lists all direct supporting
+objects and `supports` contains the inverse links, allowing one object to rest
+across several supports. Saved records without visual observations retain the
+legacy geometry estimates; `--no-support-candidates` omits those guesses.
+The geometry module itself makes no LLM calls or confirmed physical support
+claims. `--refresh-stacking` adds new visual observations to saved geometry without
+rerunning detection or SAM. See [Graph construction](PIPELINE.md#graph-construction) for the
 builder's contract and [the Clariden replay commands](CLARIDEN.md#plan-and-evaluate-from-saved-grounding-artifacts)
 for planning from saved geometry.

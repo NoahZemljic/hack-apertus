@@ -11,7 +11,7 @@ from starter.scene_io import load_scene
 from src.apertus import ApertusPlanner
 from src.geometry_scene_graph import GeometrySceneGraphBuilder
 from src.geometry import GeometryConfig
-from src.grounded_perception import GroundedPerceptionConfig, generate_geometry
+from src.grounded_perception import GroundedPerceptionConfig, enrich_stacking, generate_geometry
 from src.prompting import prepare_planning_prompt
 from src.provenance import sha256_text, write_run_manifest
 from src.results import plan_to_result, write_submission_files
@@ -39,6 +39,12 @@ def create_parser() -> argparse.ArgumentParser:
                         help="DINO grounds verified categories; Qwen discovers instances and boxes together")
     parser.add_argument("--qwen-box-retries", type=int, default=1,
                         help="Format-only retries for Qwen boxes after the initial visual request")
+    parser.add_argument("--stacking-source", choices=("qwen", "geometry"), default="qwen",
+                        help="Fresh runs: visual Qwen support relations, or legacy geometry hypotheses")
+    parser.add_argument("--qwen-stacking-retries", type=int, default=1,
+                        help="Format-only retries for the separate Qwen stacking request")
+    parser.add_argument("--refresh-stacking", action="store_true",
+                        help="With --geometry-input, derive Qwen stacking while reusing saved objects and masks")
     parser.add_argument("--query-source", choices=("qwen_objects", "grounding_queries"), default="qwen_objects",
                         help="DINO only: verified visible labels, or combine them with instruction terms")
     parser.add_argument("--dino-model", default="IDEA-Research/grounding-dino-base")
@@ -74,6 +80,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--timeout must be positive")
     if args.qwen_box_retries < 0:
         parser.error("--qwen-box-retries must be nonnegative")
+    if args.qwen_stacking_retries < 0:
+        parser.error("--qwen-stacking-retries must be nonnegative")
+    if args.refresh_stacking and (args.input is None or args.stacking_source != "qwen"):
+        parser.error("--refresh-stacking requires --geometry-input and --stacking-source qwen")
     if not args.input and args.box_detector == "qwen" and args.query_source != "qwen_objects":
         parser.error("--query-source applies only to --box-detector dino")
     if not 0 <= args.box_threshold <= 1 or not 0 <= args.text_threshold <= 1:
@@ -111,7 +121,7 @@ def main(argv: list[str] | None = None) -> int:
     })
     # A run uses one policy snapshot even if the mounted prompt changes mid-run.
     planning_policy = (args.out.parent / "planning_policy.txt").read_text()
-    if fresh_perception:
+    if fresh_perception or args.refresh_stacking:
         # Fresh run: extraction → selected detector → cleanup → SAM → mask geometry.
         # generate_geometry saves checkpoints and returns the geometry JSON path.
         try:
@@ -123,12 +133,16 @@ def main(argv: list[str] | None = None) -> int:
                 qwen_base_url=args.qwen_base_url, qwen_model=args.qwen_model,
                 timeout=args.timeout, constrained=not args.no_constrained_decoding,
                 box_detector=args.box_detector, qwen_box_retries=args.qwen_box_retries,
+                stacking_source=args.stacking_source, qwen_stacking_retries=args.qwen_stacking_retries,
                 query_source=args.query_source, dino_model=args.dino_model, dino_device=args.dino_device,
                 sam_model=args.sam_model, sam_device=args.sam_device,
                 box_threshold=args.box_threshold, text_threshold=args.text_threshold,
                 debug_visualizations=args.debug_visualizations,
             )
-            args.input = generate_geometry(scenes, artifact_dir, config, GeometryConfig(**overrides))
+            if fresh_perception:
+                args.input = generate_geometry(scenes, artifact_dir, config, GeometryConfig(**overrides))
+            else:
+                args.input = enrich_stacking(scenes, args.input, artifact_dir, config, base_dir=args.base_dir)
         except (ValueError, OSError, ImportError, KeyError, TypeError, TimeoutError) as error:
             parser.error(f"Perception failed: {error}; diagnostics: {artifact_dir / 'perception.failure.json'}")
     # Both fresh and replay runs load geometry through the same graph builder.

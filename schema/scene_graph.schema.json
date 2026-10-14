@@ -36,7 +36,13 @@
           "required": ["inside", "on_top_of", "supports", "held_by_human", "partially_occluded"],
           "properties": {
             "inside": {"type": ["string", "null"]},
-            "on_top_of": {"type": ["string", "null"]},
+            "on_top_of": {
+              "description": "Supporting object IDs. New graphs use arrays; string/null is accepted for legacy artifacts.",
+              "oneOf": [
+                {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+                {"type": ["string", "null"]}
+              ]
+            },
             "supports": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
             "held_by_human": {"type": "boolean"},
             "partially_occluded": {"type": "boolean"},

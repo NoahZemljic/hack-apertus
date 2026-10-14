@@ -43,12 +43,16 @@ class GroundedPipelineTests(unittest.TestCase):
         self.discovery_replies = 0
         self.extra_detections = []
         self.expected_clean_count = None
+        self.stacking_reply = {"supports": []}
 
     def http_response(self, request, **kwargs):
         body = json.loads(request.data)
         self.requests.append((request.full_url, body))
         prompt = body["messages"][0]["content"]
-        if isinstance(prompt, str) and "Extract every explicitly mentioned" in prompt:
+        if body.get("response_format", {}).get("json_schema", {}).get("name") == "qwen_stacking":
+            self.events.append("stacking")
+            reply = self.stacking_reply
+        elif isinstance(prompt, str) and "Extract every explicitly mentioned" in prompt:
             self.events.append("extraction")
             reply = {"objects": ["blue cube" if "Instruction: pick the blue cube" in prompt else "red cube"]}
         elif isinstance(prompt, list):
@@ -113,12 +117,127 @@ class GroundedPipelineTests(unittest.TestCase):
             if "qwen.test" not in request.full_url:
                 return original(request, **kwargs)
             body = json.loads(request.data)
+            if body.get("response_format", {}).get("json_schema", {}).get("name") == "qwen_stacking":
+                return original(request, **kwargs)
             self.requests.append((request.full_url, body))
             self.events.append("qwen_boxes")
             return io.BytesIO(json.dumps({"choices": [{"message": {
                 "content": json.dumps(reply)}}]}).encode())
 
         self.http_response = boxes_response
+
+    def use_stacked_objects(self):
+        self.use_qwen_boxes({"objects": [
+            {"label": "red_cube", "bbox_2d": [350, 200, 650, 500]},
+            {"label": "red_gear", "bbox_2d": [200, 350, 450, 650]},
+            {"label": "red_gear", "bbox_2d": [550, 350, 800, 650]},
+        ]})
+        self.expected_clean_count = 3
+        self.stacking_reply = {"supports": [
+            {"upper": "red_cube_1", "lower": "red_gear_1"},
+            {"upper": "red_cube_1", "lower": "red_gear_2"},
+        ]}
+
+    def test_separate_stacking_call_enriches_graph_without_changing_objects(self):
+        self.use_stacked_objects()
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--box-detector", "qwen"), 0)
+        self.assertEqual(self.events, ["extraction", "extraction", "qwen_boxes", "segmentation",
+                                       "stacking", "planning", "planning"])
+        self.detector_backend.assert_not_called()
+        graph = json.loads((self.output / "scene_graphs/scene_01.json").read_text())
+        objects = {obj["id"]: obj for obj in graph["objects"]}
+        self.assertEqual(objects["red_cube_1"]["relations"]["on_top_of"], ["red_gear_1", "red_gear_2"])
+        for gear in ("red_gear_1", "red_gear_2"):
+            self.assertEqual(objects[gear]["relations"]["supports"], ["red_cube_1"])
+        segmentation = json.loads((self.output / "segmentation_results.json").read_text())[0]
+        for obj in segmentation["objects"]:
+            self.assertEqual(objects[obj["id"]]["pick_point_2d"], obj["safe_pixel"])
+        trace = json.loads((self.output / "qwen_stacking.raw.json").read_text())[0]
+        self.assertEqual(len(trace["requests"]), 1)
+        self.assertEqual(trace["errors"], [])
+        self.assertNotIn("data:image", json.dumps(trace))
+        request = next(body for _, body in self.requests if
+                       body.get("response_format", {}).get("json_schema", {}).get("name") == "qwen_stacking")
+        self.assertNotIn("pick the red cube", json.dumps(request))
+        spatial = json.loads((self.output / "scene_graphs/scene_01.spatial.json").read_text())
+        self.assertEqual(spatial["support_source"], "qwen")
+
+    def prepare_geometry_replay(self):
+        self.use_stacked_objects()
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--box-detector", "qwen",
+                                           "--stacking-source", "geometry", "--build-only"), 0)
+        geometry = self.output / "geometry_results.json"
+        records = json.loads(geometry.read_text())
+        # A deliberately reversed legacy estimate must be replaced by the visual
+        # task, using the same object IDs and saved foreground masks.
+        records[0]["relation_candidates"] = [{"source": "red_gear_1", "target": "red_cube_1", "type": "on"}]
+        for obj in records[0]["objects"]:
+            obj["mask_path"] = str(Path(obj["mask_path"]).relative_to(self.output))
+        geometry.write_text(json.dumps(records))
+        original = geometry.read_bytes()
+        self.requests.clear()
+        self.events.clear()
+        self.queries.clear()
+        self.output = self.root / "stacking-replay"
+        self.out = self.output / "results.json"
+        return geometry, original
+
+    def test_stacking_refresh_reuses_geometry_and_masks_and_saves_new_checkpoint(self):
+        geometry, original = self.prepare_geometry_replay()
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--geometry-input", str(geometry),
+                                           "--refresh-stacking"), 0)
+        self.assertEqual(self.events, ["stacking", "planning", "planning"])
+        self.detector_backend.assert_not_called()
+        self.assertEqual(geometry.read_bytes(), original)
+        saved = json.loads((self.output / "geometry_results.json").read_text())[0]
+        previous = json.loads(original)[0]
+        for obj, old in zip(saved["objects"], previous["objects"]):
+            for key in ("box", "safe_pixel", "centroid", "mask_area", "label", "id"):
+                self.assertEqual(obj[key], old[key])
+            self.assertTrue(Path(obj["mask_path"]).is_file())
+        graph = json.loads((self.output / "scene_graphs/scene_01.json").read_text())
+        self.assertEqual(graph["objects"][0]["relations"]["on_top_of"], ["red_gear_1", "red_gear_2"])
+        self.assertEqual(graph["objects"][1]["relations"]["on_top_of"], [])
+
+    def test_empty_visual_stacking_overrides_previous_geometry_guess(self):
+        geometry, _ = self.prepare_geometry_replay()
+        self.stacking_reply = {"supports": []}
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--geometry-input", str(geometry),
+                                           "--refresh-stacking", "--build-only"), 0)
+        self.assertEqual(self.events, ["stacking"])
+        graph = json.loads((self.output / "scene_graphs/scene_01.json").read_text())
+        self.assertTrue(all(obj["relations"]["on_top_of"] == [] for obj in graph["objects"]))
+        self.assertTrue(all(obj["relations"]["supports"] == [] for obj in graph["objects"]))
+
+    def test_stacking_refresh_can_reuse_copied_masks_when_scratch_mount_is_unavailable(self):
+        geometry, _ = self.prepare_geometry_replay()
+        records = json.loads(geometry.read_text())
+        for obj in records[0]["objects"]:
+            obj["mask_path"] = str(self.root / "unavailable-scratch" / "segmentation" /
+                                   records[0]["scene"] / f"{obj['id']}.png")
+        geometry.write_text(json.dumps(records))
+        self.assertEqual(self.run_pipeline("--scene", "scene_01", "--geometry-input", str(geometry),
+                                           "--refresh-stacking", "--build-only"), 0)
+        self.assertEqual(self.events, ["stacking"])
+        saved = json.loads((self.output / "geometry_results.json").read_text())[0]
+        for obj in saved["objects"]:
+            self.assertEqual(Path(obj["mask_path"]), geometry.parent / "segmentation" /
+                             saved["scene"] / f"{obj['id']}.png")
+
+    def test_bad_stacking_reply_stops_before_planning_and_preserves_failed_trace(self):
+        geometry, original = self.prepare_geometry_replay()
+        self.stacking_reply = {"supports": [{"upper": "missing", "lower": "red_gear_1"}]}
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.run_pipeline("--scene", "scene_01", "--geometry-input", str(geometry),
+                              "--refresh-stacking", "--qwen-stacking-retries", "0")
+        self.assertEqual(self.events, ["stacking"])
+        self.assertEqual(geometry.read_bytes(), original)
+        self.assertFalse(self.out.exists())
+        failure = json.loads((self.output / "perception.failure.json").read_text())
+        self.assertEqual((failure["stage"], failure["scene"]), ("qwen_stacking", "scene_01"))
+        trace = json.loads((self.output / "qwen_stacking.raw.json").read_text())[0]
+        self.assertEqual(len(trace["requests"]), 1)
+        self.assertEqual(len(trace["errors"]), 1)
 
     def test_qwen_boxes_replace_discovery_and_dino_but_keep_sam_and_planning(self):
         self.use_qwen_boxes({"objects": [
@@ -308,6 +427,8 @@ class GroundedPipelineTests(unittest.TestCase):
         self.assertEqual(args.query_source, "qwen_objects")
         self.assertEqual(args.out, Path("outputs/grounded_pipeline/results.json"))
         self.assertEqual(GroundedPerceptionConfig().query_source, "qwen_objects")
+        self.assertEqual(args.stacking_source, "qwen")
+        self.assertEqual(args.qwen_stacking_retries, 1)
     def test_default_run_uses_one_planning_pass_and_logs_its_actual_prompt(self):
         self.assertEqual(self.run_pipeline("--scene", "scene_01", "--limit", "1"), 0)
         self.assertEqual(self.events.count("planning"), 1)

@@ -35,19 +35,19 @@ Deterministically derived 2D geometry:
 {json.dumps(geometry, separators=(",", ":"))}{distance_context}
 
 Supplied field semantics:
-{planning_field_semantics(graph)}
+{planning_field_semantics(graph, geometry)}
 
 The gripper holds one object at a time and opens at most {opening:g} mm.
 Instruction: {json.dumps(instruction)}
 Return the decision for this exact instruction."""
 
 
-def planning_field_semantics(graph: dict) -> str:
+def planning_field_semantics(graph: dict, geometry: dict | None = None) -> str:
     """Keep field guidance tied to keys that are actually present in the payload."""
     fields = {key for obj in graph["objects"] for key in obj}
     descriptions = {
         "id": "the exact object identifier used in action steps",
-        "label": "the observed object description; underscores separate words",
+        "label": "the observed object description; words may be separated by spaces or underscores",
         "kind": "the object's role: movable, container, surface, or human",
         "color": "the observed color; null means it is not established",
         "pick_point_2d": "a picking or destination point in image pixels, not the object's center or physical size",
@@ -68,8 +68,8 @@ def planning_field_semantics(graph: dict) -> str:
     relation_fields = {key for obj in graph["objects"] for key in obj["relations"]}
     relation_descriptions = {
         "inside": "the containing object's ID; containment alone does not establish support",
-        "on_top_of": "the estimated supporting object's ID: this object is on that object, not the reverse; geometry is not physical confirmation",
-        "supports": "IDs estimated to rest on this object; use them to plan access and prerequisites, not as automatic reasons to refuse",
+        "on_top_of": "IDs of objects supporting this object: this object is on those objects, not the reverse; [] means no supplied support; legacy single-ID or null values mean one or no support",
+        "supports": "IDs of objects resting on this object, the inverse of on_top_of; move upper objects first when access requires it and the instruction permits it",
         "held_by_human": "true forbids picking; false does not override explicit human contact in the instruction",
         "partially_occluded": "an occlusion observation, not identification of a blocker or proof of support",
         "occluded_by": "detected object IDs hiding this object; account for access in the plan",
@@ -79,6 +79,20 @@ def planning_field_semantics(graph: dict) -> str:
         for key, description in relation_descriptions.items() if key in relation_fields
     )
     guidance.append("- Image-plane above/below describes camera ordering, not physical stacking.")
+    source = (geometry or {}).get("support_source")
+    if source == "qwen":
+        guidance.append(
+            "- support_source=qwen: support links are directed visual observations from a separate "
+            "Qwen image request using these object IDs; [] means it reported no support, "
+            "not a geometry-derived fallback."
+        )
+    elif source == "geometry":
+        guidance.append(
+            "- support_source=geometry: support links are mask-geometry hypotheses, "
+            "not visual confirmation of physical stacking."
+        )
+    elif source == "none":
+        guidance.append("- support_source=none: no support observations were supplied.")
     return "\n".join(guidance)
 
 

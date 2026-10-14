@@ -83,6 +83,15 @@ class ConfigurationTests(unittest.TestCase):
             self.assertEqual(model_definitions(self.config, args), [])
             self.assertEqual([name for name, _, _ in model_definitions(self.config, args, smoke=True)],
                              ["apertus", "qwen"])
+
+    def test_stacking_refresh_replay_only_resolves_its_servers(self):
+        args = SimpleNamespace(input=Path("saved.json"), build_only=False,
+                               box_detector="dino", refresh_stacking=True)
+        self.assertEqual(needed_servers(args), ["apertus", "qwen"])
+        self.assertEqual([name for name, _, _ in model_definitions(self.config, args)], ["apertus", "qwen"])
+        args.build_only = True
+        self.assertEqual(needed_servers(args), ["qwen"])
+        self.assertEqual([name for name, _, _ in model_definitions(self.config, args)], ["qwen"])
     def test_pipeline_validation_fails_before_model_start(self):
         with TemporaryDirectory() as folder:
             data = Path(folder)
@@ -95,6 +104,13 @@ class ConfigurationTests(unittest.TestCase):
                     validate_pipeline(pipeline_command(self.config, ["--data", folder, *extra]))
             with self.assertRaisesRegex(ValueError, "retries"):
                 validate_pipeline(pipeline_command(self.config, ["--data", folder, "--qwen-box-retries", "-1"]))
+            with self.assertRaisesRegex(ValueError, "retries"):
+                validate_pipeline(pipeline_command(self.config, ["--data", folder, "--qwen-stacking-retries", "-1"]))
+            with self.assertRaisesRegex(ValueError, "refresh-stacking"):
+                validate_pipeline(pipeline_command(self.config, ["--data", folder, "--refresh-stacking"]))
+            with self.assertRaisesRegex(ValueError, "refresh-stacking"):
+                validate_pipeline(pipeline_command(self.config, ["--data", folder, "--geometry-input", "old.json",
+                                                                 "--refresh-stacking", "--stacking-source", "geometry"]))
             with self.assertRaisesRegex(ValueError, "query-source"):
                 validate_pipeline(pipeline_command(self.config, ["--data", folder, "--box-detector", "qwen",
                                                                  "--query-source", "grounding_queries"]))

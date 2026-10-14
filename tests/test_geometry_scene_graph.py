@@ -127,11 +127,98 @@ class GeometrySceneGraphTests(unittest.TestCase):
         self.object("gear_1", "red gear", (10, 10, 30, 30))
         self.object("gear_2", "yellow gear", (15, 15, 25, 25))
         self.edge("gear_2", "on", "gear_1", candidate=True)
-        graph, _, _ = self.builder().build("scene_test", 100, 60)
-        self.assertEqual(graph["objects"][1]["relations"]["on_top_of"], "gear_1")
+        graph, spatial, debug = self.builder().build("scene_test", 100, 60)
+        self.assertEqual(graph["objects"][1]["relations"]["on_top_of"], ["gear_1"])
         self.assertEqual(graph["objects"][0]["relations"]["supports"], ["gear_2"])
-        graph, _, _ = self.builder(accept_support_candidates=False).build("scene_test", 100, 60)
-        self.assertIsNone(graph["objects"][1]["relations"]["on_top_of"])
+        self.assertEqual(spatial["support_source"], "geometry")
+        self.assertEqual(debug["accepted_relations"][0]["evidence_source"], "geometry")
+        graph, spatial, _ = self.builder(accept_support_candidates=False).build("scene_test", 100, 60)
+        self.assertEqual(graph["objects"][1]["relations"]["on_top_of"], [])
+        self.assertEqual(spatial["support_source"], "none")
+
+    def test_visual_supports_override_wrong_geometry_and_allow_two_supporting_gears(self):
+        self.object("gear_1", "red gear", (10, 20, 35, 45))
+        self.object("gear_2", "red gear", (40, 20, 65, 45))
+        self.object("cube_1", "red cube", (25, 15, 50, 30))
+        self.object("tray_1", "grey tray", (0, 0, 75, 55))
+        self.edge("gear_1", "on", "cube_1", candidate=True)
+        self.edge("cube_1", "inside", "tray_1")
+        self.edge("gear_1", "left_of", "gear_2")
+        self.scene["visual_supports"] = {"backend": "qwen", "supports": [
+            {"upper": "cube_1", "lower": "gear_1"},
+            {"upper": "cube_1", "lower": "gear_2"},
+        ]}
+        builder = self.builder(accept_support_candidates=False)
+        original = deepcopy(builder.records)
+        graph, spatial, debug = builder.build("scene_test", 100, 60)
+        objects = {obj["id"]: obj for obj in graph["objects"]}
+        self.assertEqual(objects["cube_1"]["relations"]["on_top_of"], ["gear_1", "gear_2"])
+        self.assertEqual(objects["cube_1"]["relations"]["inside"], "tray_1")
+        for oid in ("gear_1", "gear_2"):
+            self.assertEqual(objects[oid]["relations"]["supports"], ["cube_1"])
+            self.assertEqual(objects[oid]["relations"]["on_top_of"], [])
+        self.assertEqual(spatial["support_source"], "qwen")
+        self.assertEqual(spatial["image_plane_relations"], [
+            {"source": "gear_1", "type": "left_of", "target": "gear_2"}])
+        self.assertTrue(all(edge["evidence_source"] == "visual"
+                            for edge in debug["accepted_relations"] if edge["type"] == "on"))
+        self.assertIn("override", debug["rejected_relations"][0]["builder_reason"])
+        self.assertEqual(builder.records, original)
+        validate_scene_graph(graph, 100, 60)
+
+    def test_empty_visual_observation_prevents_geometry_false_support(self):
+        self.object("gear_1", "red gear", (10, 10, 30, 30))
+        self.object("gear_2", "yellow gear", (15, 15, 25, 25))
+        self.edge("gear_2", "on", "gear_1", candidate=True)
+        self.scene["visual_supports"] = {"backend": "qwen", "supports": []}
+        graph, spatial, debug = self.builder().build("scene_test", 100, 60)
+        self.assertTrue(all(obj["relations"]["on_top_of"] == [] for obj in graph["objects"]))
+        self.assertTrue(all(obj["relations"]["supports"] == [] for obj in graph["objects"]))
+        self.assertEqual(spatial["support_source"], "qwen")
+        self.assertEqual(debug["input_visual_supports"], self.scene["visual_supports"])
+        self.assertEqual(debug["rejected_relations"][0]["evidence_source"], "geometry")
+
+    def test_visual_supports_reject_bad_references_cycles_and_non_workpiece_edges(self):
+        self.object("gear_1", "red gear", (10, 10, 30, 30))
+        self.object("gear_2", "yellow gear", (15, 15, 25, 25))
+        self.object("tray_1", "grey tray", (0, 0, 75, 55))
+        self.object("hand_1", "hand", (50, 10, 75, 30))
+        cases = [
+            ([{"upper": "gear_1", "lower": "missing"}], "unknown object"),
+            ([{"upper": "gear_1", "lower": "gear_1"}], "self"),
+            ([{"upper": "gear_1", "lower": "gear_2"},
+              {"upper": "gear_2", "lower": "gear_1"}], "cycle"),
+            ([{"upper": "gear_1", "lower": "gear_2"}] * 2, "duplicate"),
+        ]
+        for invalid_kind in ("tray_1", "hand_1"):
+            cases.extend((
+                ([{"upper": invalid_kind, "lower": "gear_1"}], "upper"),
+                ([{"upper": "gear_1", "lower": invalid_kind}], "lower"),
+            ))
+        for supports, message in cases:
+            self.scene["visual_supports"] = {"backend": "qwen", "supports": supports}
+            with self.subTest(supports=supports), self.assertRaisesRegex(ValueError, message):
+                self.builder().build("scene_test", 100, 60)
+
+    def test_visual_support_allows_a_plate_as_upper_object(self):
+        self.object("gear_1", "red gear", (10, 20, 35, 45))
+        self.object("plate_1", "white plate", (10, 10, 35, 30))
+        self.scene["visual_supports"] = {"backend": "qwen", "supports": [
+            {"upper": "plate_1", "lower": "gear_1"},
+        ]}
+        graph, _, _ = self.builder().build("scene_test", 100, 60)
+        self.assertEqual(graph["objects"][1]["kind"], "surface")
+        self.assertEqual(graph["objects"][1]["relations"]["on_top_of"], ["gear_1"])
+
+    def test_malformed_visual_support_contract_fails_instead_of_falling_back(self):
+        self.object("gear_1", "red gear", (10, 10, 30, 30))
+        for invalid in (None, [], {"backend": "geometry", "supports": []},
+                        {"backend": "qwen", "supports": None},
+                        {"backend": "qwen", "supports": [{"upper": "gear_1"}]},
+                        {"backend": "qwen", "supports": [], "extra": True}):
+            self.scene["visual_supports"] = invalid
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, "visual[ _]support"):
+                self.builder().build("scene_test", 100, 60)
 
     def test_debug_is_separate_and_spatial_distances_use_centroids(self):
         a = self.object("part_1", "white part", (0, 0, 40, 20))

@@ -2,6 +2,7 @@ import json
 
 from jsonschema import Draft202012Validator
 
+from .scene_graph import supporting_ids
 from .schemas import load_plan_schema, load_scene_graph_schema
 
 
@@ -50,17 +51,17 @@ def validate_scene_graph(graph: dict, width: int | None = None,
         if not (x1 <= u <= x2 and y1 <= v <= y2):
             raise ValueError(f"{oid}: pick_point_2d lies outside bbox_2d")
         for field in ("inside", "on_top_of"):
-            target = obj["relations"][field]
-            if target is None:
-                continue
-            if target not in objects or target == oid:
-                raise ValueError(f"{oid}: {field} references an unknown object or itself")
-            if objects[target]["kind"] == "human":
-                raise ValueError(f"{oid}: {field} targets a human")
-            if field == "inside" and objects[target]["kind"] != "container":
-                raise ValueError(f"{oid}: inside must target a container")
-            if field == "on_top_of":
-                expected_supports[target].append(oid)
+            value = obj["relations"][field]
+            targets = supporting_ids(value) if field == "on_top_of" else ([] if value is None else [value])
+            for target in targets:
+                if target not in objects or target == oid:
+                    raise ValueError(f"{oid}: {field} references an unknown object or itself")
+                if objects[target]["kind"] == "human":
+                    raise ValueError(f"{oid}: {field} targets a human")
+                if field == "inside" and objects[target]["kind"] != "container":
+                    raise ValueError(f"{oid}: inside must target a container")
+                if field == "on_top_of":
+                    expected_supports[target].append(oid)
         for target in obj["relations"].get("occluded_by", []):
             if target not in objects or target == oid:
                 raise ValueError(f"{oid}: occluded_by references an unknown object or itself")
@@ -79,8 +80,9 @@ def validate_scene_graph(graph: dict, width: int | None = None,
                 return
             active.add(oid)
             for field in fields:
-                target = objects[oid]["relations"][field]
-                if target is not None:
+                value = objects[oid]["relations"][field]
+                targets = supporting_ids(value) if field == "on_top_of" else ([] if value is None else [value])
+                for target in targets:
                     visit(target)
             active.remove(oid)
             completed.add(oid)

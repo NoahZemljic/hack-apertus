@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Qwen direct stacking relationships",
+  "type": "object",
+  "required": ["supports"],
+  "additionalProperties": false,
+  "properties": {
+    "supports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["upper", "lower"],
+        "additionalProperties": false,
+        "properties": {
+          "upper": {"type": "string", "minLength": 1},
+          "lower": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

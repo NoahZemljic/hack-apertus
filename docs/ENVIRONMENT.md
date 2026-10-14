@@ -4,7 +4,9 @@ All application dependencies are declared in the root `pyproject.toml` and
 resolved in `uv.lock` for upstream development. Container images provide the
 inference engine and CUDA runtime. The complete ARM64 single-container deployment
 is in [the Clariden build and launch guide](CLARIDEN.md): Apertus 70B on two GPUs,
-Qwen3-VL-32B on one, and DINO/SAM on one. It preserves Swiss AI's custom engine
+Qwen3-VL-32B on one, and SAM with optional DINO on one. Qwen supplies discovery
+or boxes and a separate stacking request through the same server, with a
+16384-token context. It preserves Swiss AI's custom engine
 and records a separate container package manifest.
 
 | Dependency group | What it provides |

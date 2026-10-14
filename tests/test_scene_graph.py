@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 
 from src.results import plan_to_result
-from src.scene_graph import derive_support_relations
+from src.scene_graph import derive_support_relations, supporting_ids
 from src.schemas import load_object_extraction_schema, load_scene_discovery_schema
 from src.validation import validate_scene_graph, validate_structure
 from src.visualization import write_scene_overlay
@@ -18,7 +18,7 @@ from src.visualization import write_scene_overlay
 def object_record(oid, label, kind, box, point):
     return {"id": oid, "label": label, "kind": kind, "color": None,
             "bbox_2d": box, "pick_point_2d": point, "confidence": 0.9,
-            "relations": {"inside": None, "on_top_of": None, "supports": [],
+            "relations": {"inside": None, "on_top_of": [], "supports": [],
                           "held_by_human": False, "partially_occluded": False}}
 
 
@@ -35,11 +35,64 @@ class SceneGraphTests(unittest.TestCase):
         contained = derive_support_relations(self.graph)
         self.assertEqual(contained["objects"][1]["relations"]["supports"], [])
         self.assertEqual(self.graph, original)
-        self.graph["objects"][0]["relations"]["on_top_of"] = "tray_1"
+        self.graph["objects"][0]["relations"]["on_top_of"] = ["tray_1"]
         supported = derive_support_relations(self.graph)
         self.assertEqual(supported["objects"][1]["relations"]["supports"], ["gear_1"])
         self.assertEqual(self.graph["objects"][1]["relations"]["supports"], [])
         self.assertIs(validate_scene_graph(supported), supported)
+
+    def test_multiple_supports_have_independent_inverses_and_preserve_containment(self):
+        self.graph["objects"].extend([
+            object_record("gear_2", "yellow gear", "movable", [80, 30, 130, 90], [110, 60]),
+            object_record("cube_1", "red cube", "movable", [40, 40, 110, 70], [75, 55]),
+        ])
+        self.graph["objects"][-1]["relations"].update(
+            inside="tray_1", on_top_of=["gear_1", "gear_2"])
+        graph = derive_support_relations(self.graph)
+        self.assertEqual(graph["objects"][-1]["relations"]["on_top_of"], ["gear_1", "gear_2"])
+        self.assertEqual(graph["objects"][0]["relations"]["supports"], ["cube_1"])
+        self.assertEqual(graph["objects"][2]["relations"]["supports"], ["cube_1"])
+        self.assertEqual(graph["objects"][1]["relations"]["supports"], [])
+        self.assertIs(validate_scene_graph(graph), graph)
+
+    def test_saved_single_parent_graphs_are_accepted_and_normalized_without_mutation(self):
+        self.graph["objects"][0]["relations"]["on_top_of"] = "tray_1"
+        self.graph["objects"][1]["relations"].update(on_top_of=None, supports=["gear_1"])
+        self.assertIs(validate_scene_graph(self.graph), self.graph)
+        graph = derive_support_relations(self.graph)
+        self.assertEqual(graph["objects"][0]["relations"]["on_top_of"], ["tray_1"])
+        self.assertEqual(graph["objects"][1]["relations"]["on_top_of"], [])
+        self.assertEqual(self.graph["objects"][0]["relations"]["on_top_of"], "tray_1")
+        self.assertIsNone(self.graph["objects"][1]["relations"]["on_top_of"])
+
+    def test_multiple_support_references_duplicates_and_cycles_are_rejected(self):
+        self.graph["objects"].append(
+            object_record("gear_2", "yellow gear", "movable", [80, 30, 130, 90], [110, 60]))
+        for supports in (["tray_1", "missing"], ["tray_1", "gear_1"], ["tray_1", "tray_1"]):
+            invalid = deepcopy(self.graph)
+            invalid["objects"][0]["relations"]["on_top_of"] = supports
+            with self.subTest(supports=supports), self.assertRaises(ValueError):
+                validate_scene_graph(invalid)
+        self.graph["objects"][0]["relations"]["on_top_of"] = ["tray_1", "gear_2"]
+        self.graph["objects"][2]["relations"]["on_top_of"] = ["gear_1"]
+        with self.assertRaisesRegex(ValueError, "cycle"):
+            validate_scene_graph(derive_support_relations(self.graph))
+
+    def test_containment_and_support_union_cannot_form_a_cycle(self):
+        self.graph["objects"][0]["relations"]["inside"] = "tray_1"
+        self.graph["objects"][1]["relations"]["on_top_of"] = ["gear_1"]
+        with self.assertRaisesRegex(ValueError, "cycle"):
+            validate_scene_graph(derive_support_relations(self.graph))
+
+    def test_supporting_ids_reads_current_and_saved_values(self):
+        values = ["gear_1", "gear_2"]
+        self.assertEqual(supporting_ids(values), values)
+        self.assertIsNot(supporting_ids(values), values)
+        self.assertEqual(supporting_ids("gear_1"), ["gear_1"])
+        self.assertEqual(supporting_ids(None), [])
+        for invalid in (1, True, {}, [None], ["gear_1", 2]):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                supporting_ids(invalid)
 
     def test_border_coordinates_are_inclusive_and_pick_stays_in_box(self):
         self.graph["objects"][1]["pick_point_2d"] = [159, 119]
@@ -82,7 +135,7 @@ class SceneGraphTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown object"):
             validate_scene_graph(invalid)
         invalid = deepcopy(self.graph)
-        invalid["objects"][0]["relations"]["on_top_of"] = "tray_1"
+        invalid["objects"][0]["relations"]["on_top_of"] = ["tray_1"]
         with self.assertRaisesRegex(ValueError, "supports"):
             validate_scene_graph(invalid)
 

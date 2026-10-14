@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 from .geometry import GeometryReasoner
-from .scene_graph import derive_support_relations, graph_objects_by_id
+from .scene_graph import derive_support_relations, graph_objects_by_id, supporting_ids
 from .validation import validate_scene_graph
 
 
@@ -45,14 +45,21 @@ def planner_box(bounds: tuple[int, int, int, int], width: int, height: int) -> l
     return [x1, y1, x2, y2]
 
 
-def creates_cycle(objects: dict, source: str, target: str, field: str) -> bool:
-    seen = {source}
-    current = target
-    while current is not None:
-        if current in seen:
+def creates_cycle(objects: dict, source: str, target: str) -> bool:
+    """Test the combined containment/support hierarchy before adding an edge."""
+    seen = set()
+    pending = [target]
+    while pending:
+        current = pending.pop()
+        if current == source:
             return True
+        if current in seen:
+            continue
         seen.add(current)
-        current = objects[current]["relations"][field]
+        relations = objects[current]["relations"]
+        pending.extend(supporting_ids(relations["on_top_of"]))
+        if relations["inside"] is not None:
+            pending.append(relations["inside"])
     return False
 
 
@@ -67,9 +74,9 @@ class GeometrySceneGraphBuilder:
     def build(self, scene: str, width: int, height: int) -> tuple[dict, dict, dict]:
         """Return a validated graph, clean spatial context, and separate diagnostics.
 
-        Selected geometry support hypotheses are accepted as first-pass estimates
-        by default. No relation confidence or review annotations enter the prompt.
-        Structural validation and mask membership do not prove physical support.
+        Visual support observations override geometry support hypotheses, including
+        an explicitly empty observation. Legacy geometry can supply estimates when
+        no visual observations exist. Neither source proves physical support.
         """
         record = self.records[scene]
         if record.get("geometry_version") != "1.0":
@@ -77,7 +84,14 @@ class GeometrySceneGraphBuilder:
         if record.get("image") != {"width": width, "height": height}:
             raise ValueError(f"{scene}: geometry image dimensions do not match RGB image")
         graph = {"image": {"width": width, "height": height}, "objects": []}
+        visual = record.get("visual_supports")
+        has_visual = "visual_supports" in record
+        if has_visual and (not isinstance(visual, dict) or visual.get("backend") != "qwen"
+                           or set(visual) != {"backend", "supports"}
+                           or not isinstance(visual["supports"], list)):
+            raise ValueError(f"{scene}: visual_supports must contain backend 'qwen' and a supports list")
         debug = {"scene": scene, "accept_support_candidates": self.accept_support_candidates,
+                 "support_source": "qwen" if has_visual else "none",
                  "objects": [], "accepted_relations": [], "rejected_relations": []}
         centroids = {}
         mask_areas = {}
@@ -89,7 +103,7 @@ class GeometrySceneGraphBuilder:
                 "bbox_2d": planner_box(mask.bounds, width, height),
                 "pick_point_2d": list(obj["safe_pixel"]),
                 "confidence": obj.get("detector_score", obj.get("dino_score", obj.get("score"))),
-                "relations": {"inside": None, "on_top_of": None, "supports": [],
+                "relations": {"inside": None, "on_top_of": [], "supports": [],
                               "held_by_human": False, "partially_occluded": False},
             })
             centroids[obj["id"]] = list(obj["centroid"])
@@ -115,27 +129,70 @@ class GeometrySceneGraphBuilder:
                         key=lambda e: (mask_areas[e["target"]], e["source"], e["target"]))
         support = sorted((e for e in candidates if e["type"] == "on"),
                          key=lambda e: (e["source"], e["target"]))
-        for edge in inside + support:
+        for edge in inside:
             source, target = edge["source"], edge["target"]
-            field = "inside" if edge["type"] == "inside" else "on_top_of"
             reason = None
-            if field == "inside" and (objects[target]["kind"] != "container" or objects[source]["kind"] == "human"):
+            if objects[target]["kind"] != "container" or objects[source]["kind"] == "human":
                 reason = "projected enclosure is not object membership in a container"
-            elif field == "on_top_of" and not self.accept_support_candidates:
-                reason = "support candidate acceptance disabled"
-            elif field == "on_top_of" and objects[source]["kind"] != "movable":
-                reason = "support source is not movable"
-            elif field == "on_top_of" and objects[target]["kind"] == "human":
-                reason = "human contact does not establish support"
-            elif objects[source]["relations"][field] is not None:
+            elif objects[source]["relations"]["inside"] is not None:
                 reason = "one relationship target already selected"
-            elif creates_cycle(objects, source, target, field):
+            elif creates_cycle(objects, source, target):
                 reason = "relationship would form a cycle"
+            diagnostic = {**deepcopy(edge), "evidence_source": "geometry"}
             if reason:
-                debug["rejected_relations"].append({**deepcopy(edge), "builder_reason": reason})
+                debug["rejected_relations"].append({**diagnostic, "builder_reason": reason})
             else:
-                objects[source]["relations"][field] = target
-                debug["accepted_relations"].append(deepcopy(edge))
+                objects[source]["relations"]["inside"] = target
+                debug["accepted_relations"].append(diagnostic)
+
+        # Geometry estimates remain reviewable but never override an explicit
+        # visual result, even when Qwen reports no stack relationships.
+        for edge in support:
+            source, target = edge["source"], edge["target"]
+            reason = None
+            if has_visual:
+                reason = "visual support observations override geometry support hypotheses"
+            elif not self.accept_support_candidates:
+                reason = "support candidate acceptance disabled"
+            elif objects[source]["kind"] != "movable":
+                reason = "support source is not movable"
+            elif objects[target]["kind"] == "human":
+                reason = "human contact does not establish support"
+            elif objects[source]["relations"]["on_top_of"]:
+                reason = "one relationship target already selected"
+            elif creates_cycle(objects, source, target):
+                reason = "relationship would form a cycle"
+            diagnostic = {**deepcopy(edge), "evidence_source": "geometry"}
+            if reason:
+                debug["rejected_relations"].append({**diagnostic, "builder_reason": reason})
+            else:
+                objects[source]["relations"]["on_top_of"].append(target)
+                debug["accepted_relations"].append(diagnostic)
+                debug["support_source"] = "geometry"
+
+        if has_visual:
+            seen_supports = set()
+            for edge in visual["supports"]:
+                if not isinstance(edge, dict) or set(edge) != {"upper", "lower"}:
+                    raise ValueError(f"{scene}: visual support must contain exactly upper and lower: {edge}")
+                source, target = edge["upper"], edge["lower"]
+                if (not isinstance(source, str) or not isinstance(target, str)
+                        or source not in objects or target not in objects):
+                    raise ValueError(f"{scene}: visual support references an unknown object: {edge}")
+                if source == target:
+                    raise ValueError(f"{scene}: self visual support: {edge}")
+                if (source, target) in seen_supports:
+                    raise ValueError(f"{scene}: duplicate visual support: {edge}")
+                if objects[source]["kind"] in {"human", "container"}:
+                    raise ValueError(f"{scene}: visual support upper must be a workpiece or surface: {edge}")
+                if objects[target]["kind"] in {"human", "container"}:
+                    raise ValueError(f"{scene}: visual support lower must be a workpiece or surface: {edge}")
+                if creates_cycle(objects, source, target):
+                    raise ValueError(f"{scene}: visual support would form a relationship cycle: {edge}")
+                seen_supports.add((source, target))
+                objects[source]["relations"]["on_top_of"].append(target)
+                debug["accepted_relations"].append({"source": source, "type": "on", "target": target,
+                                                    "evidence_source": "visual", "backend": visual["backend"]})
 
         # These flags require explicit upstream observations; overlap or contact
         # alone is not used to invent human holding or occlusion.
@@ -157,6 +214,7 @@ class GeometrySceneGraphBuilder:
                 distances.append({"a": first, "b": second,
                                   "distance_px": round(math.hypot(x2 - x1, y2 - y1), 1)})
         spatial = {"coordinate_reference": "mask centroids; pick points are for picking only",
+                   "support_source": debug["support_source"],
                    "centroids_2d": centroids, "left_to_right": ordered,
                    "pairwise_distances": distances,
                    "image_plane_relations": [
@@ -164,4 +222,6 @@ class GeometrySceneGraphBuilder:
                        for e in edges if e["type"] in SPATIAL_RELATIONS]}
         debug["input_relations"] = deepcopy(edges)
         debug["input_relation_candidates"] = deepcopy(candidates)
+        if has_visual:
+            debug["input_visual_supports"] = deepcopy(visual)
         return graph, spatial, debug

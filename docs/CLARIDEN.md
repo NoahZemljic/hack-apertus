@@ -1,10 +1,12 @@
 # Single-container Clariden deployment
 
 The launcher runs `run_grounded.py`: Apertus extraction → selectable object detector
-→ cleaned detections → SAM 2 → geometry → scene graph → Apertus planning → results.
+→ cleaned detections → SAM 2 → geometry + separate Qwen stacking → scene graph
+→ Apertus planning → results.
 `--box-detector dino` is the default: Qwen discovery/verification → DINO boxes.
 `--box-detector qwen` combines object-instance discovery and boxes in one Qwen
-request per scene. Both paths use the same cleanup, masks, geometry and planner.
+request per scene. Both paths use the same cleanup, masks, geometry and planner,
+with a separate Qwen support-relation request for scenes with candidate pairs.
 All inference stays local. Normal startup forces
 offline model loading and binds both servers to `127.0.0.1`.
 
@@ -255,6 +257,8 @@ plus generated output, including rich graphs and validation-repair history.
 Planning output is separately capped at 2048 tokens; the context limit does not
 request longer answers. Preflight still checks the configured GPU memory budget.
 The command above sets this limit explicitly, overriding an earlier 8192 setting.
+Qwen also defaults to 16384 tokens so full-image box and stacking requests have
+room for their prompts and output allowance.
 
 `mktemp -d` creates a new directory on every invocation, with an atomic uniqueness
 check. This command keeps each run's artifacts separate. A fixed path such as
@@ -273,7 +277,7 @@ mkdir -p "$HACK_APERTUS_OUTPUT"
 run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/qwen-boxes-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
 time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
   --box-detector qwen --debug-visualizations \
-  --out "$run_dir/results.json"
+  --out "$run_dir/results.json" &&
 python starter/evaluate.py "$run_dir/results.json" \
   --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
 ```
@@ -284,9 +288,15 @@ descriptive label and one box per instance. Boxes use a normalized 0–1000 scal
 and are converted once to image pixels. Qwen's detection confidence is unknown
 and saved as `null`; SAM still generates masks and picking points. There is one
 Qwen detection pass per scene with one format-only retry by default
-(`--qwen-box-retries 1`), without an inventory review or visual stacking request.
+(`--qwen-box-retries 1`), without an inventory review. The default separate
+`--stacking-source qwen` step then asks which existing objects physically rest
+on others. It makes one batched request for scenes with touching/overlapping
+candidate boxes, and one format retry by default (`--qwen-stacking-retries 1`).
+It does not change the inventory, boxes or SAM picking points. Use
+`--stacking-source geometry` for a fresh run without this visual support task.
 The command sets Qwen's context to 16384 tokens for the full-size image, detection
-prompt and up to 4096 output tokens; the default DINO-mode Qwen context stays 8192.
+prompt and up to 4096 output tokens. The environment variable overrides the
+deployment configuration for this run.
 This backend uses the existing Qwen server, so no additional environment, model
 server or image rebuild is needed for these source changes in the mounted checkout.
 Run a fresh DINO baseline with `--box-detector dino` in a different output
@@ -300,7 +310,8 @@ pipeline. Apertus extracts instruction objects. With DINO selected, Qwen discove
 and verifies visible categories, then Grounding DINO detects boxes. With Qwen
 selected, one image request discovers and localizes instances; DINO weights are
 not resolved or loaded. SAM 2 segments either backend's cleaned detections on
-GPU 3. Cleanup, mask geometry and scene-graph construction are
+GPU 3. Qwen then derives directed support relationships from the image and stable
+object IDs; an object may rest across multiple lower objects. Cleanup, mask geometry and scene-graph construction are
 deterministic Python operations. Apertus decides every instruction from the
 graphs and spatial context in one planning pass. Code checks JSON format and
 schema structure, allowing the original one retry for malformed responses.
@@ -326,6 +337,9 @@ $SCRATCH/hack-apertus/outputs/full-<UTC timestamp>-<random suffix>/
   segmentation_results.json
   geometry_results.json
   geometry_debug.json
+  stacking_config.json          # visual support model and request settings
+  stacking_relations.json       # separate visual upper/lower support links
+  qwen_stacking.raw.json        # stacking prompts, replies and errors
   segmentation/<scene>/<object_id>.png
   grounding_debug/, segmentation_debug/, geometry_debug/
   scene_graphs/                 # graphs, spatial context, diagnostics and overlays
@@ -388,6 +402,33 @@ and plans all selected instructions using Apertus only. Keep the previous run's
 mask files in place because the geometry JSON references them. Evaluate and
 copy this new run using the commands above.
 
+### Add Qwen stacking to the latest saved geometry
+
+The previous boxes and masks can be reused while adding the new visual support
+relationships and revised Apertus policy. Inside the four-GPU container:
+
+```sh
+cd "$HOME/hack-apertus" || exit 1
+previous_run="$HOME/hack-apertus/outputs/qwen-boxes-20261014T203039-jbzKBv"
+mkdir -p "$HACK_APERTUS_OUTPUT"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/qwen-stacking-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
+
+time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --geometry-input "$previous_run/geometry_results.json" \
+  --refresh-stacking --stacking-source qwen \
+  --out "$run_dir/results.json" &&
+python starter/evaluate.py "$run_dir/results.json" \
+  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
+```
+
+If the original run lives in scratch, change `previous_run` to that directory.
+Keep the original dataset images and previous mask PNGs accessible. This starts
+Apertus and the existing Qwen server, skips extraction, discovery, boxes and SAM,
+and does not resolve DINO/SAM weights. Saved support links are replaced by the
+new observations and written into the new geometry checkpoint. Later normal
+replay retains them without another Qwen call. No image rebuild is needed for
+these source and prompt changes in the mounted checkout.
+
 ## Open a shell and launch servers manually
 
 There are two separate operations. `srun --environment=./containers/clariden.edf.toml
@@ -439,14 +480,14 @@ vllm serve "$apertus_path" \
   > "$manual_logs/apertus.log" 2>&1 &
 apertus_pid=$!
 
-# Skip this Qwen block when replaying saved geometry.
+# Skip this Qwen block for saved-geometry replay without --refresh-stacking.
 qwen_path="$(python -c 'from src.clariden import resolve_snapshot; print(resolve_snapshot("Qwen/Qwen3-VL-32B-Instruct", "main"))')" || exit 1
 CUDA_VISIBLE_DEVICES="${allocated_gpus[2]}" \
 VLLM_CACHE_ROOT="$VLLM_CACHE_ROOT/qwen" \
 vllm serve "$qwen_path" \
   --served-model-name Qwen/Qwen3-VL-32B-Instruct \
   --host 127.0.0.1 --port 8001 --tensor-parallel-size 1 \
-  --dtype bfloat16 --max-model-len 8192 --max-num-seqs 1 \
+  --dtype bfloat16 --max-model-len 16384 --max-num-seqs 1 \
   --gpu-memory-utilization 0.90 --limit-mm-per-prompt '{"image":1,"video":0}' \
   > "$manual_logs/qwen.log" 2>&1 &
 qwen_pid=$!
@@ -519,14 +560,15 @@ These are optional controls around the full-run command:
 - **Shutdown** describes how the automatic launcher stops its servers and workers
   on completion, errors or interruption; manual servers require manual cleanup.
 - **Replay** starts from saved geometry and masks, skipping upstream perception
-  inference. It runs Apertus planning unless `--build-only` is selected.
+  inference. It runs Apertus planning unless `--build-only` is selected;
+  `--refresh-stacking` adds only the separate Qwen support inference.
 
 Edit `containers/deployment.toml`, use `--config /mounted/deployment.toml`, or set
 environment overrides. Every field accepts uppercase `<SECTION>_<FIELD>`:
 
 ```sh
 export APERTUS_GPUS=0,1 APERTUS_TENSOR_PARALLEL=2 QWEN_GPUS=2 PERCEPTION_GPU=3
-export APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=8192
+export APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384
 export APERTUS_MEMORY_UTILIZATION=0.90 QWEN_MEMORY_UTILIZATION=0.90
 export RUNTIME_STARTUP_TIMEOUT=600
 export APERTUS_EXTRA_ARGS='["--chat-template-content-format","string","--limit-mm-per-prompt","{\"image\":0,\"audio\":0}","--compilation-config.pass_config.fuse_allreduce_rms","false","--enforce-eager"]'
@@ -541,9 +583,10 @@ TP2 run used the fusion workaround without eager mode.
 Lower context or disable graph capture to diagnose OOM; raising utilization reduces
 headroom. Repeat real requests after changing settings or the image.
 
-The SquashFS image retains the config and sources baked at build time. Rebuild and
-export it after source/dependency changes. For a config-only update before a
-rebuild, the existing launcher can read the mounted host file:
+The SquashFS image retains the config and sources baked at build time. Runs from
+the mounted checkout use its current source, prompts and config without rebuilding.
+Rebuild after dependency changes, or to update the baked `/opt/hack-apertus`
+checkout. A launcher using baked source can still read the mounted host config:
 
 ```sh
 bash containers/start_pipeline.sh \
@@ -569,6 +612,8 @@ settings, which belong in deployment config. Replay skips unused servers:
 ```sh
 # Geometry → graphs → Apertus: only Apertus loads.
 bash containers/start_pipeline.sh -- --geometry-input /mounted/geometry_results.json
+# Saved objects + image → new Qwen supports → graphs → Apertus: both servers load.
+QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- --geometry-input /mounted/geometry_results.json --refresh-stacking
 # Geometry → graphs only: no model servers or weights needed.
 bash containers/start_pipeline.sh -- --geometry-input /mounted/geometry_results.json --build-only
 # CPU graph replay also runs directly, without the launcher.
@@ -583,9 +628,11 @@ The deployment/pipeline never reads challenge ground truth.
 
 `run_grounded.py --geometry-input` rebuilds and validates graphs from saved geometry and
 SAM mask PNGs, then calls Apertus; extraction, Qwen, DINO and SAM inference are
-skipped. The rebuilt graphs and mask-centroid spatial context are the same inputs
+skipped unless `--refresh-stacking` requests the separate Qwen support task.
+The rebuilt graphs and mask-centroid spatial context are the same inputs
 used for final planning in a full run. Saved geometry replay uses geometry and
-masks only.
+masks only and retains recorded visual supports. Refresh additionally reads the
+original RGB image, adds no new object boxes, and requires `--stacking-source qwen`.
 
 With a manually started Apertus server, use a second shell in the same node
 allocation. From the **login node**, substituting your running job ID:
@@ -615,8 +662,7 @@ python run_grounded.py \
   --geometry-input "$geometry_input" --data "$HACK_APERTUS_DATA" \
   --apertus-base-url http://127.0.0.1:8000/v1 \
   --apertus-model swiss-ai/Apertus-v1.5-70B \
-  --out "$run_dir/results.json"
-
+  --out "$run_dir/results.json" &&
 python starter/evaluate.py "$run_dir/results.json" \
   --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
 ```

@@ -22,6 +22,8 @@ class GroundedPerceptionConfig:
     constrained: bool = True
     box_detector: str = "dino"
     qwen_box_retries: int = 1
+    stacking_source: str = "qwen"
+    qwen_stacking_retries: int = 1
     query_source: str = "qwen_objects"
     dino_model: str = "IDEA-Research/grounding-dino-base"
     dino_device: str | None = None
@@ -37,6 +39,84 @@ def save_json(path: Path, value) -> None:
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
 
 
+def enrich_stacking(scenes: list[tuple[Path, object]], input_path: Path,
+                    output_dir: Path, config: GroundedPerceptionConfig,
+                    *, base_dir: Path | None = None) -> Path:
+    """Add visual support observations to saved geometry without changing masks.
+
+    A separate image task sees only fixed object IDs, labels and source-pixel
+    boxes. Persist an explicit empty observation as well, so geometry guesses
+    cannot reappear when Qwen sees no supported stack.
+    """
+    scene_name = None
+    output_dir = Path(output_dir).resolve()
+    input_path = Path(input_path).resolve()
+    try:
+        from .grounding.qwen_stacking import QwenStackingDetector, stacking_candidates
+
+        reasoner = GeometryReasoner(base_dir=base_dir or input_path.parent)
+        records = reasoner.load_detections(input_path)
+        by_scene = {record["scene"]: record for record in records}
+        missing = [scene.name for _, scene in scenes if scene.name not in by_scene]
+        if missing:
+            raise ValueError(f"Geometry results missing scenes: {missing}")
+        # Writing a new checkpoint changes its directory. Resolve relative mask
+        # references against the old checkpoint before saving it in the new run.
+        for record in records:
+            for obj in record["objects"]:
+                mask_path = reasoner.resolve(obj["mask_path"])
+                if not mask_path.is_file():
+                    # Copied Clariden artifacts may still name the old scratch
+                    # mount. Reuse their accompanying masks when it is absent.
+                    copied_mask = input_path.parent / "segmentation" / record["scene"] / f"{obj['id']}.png"
+                    if copied_mask.is_file():
+                        mask_path = copied_mask
+                obj["mask_path"] = str(mask_path.resolve())
+        detector = QwenStackingDetector(
+            model=config.qwen_model, base_url=config.qwen_base_url,
+            timeout=config.timeout, constrained=config.constrained,
+            retries=config.qwen_stacking_retries,
+        )
+        save_json(output_dir / "stacking_config.json", {
+            "source": "qwen", "input_geometry": str(input_path),
+            "model": config.qwen_model, "base_url": config.qwen_base_url,
+            "timeout": config.timeout, "constrained": config.constrained,
+            "retries": config.qwen_stacking_retries,
+        })
+        observations, traces = [], []
+        for scene_dir, scene in scenes:
+            scene_name = scene.name
+            record = by_scene[scene_name]
+            width, height = scene.size
+            if record.get("geometry_version") != "1.0" or record.get("image") != {"width": width, "height": height}:
+                raise ValueError(f"{scene_name}: saved geometry does not match the scene image")
+            image_path = (scene_dir / "rgb.png").resolve()
+            candidates = stacking_candidates(record["objects"])
+            print(f"Inspecting stacking: {scene_name} ({len(candidates)} candidate pairs)", flush=True)
+            try:
+                supports = detector.detect(image_path, record["objects"])
+            finally:
+                traces.append({
+                    "scene": scene_name, "image_path": str(image_path),
+                    "candidate_pairs": candidates, "requests": detector.last_trace,
+                    "replies": detector.replies, "errors": detector.errors,
+                })
+                save_json(output_dir / "qwen_stacking.raw.json", traces)
+            record["visual_supports"] = {"backend": "qwen", "supports": supports}
+            record["image_path"] = str(image_path)
+            observations.append({"scene": scene_name, "backend": "qwen",
+                                 "candidate_pairs": candidates, "supports": supports})
+            save_json(output_dir / "stacking_relations.json", observations)
+            save_json(output_dir / "geometry_results.json", records)
+        return output_dir / "geometry_results.json"
+    except Exception as error:
+        save_json(output_dir / "perception.failure.json", {
+            "stage": "qwen_stacking", "scene": scene_name,
+            "error": f"{type(error).__name__}: {error}",
+        })
+        raise
+
+
 def generate_geometry(scenes: list[tuple[Path, object]], output_dir: Path,
                       config: GroundedPerceptionConfig,
                       geometry_config: GeometryConfig | None = None) -> Path:
@@ -50,6 +130,10 @@ def generate_geometry(scenes: list[tuple[Path, object]], output_dir: Path,
         raise ValueError(f"Unsupported box detector: {config.box_detector}")
     if config.qwen_box_retries < 0:
         raise ValueError("Qwen box retries must be nonnegative")
+    if config.stacking_source not in {"qwen", "geometry"}:
+        raise ValueError(f"Unsupported stacking source: {config.stacking_source}")
+    if config.qwen_stacking_retries < 0:
+        raise ValueError("Qwen stacking retries must be nonnegative")
     if config.query_source not in {"qwen_objects", "grounding_queries"}:
         raise ValueError(f"Unsupported query source: {config.query_source}")
     if config.box_detector == "qwen" and config.query_source != "qwen_objects":
@@ -203,10 +287,15 @@ def generate_geometry(scenes: list[tuple[Path, object]], output_dir: Path,
             save_json(output_dir / "geometry_debug.json", {
                 "config": asdict(effective_geometry), "scenes": diagnostics,
             })
+        if config.stacking_source == "qwen":
+            stage, scene_name = "qwen_stacking", None
+            return enrich_stacking(scenes, output_dir / "geometry_results.json", output_dir, config)
         return output_dir / "geometry_results.json"
     except Exception as error:
-        save_json(output_dir / "perception.failure.json", {
-            "stage": stage, "scene": scene_name,
-            "error": f"{type(error).__name__}: {error}",
-        })
+        # Stacking records its own failing scene and exact model trace.
+        if stage != "qwen_stacking":
+            save_json(output_dir / "perception.failure.json", {
+                "stage": stage, "scene": scene_name,
+                "error": f"{type(error).__name__}: {error}",
+            })
         raise

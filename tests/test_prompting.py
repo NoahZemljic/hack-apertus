@@ -90,6 +90,34 @@ class PlanningPromptTests(unittest.TestCase):
         self.assertEqual(self.payload(prompt, "Scene graph:"), graph)
         self.assertEqual(self.payload(prompt, "Deterministically derived 2D geometry:")["pairwise_distances"], [])
 
+    def test_multiple_visual_supports_preserve_ids_and_provenance(self):
+        graph = self.graph()
+        upper = deepcopy(graph["objects"][0])
+        upper.update(id="red_cube_1", label="red cube")
+        upper["relations"].update(inside=None, on_top_of=["red_gear_1", "grey_tray_1"])
+        graph["objects"].append(upper)
+        for obj in graph["objects"][:2]:
+            obj["relations"].update(on_top_of=[], supports=["red_cube_1"])
+        spatial = {"support_source": "qwen", "centroids_2d": {},
+                   "pairwise_distances": []}
+        before = deepcopy((graph, spatial))
+        prompt = prepare_planning_prompt(graph, "move the cube into the tray", 85,
+                                         geometry=spatial)
+        self.assertEqual(self.payload(prompt, "Scene graph:"), graph)
+        self.assertEqual(self.payload(prompt, "Deterministically derived 2D geometry:"), spatial)
+        self.assertEqual((graph, spatial), before)
+        self.assert_field_guidance_exists_in_graph(prompt, graph)
+        self.assertIn("- support_source=qwen:", prompt)
+        self.assertNotIn("- support_source=geometry:", prompt)
+
+    def test_support_provenance_guidance_matches_supplied_context(self):
+        graph = self.graph()
+        for source in ("geometry", "none", None):
+            spatial = {} if source is None else {"support_source": source}
+            prompt = prepare_planning_prompt(graph, "pick the gear", 85, geometry=spatial)
+            provenance = re.findall(r"^- support_source=([a-z]+):", prompt, re.MULTILINE)
+            self.assertEqual(provenance, [] if source is None else [source])
+
     def test_distance_order_uses_centroids_instead_of_pick_points(self):
         graph = {"image": {"width": 120, "height": 80}, "objects": [
             {"id": oid, "kind": kind, "label": label, "color": None,

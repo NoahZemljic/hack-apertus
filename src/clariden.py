@@ -279,6 +279,10 @@ def validate_pipeline(command: list[str]) -> Any:
         raise ValueError("Pipeline detection thresholds must lie in [0,1]")
     if args.qwen_box_retries < 0:
         raise ValueError("Qwen box retries must be nonnegative")
+    if args.qwen_stacking_retries < 0:
+        raise ValueError("Qwen stacking retries must be nonnegative")
+    if args.refresh_stacking and (args.input is None or args.stacking_source != "qwen"):
+        raise ValueError("--refresh-stacking requires --geometry-input and --stacking-source qwen")
     if not args.input and args.box_detector == "qwen" and args.query_source != "qwen_objects":
         raise ValueError("--query-source applies only to --box-detector dino")
     if args.base_dir and not args.input:
@@ -299,7 +303,10 @@ def validate_pipeline(command: list[str]) -> Any:
 def needed_servers(args: Any, *, smoke: bool = False) -> list[str]:
     if smoke or args.input is None:
         return ["apertus", "qwen"]
-    return [] if args.build_only else ["apertus"]
+    names = [] if args.build_only else ["apertus"]
+    if getattr(args, "refresh_stacking", False):
+        names.append("qwen")
+    return names
 
 
 def perception_model_definitions(config: DeploymentConfig, box_detector: str) -> list[tuple[str, str, str]]:
