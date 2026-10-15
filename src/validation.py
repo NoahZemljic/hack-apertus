@@ -92,6 +92,41 @@ def validate_scene_graph(graph: dict, width: int | None = None,
     return graph
 
 
-def validate_plan(plan: dict) -> dict:
-    # Plan syntax: the planner's decision and action fields must match its JSON contract.
-    return validate_structure(plan, load_plan_schema(), "Plan")
+def validate_plan(plan: dict, graph: dict | None = None) -> dict:
+    """Validate the decision contract and, when given a graph, mechanical actions.
+
+    This does not interpret the instruction or invent missing support observations.
+    It only checks exact IDs, gripper state and the supplied direct-support edges.
+    """
+    validate_structure(plan, load_plan_schema(), "Plan")
+    if graph is None or plan["decision"] != "plan":
+        return plan
+    objects = {obj["id"]: obj for obj in graph["objects"]}
+    blockers = {oid: set(obj.get("relations", {}).get("supports", [])) for oid, obj in objects.items()}
+    held = None
+    for index, step in enumerate(plan["steps"]):
+        oid = step["object_id"]
+        if oid not in objects:
+            raise ValueError(f"Step {index + 1}: unknown object ID {oid!r}; use an exact supplied ID")
+        obj = objects[oid]
+        if step["action"] == "pick":
+            if held is not None:
+                raise ValueError(f"Step {index + 1}: cannot pick {oid} while holding {held}; place it first")
+            if obj.get("kind") != "movable" or obj.get("relations", {}).get("held_by_human"):
+                raise ValueError(f"Step {index + 1}: {oid} is not an available movable source")
+            if blockers[oid]:
+                raise ValueError(f"Step {index + 1}: clear objects resting on {oid} first: {sorted(blockers[oid])}")
+            held = oid
+            for resting in blockers.values():
+                resting.discard(oid)
+        else:
+            if held is None:
+                raise ValueError(f"Step {index + 1}: cannot place with an empty gripper")
+            if oid == held:
+                raise ValueError(f"Step {index + 1}: place names held source {held}, not a destination")
+            if obj.get("kind") == "human":
+                raise ValueError(f"Step {index + 1}: cannot place on a human")
+            if obj.get("kind") == "movable":
+                blockers[oid].add(held)
+            held = None
+    return plan

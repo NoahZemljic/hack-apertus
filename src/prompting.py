@@ -26,6 +26,19 @@ def prepare_planning_prompt(
             + "\n\nFilter this ordering by the requested category and attributes. A last matching ID is farthest. "
             "Use pairwise_distances to check ties. This uses mask centroids."
         )
+    blocked = [
+        {"lower_object": obj["id"], "upper_objects_resting_on_it": obj["relations"]["supports"]}
+        for obj in graph["objects"] if obj["relations"].get("supports")
+    ]
+    access_context = ""
+    if blocked:
+        access_context = (
+            "\n\nPhysical access prerequisites (upper objects must move before lower objects):\n"
+            + json.dumps(blocked, separators=(",", ":"))
+            + "\n\nMove each blocking upper object once to a permitted destination, then move the lower objects. "
+            "An upper object shared by two lower objects needs only one clearing transfer. "
+            "Complete pick(source), place(destination) before picking the next object. Do not reverse these links."
+        )
     return f"""{policy}
 
 Scene graph:
@@ -35,7 +48,7 @@ Deterministically derived 2D geometry:
 {json.dumps(geometry, separators=(",", ":"))}{distance_context}
 
 Supplied field semantics:
-{planning_field_semantics(graph, geometry)}
+{planning_field_semantics(graph, geometry)}{access_context}
 
 The gripper holds one object at a time and opens at most {opening:g} mm.
 Instruction: {json.dumps(instruction)}

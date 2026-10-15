@@ -12,7 +12,9 @@ memory_utilization = 0.90
 max_num_seqs = 1
 # This pipeline sends only text to Apertus; skip image/audio profiling.
 # Required for the tested GH200 TP=2 setup: avoid fused all-reduce RMS capture failures.
-extra_args = ["--chat-template-content-format", "string", "--limit-mm-per-prompt", '{"image":0,"audio":0}', "--compilation-config.pass_config.fuse_allreduce_rms", "false"]
+# XGrammar in this vLLM build reads whitespace control at server startup.
+# Fixed JSON formatting prevents a whitespace loop from consuming the output budget.
+extra_args = ["--chat-template-content-format", "string", "--limit-mm-per-prompt", '{"image":0,"audio":0}', "--compilation-config.pass_config.fuse_allreduce_rms", "false", "--structured-outputs-config", '{"backend":"xgrammar","disable_any_whitespace":true}']
 
 [qwen]
 model = "Qwen/Qwen3-VL-32B-Instruct"

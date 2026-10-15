@@ -6,7 +6,7 @@ from copy import deepcopy
 
 from .json_tools import parse_json_object
 from .prompting import prepare_planning_prompt
-from .schemas import load_plan_schema
+from .schemas import load_plan_response_schema
 from .validation import validate_plan
 
 
@@ -34,6 +34,7 @@ class ApertusPlanner:
         self.constrained = constrained
         self.prompt_builder = prompt_builder or prepare_planning_prompt
         self.last_trace: list[dict] = []
+        self._object_ids: list[str] | None = None
 
     def generate_response(self, messages: list[dict], constrained_decoding: bool) -> str:
         """Send one planning request to Apertus and return its text response"""
@@ -45,9 +46,11 @@ class ApertusPlanner:
             }
 
         if constrained_decoding:
+            schema = load_plan_response_schema(self._object_ids)
             body["response_format"] = {
                 "type": "json_schema",
-                "json_schema": {"name": "robot_plan", "strict": True, "schema": load_plan_schema()},
+                "json_schema": {"name": "robot_plan", "strict": True,
+                                "schema": schema},
             }
 
         # Create the inference request
@@ -60,9 +63,21 @@ class ApertusPlanner:
             return json.loads(response.read())["choices"][0]["message"]["content"]
 
     def create_plan(self, graph: dict, instruction: str, gripper_mm: float | None = None) -> tuple[dict, list[str]]:
-        """Ask Apertus once and retry only malformed JSON or schema structure."""
+        """Ask Apertus and repair malformed output or invalid mechanical actions."""
         self.last_trace = []
+        self._object_ids = [obj["id"] for obj in graph["objects"]]
         prompt = self.prompt_builder(graph, instruction, gripper_mm)
+        prompt += (
+            "\n\nBefore choosing decision, write assessment: one short sentence checking whether the source "
+            "reference is unique after applying all qualifiers, and whether the exact requested operation "
+            "violates a constraint. Then choose the matching decision and its fields. assessment is the "
+            "only additional output field; do not put an explanation in reason for a plan."
+            " For a transfer, emit pick(source_ID), place(destination_ID), then stop. "
+            "For example, moving a washer into a tray is "
+            '[{"action":"pick","object_id":"washer_ID"},'
+            '{"action":"place","object_id":"tray_ID"}]. '
+            "Use the actual supplied IDs, never these example IDs."
+        )
         messages = [{
             "role": "user",
             "content": prompt,
@@ -84,7 +99,11 @@ class ApertusPlanner:
             replies.append(reply)
 
             try:
-                plan = validate_plan(parse_json_object(reply))
+                parsed = parse_json_object(reply)
+                assessment = parsed.pop("assessment", None)
+                if assessment is not None:
+                    trace["assessment"] = assessment
+                plan = validate_plan(parsed, graph)
                 trace["validation_error"] = None
                 return plan, replies
             except ValueError as error:
@@ -94,7 +113,9 @@ class ApertusPlanner:
                 if attempt < self.retries:
                     messages.extend([
                         {"role": "assistant", "content": reply},
-                        {"role": "user", "content": f"Correct the JSON format: {error}. Return the full JSON object."},
+                        {"role": "user", "content": f"Correct the JSON format: {error}. "
+                         "Return the full JSON object. Use only existing IDs; a place step names the destination. "
+                         "Keep one object in the gripper and clear observed upper blockers before lower objects."},
                     ])
 
         raise PlanningGenerationError(f"Apertus did not return a valid plan: {last_error}", replies)
@@ -109,6 +130,8 @@ class ApertusPlanner:
         trace = {"stage": stage, "attempt": attempt, "messages": deepcopy(messages),
                  "constrained_decoding": constrained, "model": self.model,
                  "temperature": 0, "max_tokens": 2048}
+        if constrained:
+            trace["response_schema"] = load_plan_response_schema(self._object_ids)
         if fallback:
             trace["schema_fallback"] = True
         self.last_trace.append(trace)

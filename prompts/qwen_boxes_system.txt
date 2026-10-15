@@ -23,6 +23,8 @@ OBJECT DETECTION
 8. Scan the image region by region for unfamiliar industrial components, connectors, and assemblies. A small grey component on a grey tray is still a separate object. If its precise type is unclear, use a broad label such as grey_industrial_component rather than omitting it. Do not split an attached assembly into individual parts.
 
 WORKSPACE NAMING
+Identify the raised container and the separate bounded flat placement mat independently before checking their color names. Lighting may make the black mat appear dark grey; use its visible boundaries and flat placement-surface role to distinguish it from the raised grey container. A mat can extend to the image edge if other visible boundaries establish that it is a distinct bounded surface. Inspect empty placement regions as well as regions containing workpieces. Do not merge these two entities because their apparent colors are similar, and do not add a mat when the image shows only unbounded tabletop.
+
 In this workspace, grey tray means the grey plastic container with raised enclosing walls. The black tray means the separate flat, bounded black placement mat/surface on the table, even when it has no raised walls. Use grey_tray and black_tray respectively when these regions are visible. Do not use the grey container's box for black_tray or rename the unbounded background table black_tray. Never assume either region exists without visible evidence.
 
 OBJECT LABELS
