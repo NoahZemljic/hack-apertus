@@ -9,6 +9,9 @@ request per scene. Both paths use the same cleanup, masks, geometry and planner,
 with a separate Qwen support-relation request for scenes with candidate pairs.
 All inference stays local. Normal startup forces
 offline model loading and binds both servers to `127.0.0.1`.
+The allocation commands below use Clariden's
+[`normal` Slurm partition](https://docs.cscs.ch/clusters/clariden/#partitions).
+Replace `<project_account>` with your Slurm project account in the commands below.
 
 | Allocation GPU positions | Process | Default model | TP | Port |
 | --- | --- | --- | --- | --- |
@@ -66,7 +69,7 @@ Use an ARM64 compute node and configure rootless Podman as in the
 
 ```sh
 cd "$HOME/hack-apertus"
-srun -A g239 --partition=debug --nodes=1 --ntasks=1 \
+srun -A <project_account> --partition=normal --nodes=1 --ntasks=1 \
   --cpus-per-task=64 --time=00:30:00 --pty bash
 ```
 
@@ -99,8 +102,8 @@ mv -f "$pipeline_image_new" "$SCRATCH/hack-apertus/containers/pipeline-arm64.sqs
 sha256sum "$SCRATCH/hack-apertus/containers/pipeline-arm64.sqsh"
 ```
 
-If your account's debug time limit is shorter, use a permitted longer build
-allocation. Import before leaving: Podman's local storage is temporary. The image
+If the build needs more time, request a longer build allocation within your
+account's limits. Import before leaving: Podman's local storage is temporary. The image
 build runs import checks and CPU tests; it never downloads weights. `.dockerignore`
 excludes datasets, cached models, credentials, generated artifacts and `.git`.
 Sources, schemas and prompts are baked into `/opt/hack-apertus`.
@@ -119,7 +122,7 @@ credentials out of the image, EDF and Git; enter a token interactively if needed
 Download access is needed only for preparation. From the login node:
 
 ```sh
-srun -A <project_account> --partition=debug --nodes=1 --ntasks=1 \
+srun -A <project_account> --partition=normal --nodes=1 --ntasks=1 \
   --gpus-per-node=4 --cpus-per-task=64 --time=00:30:00 \
   --environment=./containers/clariden.edf.toml --pty bash
 ```
@@ -169,19 +172,19 @@ The login node may not provide `hf`: use the container's tools. Downloads go to
 mounted scratch and persist across allocations; retry an interrupted download
 with the same cache. Normal inference continues to use offline mode.
 
-## Exact Clariden debug-node acceptance commands
+## Clariden normal-partition acceptance commands
 
 From the login node with the image and cache already prepared:
 
 ```sh
 cd "$HOME/hack-apertus"
-srun -A g239 --partition=debug --nodes=1 --ntasks=1 \
+srun -A <project_account> --partition=normal --nodes=1 --ntasks=1 \
   --gpus-per-node=4 --cpus-per-task=64 --time=01:30:00 \
   --environment=./containers/clariden.edf.toml --pty bash
 ```
 
 Inside that container, run the following in order. Use fresh allocations for the
-smoke, one-scene and full timed runs if they cannot share the 15-minute job:
+smoke, one-scene and full timed runs if they exceed the requested walltime:
 
 ```sh
 cd /opt/hack-apertus
@@ -219,7 +222,8 @@ sbatch -A <project_account> containers/clariden.sbatch
 Run `srun` from the login/host environment, not from `/opt/hack-apertus` inside
 the container: host Slurm plugins require host libraries. Select a longer time
 only when permitted by your partition/account (90 minutes is `--time=01:30:00`).
-The 15-minute default is the acceptance target, not a measured complete-run time.
+The batch script and interactive run allocation both request 90 minutes
+(`--time=01:30:00`). Override `--time` when a different walltime is needed.
 
 ## Run the full pipeline
 
@@ -229,16 +233,56 @@ four-GPU container shell from the login node; the shell itself starts no servers
 Inside the container, with ports 8000 and 8001 free, run from the mounted
 checkout so source and prompt edits take effect without rebuilding:
 
+Choose either the dataset block or the held-out block below. Both select Qwen
+boxes and Qwen stacking explicitly; the CLI default detector remains DINO.
+
+### Dataset examples: run and evaluate
+
+Run all 10 public scenes and 50 instructions and evaluate using their supplied
+ground truth:
+
 ```sh
 cd "$HOME/hack-apertus" || exit 1
 mkdir -p "$HACK_APERTUS_OUTPUT"
-run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/full-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/dataset-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
 
-time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
-  --box-detector dino \
+time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --data "$HOME/hack-apertus/dataset" \
+  --box-detector qwen --stacking-source qwen \
   --debug-visualizations \
-  --out "$run_dir/results.json"
+  --out "$run_dir/results.json" &&
+python starter/evaluate.py "$run_dir/results.json" \
+  --data "$HOME/hack-apertus/dataset" --report "$run_dir/report.json"
 ```
+
+### Held-out examples: run and save the submission
+
+Run all 5 held-out scenes and 40 instructions:
+
+```sh
+cd "$HOME/hack-apertus" || exit 1
+mkdir -p "$HACK_APERTUS_OUTPUT"
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/heldout-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
+
+time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
+  --data "$HOME/hack-apertus/heldout" \
+  --box-detector qwen --stacking-source qwen \
+  --debug-visualizations \
+  --out "$run_dir/results_heldout.json"
+```
+
+Submit `$run_dir/results_heldout.json`. The held-out release contains no
+ground-truth answers or labeled masks, so it cannot be scored locally. The
+organizers use the same evaluator with their private annotations.
+
+For either run, copy the artifacts back to the checkout for inspection:
+
+```sh
+mkdir -p "$HOME/hack-apertus/outputs"
+cp -r --no-preserve=mode,ownership "$run_dir" "$HOME/hack-apertus/outputs/"
+```
+
+### Run artifacts and detector options
 
 The image supplies dependencies; this launcher executes the mounted checkout's
 `src/`, schemas and prompts. Repeat the command after editing them. Rebuild for
@@ -249,7 +293,7 @@ from which you submit it, so submit from the repository root under a mounted pat
 
 Check `$run_dir/run_manifest.json` for `repository_root`, the policy path and
 its SHA256. `planning_policy.txt` saves the exact policy, and
-`results.raw.jsonl` records planning and repair requests. These distinguish
+`results*.raw.jsonl` records planning and repair requests. These distinguish
 an unchanged model decision from accidentally running older code.
 
 The current deployment config gives Apertus a 16384-token context for the prompt
@@ -269,18 +313,8 @@ run directory when you omit `--out` or supply a fixed path. Do not redirect
 Repeat the entire block for each run: rerunning only the launcher with the old
 `$run_dir` value reuses that directory.
 
-To test Qwen's boxes, use the same entry point and fresh-run structure:
-
-```sh
-cd "$HOME/hack-apertus" || exit 1
-mkdir -p "$HACK_APERTUS_OUTPUT"
-run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/qwen-boxes-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
-time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
-  --box-detector qwen --debug-visualizations \
-  --out "$run_dir/results.json" &&
-python starter/evaluate.py "$run_dir/results.json" \
-  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
-```
+Use `--box-detector dino` in either run block to compare Grounding DINO boxes
+against the selected Qwen detector. Keep each comparison in a fresh output directory.
 
 Qwen uses the scene image and Apertus's instruction object hints to discover every
 visible relevant instance, including objects beyond those hints, and return one

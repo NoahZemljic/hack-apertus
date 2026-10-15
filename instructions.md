@@ -13,11 +13,12 @@ The full build, cache and deployment instructions live in
 
 ## 1. Open the four-GPU container
 
-From a Clariden login node, using your mounted checkout:
+From a Clariden login node, using your mounted checkout. Replace
+`<project_account>` with your Slurm project account before running the command:
 
 ```bash
 cd "$HOME/hack-apertus" || exit 1
-srun -A g239 --partition=debug --nodes=1 --ntasks=1 \
+srun -A <project_account> --partition=normal --nodes=1 --ntasks=1 \
   --gpus-per-node=4 --cpus-per-task=64 --time=01:30:00 \
   --environment=./containers/clariden.edf.toml --pty bash
 ```
@@ -26,48 +27,67 @@ All remaining commands run inside this container. It already provides the
 matching engine and dependencies; do not create a second Qwen environment or
 replace the image's Torch, Transformers or vLLM packages.
 
-## 2. Run every stage and evaluate
+## 2. Run the dataset or held-out examples
+
+Choose one of the following complete run blocks inside the container. Both use
+Qwen boxes and the separate Qwen stacking step, and save each run in a fresh
+scratch directory. Pass `--data` explicitly to select the examples.
+
+### Dataset examples: run and evaluate
+
+Process all 10 public scenes and 50 instructions, then score against the supplied
+ground truth:
 
 ```bash
 cd "$HOME/hack-apertus" || exit 1
 mkdir -p "$HACK_APERTUS_OUTPUT"
-run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/full-XXXXXX")" || exit 1
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/dataset-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
 
 time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
-  --box-detector dino \
+  --data "$HOME/hack-apertus/dataset" \
+  --box-detector qwen --stacking-source qwen \
   --debug-visualizations \
   --out "$run_dir/results.json" &&
 python starter/evaluate.py "$run_dir/results.json" \
-  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
+  --data "$HOME/hack-apertus/dataset" --report "$run_dir/report.json"
 ```
 
-No `--limit` means all scenes and instructions. The launcher starts the local
-Apertus 70B and Qwen3-VL-32B servers, runs SAM (and DINO when selected) on the
-fourth GPU, then stops the servers. Each run gets a separate output directory. The mounted checkout's
-code, schemas and prompts are used immediately; rebuild the image when changing
-dependencies.
+### Held-out examples: run and save the submission
 
-The output folder contains the intermediate detections, masks and geometry,
-one planner graph per scene, the submission and the exact planning requests.
-Review `run_manifest.json`, `planning_policy.txt`, `results.raw.jsonl` and
-`report.json` to connect a score to the code and prompt that produced it.
-Only the evaluator reads challenge ground truth.
-
-### Compare the Qwen detector
-
-Inside the same four-GPU container, run the complete pipeline with Qwen boxes:
+Process all 5 held-out scenes and 40 instructions:
 
 ```bash
 cd "$HOME/hack-apertus" || exit 1
 mkdir -p "$HACK_APERTUS_OUTPUT"
-run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/qwen-boxes-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
+run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/heldout-$(date -u +%Y%m%dT%H%M%S)-XXXXXX")" || exit 1
 
 time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
-  --box-detector qwen --debug-visualizations \
-  --out "$run_dir/results.json" &&
-python starter/evaluate.py "$run_dir/results.json" \
-  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
+  --data "$HOME/hack-apertus/heldout" \
+  --box-detector qwen --stacking-source qwen \
+  --debug-visualizations \
+  --out "$run_dir/results_heldout.json"
 ```
+
+Submit `$run_dir/results_heldout.json`. The released held-out folder has no
+ground-truth answers or labeled masks, so local scoring is unavailable. The
+organizers evaluate it with the same script using their private annotations.
+The artifact-copy command in section 4 works after either run block.
+
+No `--limit` means all scenes and instructions. The launcher starts the local
+Apertus 70B and Qwen3-VL-32B servers, runs SAM on the fourth GPU, then stops the
+servers. The mounted checkout's code, schemas and prompts are used immediately;
+rebuild the image when changing dependencies.
+
+The output folder contains intermediate detections, masks and geometry, one
+planner graph per scene, the submission and exact planning requests. Review
+`run_manifest.json`, `planning_policy.txt` and `results*.raw.jsonl`; dataset runs
+also produce `report.json`. Only the evaluator reads challenge ground truth.
+
+### Detector options and comparison
+
+Both run blocks select `--box-detector qwen` explicitly. Use
+`--box-detector dino` in either block to compare Grounding DINO boxes; that mode
+also loads DINO on the fourth GPU. The CLI default remains DINO.
 
 This backend combines discovery and localization. Apertus's object terms guide
 attention; they do not restrict Qwen's inventory. Each visible instance gets one
@@ -93,7 +113,8 @@ snake_case labels and fruit names without color prefixes. Labels are normalized
 before SAM and graph construction; the flat black placement surface retains
 the instruction name `black tray`. Picking points still come from SAM.
 
-Compare against the latest DINO discovery run (39.35/65), if copied locally:
+After a dataset run, compare against the latest DINO discovery run (39.35/65),
+if copied locally:
 
 ```bash
 previous_report="$HOME/hack-apertus/outputs/discovery-20261014T191752-JeM4C7/report.json"
