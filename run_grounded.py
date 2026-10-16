@@ -50,7 +50,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-constrained-decoding", action="store_true")
     parser.add_argument("--timeout", type=float, default=180)
     parser.add_argument("--limit", type=int, help="Maximum number of instructions, across selected scenes")
-    parser.add_argument("--team", default="hack-apertus-grounded")
+    parser.add_argument("--team", default="hslu-robotics")
     return parser
 
 
