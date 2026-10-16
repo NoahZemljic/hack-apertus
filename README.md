@@ -138,6 +138,14 @@ bash containers/start_pipeline.sh -- \
   --out "$HOME/hack-apertus/outputs/final/results.json"
 ```
 
+For the held-out dataset, run:
+
+```bash
+bash containers/start_pipeline.sh -- \
+  --data "$HOME/hack-apertus/heldout" \
+  --out "$HOME/hack-apertus/outputs/heldout/results_heldout.json"
+```
+
 The launcher starts both model servers, waits for them to become ready, and runs the planning pipeline. When the pipeline exits successfully, it stops the servers and runs the official evaluator as the container’s final step. You do not need to score the results separately. Use a fresh output directory for each run to keep its artifacts together.
 
 For an unattended run, leave the interactive session with `exit` and submit the same work from the login node:
@@ -149,9 +157,17 @@ sbatch -A <project_account> containers/clariden.sbatch -- \
   --out "$HOME/hack-apertus/outputs/final/results.json"
 ```
 
+For an unattended held-out run:
+
+```bash
+sbatch -A <project_account> containers/clariden.sbatch -- \
+  --data "$HOME/hack-apertus/heldout" \
+  --out "$HOME/hack-apertus/outputs/heldout/results_heldout.json"
+```
+
 `sbatch` returns a job ID immediately. Follow the job in `hack-apertus-<job_id>.log`; submission alone does not mean the run has finished.
 
-To process the held-out scenes, use the same command with `--data "$HOME/hack-apertus/heldout"` and an output filename such as `results_heldout.json`. Any input folder should contain scene subfolders with `rgb.png` and `instructions.txt`, plus `calibration.json` either in each scene or at the dataset root. Depth data can also be loaded when available. [starter/scene_io.py](starter/scene_io.py) describes the loading conventions.
+Any input folder should contain scene subfolders with `rgb.png` and `instructions.txt`, plus `calibration.json` either in each scene or at the dataset root. Depth data can also be loaded when available. [starter/scene_io.py](starter/scene_io.py) describes the loading conventions.
 
 ### 5. View the results
 
