@@ -2,6 +2,7 @@
 # Submit from repository root: sbatch -A <project_account> containers/clariden.sbatch
 #SBATCH --job-name=hack-apertus
 #SBATCH --partition=normal
+# Full runs use the normal partition, retaining all four GPUs on one node.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-node=4

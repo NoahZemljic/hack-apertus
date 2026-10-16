@@ -15,7 +15,7 @@ Implements the published evaluation criteria (details in EVALUATION.md):
   PIPELINE LOGIC (20%), SOVEREIGN FEASIBILITY (10%), CODE QUALITY (5%): the jury.
                             --report lists every plan next to the reference plan for them.
 
-An answer that does not match schema/result.schema.json scores 0.
+An answer that fails the format checks in answer_type() scores 0.
 Needs only numpy and opencv-python.
 """
 from __future__ import annotations

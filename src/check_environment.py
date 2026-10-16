@@ -16,6 +16,8 @@ import sys
 from typing import Any, Callable
 import urllib.request
 
+from .settings import QWEN_MODEL
+
 
 def check_environment(*, profile: str = "vision", require_cuda: bool = False,
                       check_vllm: bool = False,
@@ -109,13 +111,11 @@ def check_environment(*, profile: str = "vision", require_cuda: bool = False,
         def transformer_operations() -> str:
             import torch
             from PIL import Image
-            from transformers import (AutoModelForZeroShotObjectDetection, AutoProcessor,
-                                      GroundingDinoForObjectDetection, Qwen3VLForConditionalGeneration,
+            from transformers import (AutoProcessor, Qwen3VLForConditionalGeneration,
                                       Sam2ImageProcessor, Sam2Model, Sam2Processor)
 
             # Resolving lazy model classes checks their complete import trees.
-            assert all(cls is not None for cls in (AutoModelForZeroShotObjectDetection, AutoProcessor,
-                       GroundingDinoForObjectDetection, Qwen3VLForConditionalGeneration, Sam2Model))
+            assert all(cls is not None for cls in (AutoProcessor, Qwen3VLForConditionalGeneration, Sam2Model))
             processor = Sam2Processor(Sam2ImageProcessor(size={"height": 32, "width": 32}))
             inputs = processor(images=Image.new("RGB", (40, 30)),
                                input_boxes=[[[4, 4, 20, 20]]], return_tensors="pt")
@@ -124,7 +124,7 @@ def check_environment(*, profile: str = "vision", require_cuda: bool = False,
             masks = processor.post_process_masks(torch.ones((1, 1, 3, 8, 8)), inputs["original_sizes"])
             if tuple(masks[0].shape[-2:]) != (30, 40):
                 raise RuntimeError("SAM mask restoration failed")
-            return "DINO/Qwen/SAM model imports and actual SAM box processing/mask restoration"
+            return "Qwen/SAM model imports and actual SAM box processing/mask restoration"
 
         probe("Transformers model integration", transformer_operations)
 
@@ -179,6 +179,7 @@ def check_environment(*, profile: str = "vision", require_cuda: bool = False,
     return {"ok": all(result["ok"] for result in results), "profile": profile, "checks": results}
 
 
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=("base", "vision"), default="vision")
@@ -188,13 +189,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--apertus-base-url", default="http://localhost:8000/v1")
     parser.add_argument("--apertus-model", default="swiss-ai/Apertus-v1.5-70B")
     parser.add_argument("--qwen-base-url", default="http://127.0.0.1:8001/v1")
-    parser.add_argument("--qwen-model", default="Qwen/Qwen3-VL-32B-Instruct")
     parser.add_argument("--json", action="store_true", help="Print the report as JSON")
     args = parser.parse_args(argv)
     if args.require_cuda and args.profile != "vision":
         parser.error("--require-cuda requires --profile vision")
     servers = [("Apertus", args.apertus_base_url, args.apertus_model),
-               ("Qwen", args.qwen_base_url, args.qwen_model)] if args.check_servers else None
+               ("Qwen", args.qwen_base_url, QWEN_MODEL)] if args.check_servers else None
     report = check_environment(profile=args.profile, require_cuda=args.require_cuda,
                                check_vllm=args.check_vllm, servers=servers)
     if args.json:

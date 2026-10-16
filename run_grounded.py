@@ -1,4 +1,4 @@
-"""Run Apertus hints → DINO or Qwen boxes → SAM → geometry → Apertus planning."""
+"""Run Apertus hints → Qwen3-VL-32B → SAM → graphs → validated plans."""
 
 import argparse
 from functools import partial
@@ -14,6 +14,7 @@ from src.geometry import GeometryConfig
 from src.grounded_perception import GroundedPerceptionConfig, enrich_stacking, generate_geometry
 from src.prompting import prepare_planning_prompt
 from src.provenance import sha256_text, write_run_manifest
+from src.settings import output_root
 from src.results import plan_to_result, write_submission_files
 from src.visualization import write_scene_overlay
 
@@ -25,7 +26,7 @@ def create_parser() -> argparse.ArgumentParser:
                         help="Start from saved geometry instead of running upstream perception")
     parser.add_argument("--base-dir", type=Path, help="Base for relative mask paths; defaults to input directory")
     parser.add_argument("--data", type=Path, default=Path("dataset"))
-    parser.add_argument("--out", type=Path, default=Path("outputs/grounded_pipeline/results.json"))
+    parser.add_argument("--out", type=Path, default=output_root() / "grounded_pipeline/results.json")
     parser.add_argument("--artifact-dir", type=Path, help="Intermediate perception files; defaults to output directory")
     parser.add_argument("--scene-graph-dir", type=Path)
     parser.add_argument("--scene", action="append", help="Process only these scenes; repeatable")
@@ -34,9 +35,6 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--apertus-base-url", default="http://localhost:8000/v1")
     parser.add_argument("--apertus-model", "--model", default="swiss-ai/Apertus-v1.5-70B")
     parser.add_argument("--qwen-base-url", default="http://127.0.0.1:8001/v1")
-    parser.add_argument("--qwen-model", default="Qwen/Qwen3-VL-32B-Instruct")
-    parser.add_argument("--box-detector", choices=("dino", "qwen"), default="dino",
-                        help="DINO grounds verified categories; Qwen discovers instances and boxes together")
     parser.add_argument("--qwen-box-retries", type=int, default=1,
                         help="Format-only retries for Qwen boxes after the initial visual request")
     parser.add_argument("--stacking-source", choices=("qwen", "geometry"), default="qwen",
@@ -45,14 +43,8 @@ def create_parser() -> argparse.ArgumentParser:
                         help="Format-only retries for the separate Qwen stacking request")
     parser.add_argument("--refresh-stacking", action="store_true",
                         help="With --geometry-input, derive Qwen stacking while reusing saved objects and masks")
-    parser.add_argument("--query-source", choices=("qwen_objects", "grounding_queries"), default="qwen_objects",
-                        help="DINO only: verified visible labels, or combine them with instruction terms")
-    parser.add_argument("--dino-model", default="IDEA-Research/grounding-dino-base")
-    parser.add_argument("--dino-device", help="DINO device, e.g. cuda:0; its existing CPU default otherwise")
     parser.add_argument("--sam-model", default="facebook/sam2.1-hiera-small")
     parser.add_argument("--sam-device", help="SAM device, e.g. cuda:0; auto otherwise")
-    parser.add_argument("--box-threshold", type=float, default=0.3)
-    parser.add_argument("--text-threshold", type=float, default=0.25)
     parser.add_argument("--geometry-config", type=Path, help="JSON GeometryConfig overrides")
     parser.add_argument("--debug-visualizations", action="store_true", help="Also save detector/SAM stage plots (requires matplotlib)")
     parser.add_argument("--no-constrained-decoding", action="store_true")
@@ -63,7 +55,7 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Load scenes, obtain geometry, build graphs and save Apertus plans.
+    """Load scenes, build graphs and save validated Apertus plans.
 
     ``argv`` is an optional list of CLI arguments; ``None`` reads the process's
     command-line arguments. Saved geometry skips upstream perception, while
@@ -84,10 +76,6 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--qwen-stacking-retries must be nonnegative")
     if args.refresh_stacking and (args.input is None or args.stacking_source != "qwen"):
         parser.error("--refresh-stacking requires --geometry-input and --stacking-source qwen")
-    if not args.input and args.box_detector == "qwen" and args.query_source != "qwen_objects":
-        parser.error("--query-source applies only to --box-detector dino")
-    if not 0 <= args.box_threshold <= 1 or not 0 <= args.text_threshold <= 1:
-        parser.error("Detection thresholds must be between 0 and 1")
     if args.base_dir and not args.input:
         parser.error("--base-dir applies only to --geometry-input")
     if not args.data.is_dir():
@@ -122,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     # A run uses one policy snapshot even if the mounted prompt changes mid-run.
     planning_policy = (args.out.parent / "planning_policy.txt").read_text()
     if fresh_perception or args.refresh_stacking:
-        # Fresh run: extraction → selected detector → cleanup → SAM → mask geometry.
+        # Fresh run: extraction → Qwen boxes → cleanup → SAM → mask geometry.
         # generate_geometry saves checkpoints and returns the geometry JSON path.
         try:
             overrides = json.loads(args.geometry_config.read_text()) if args.geometry_config else {}
@@ -130,13 +118,11 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("Geometry config must be a JSON object")
             config = GroundedPerceptionConfig(
                 apertus_base_url=args.apertus_base_url, apertus_model=args.apertus_model,
-                qwen_base_url=args.qwen_base_url, qwen_model=args.qwen_model,
+                qwen_base_url=args.qwen_base_url,
                 timeout=args.timeout, constrained=not args.no_constrained_decoding,
-                box_detector=args.box_detector, qwen_box_retries=args.qwen_box_retries,
+                qwen_box_retries=args.qwen_box_retries,
                 stacking_source=args.stacking_source, qwen_stacking_retries=args.qwen_stacking_retries,
-                query_source=args.query_source, dino_model=args.dino_model, dino_device=args.dino_device,
                 sam_model=args.sam_model, sam_device=args.sam_device,
-                box_threshold=args.box_threshold, text_threshold=args.text_threshold,
                 debug_visualizations=args.debug_visualizations,
             )
             if fresh_perception:
@@ -234,7 +220,6 @@ def main(argv: list[str] | None = None) -> int:
         if remaining is not None:
             remaining -= len(instructions)
     print(f"Wrote {len(results)} Apertus results to {args.out}")
-    print(f"Score with: python starter/evaluate.py {args.out} --data {args.data}")
     failures = sum(entry.get("error") is not None for entry in raw)
     if failures:
         print(f"Warning: {failures} planning failures produced fail-safe refusals; inspect the raw log")

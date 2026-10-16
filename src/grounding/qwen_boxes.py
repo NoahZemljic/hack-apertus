@@ -57,7 +57,7 @@ class QwenBoxDetector:
         """Return independent instances in source-image, half-open xyxy pixels.
 
         Qwen is asked to discover beyond hints. Unknown confidence is represented
-        by None, rather than a fabricated DINO probability. A valid empty inventory
+        by None, rather than a fabricated detection probability. A valid empty inventory
         succeeds; neither missing categories nor scene semantics trigger a retry.
         """
         self.last_trace = []

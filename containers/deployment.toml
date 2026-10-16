@@ -1,5 +1,5 @@
 # GPU numbers are positions within Slurm's CUDA_VISIBLE_DEVICES allocation.
-# All four model IDs also accept local snapshot directories.
+# Apertus and SAM model IDs also accept local snapshot directories.
 [apertus]
 model = "swiss-ai/Apertus-v1.5-70B"
 revision = "main"
@@ -29,9 +29,7 @@ extra_args = ["--limit-mm-per-prompt", '{"image":1,"video":0}']
 
 [perception]
 gpu = 3
-dino_model = "IDEA-Research/grounding-dino-base"
 sam_model = "facebook/sam2.1-hiera-small"
-dino_revision = "main"
 sam_revision = "main"
 
 [runtime]

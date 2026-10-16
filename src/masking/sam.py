@@ -213,7 +213,6 @@ class SamSegmenter:
         return {
             **detection,
             "detector_score": detection["score"],
-            **({"dino_score": detection["score"]} if detection.get("backend", "dino") == "dino" else {}),
             "sam_score": float(scores[index]),
             **geometry,
             **validation,

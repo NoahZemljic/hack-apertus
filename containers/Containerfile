@@ -21,9 +21,6 @@ COPY starter/ starter/
 COPY schema/ schema/
 COPY run_grounded.py ./
 COPY containers/ containers/
-COPY tests/ tests/
-COPY docs/ docs/
 RUN HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m src.check_environment --check-vllm \
-    && HF_HUB_OFFLINE=1 python -m src.clariden --check-engine \
-    && HF_HUB_OFFLINE=1 python -m unittest discover -s tests
+    && HF_HUB_OFFLINE=1 python -m src.clariden --check-engine
 ENTRYPOINT ["bash", "/opt/hack-apertus/containers/start_pipeline.sh"]

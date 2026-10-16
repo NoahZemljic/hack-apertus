@@ -1,7 +1,4 @@
-"""Shared category normalization and raw detection identifiers."""
-
-import re
-from collections import Counter
+"""Shared category normalization for Qwen object labels."""
 
 
 def normalize_queries(queries: list[str]) -> list[str]:
@@ -29,21 +26,3 @@ def normalize_queries(queries: list[str]) -> list[str]:
             seen.add(canonical)
             normalized.append(canonical)
     return normalized
-
-
-def assign_detection_ids(detections: list[dict]) -> list[dict]:
-    """Return detections with unique label-based IDs in detection order.
-
-    Counters reset for each scene. These raw IDs also trace boxes through cleanup.
-    Labels are preserved; combined DINO phrases are not resolved here.
-    """
-    counts = Counter()
-    identified = []
-    for detection in detections:
-        stem = re.sub(r"[^a-z0-9]+", "_", detection["label"].lower()).strip("_")
-        if not stem or not stem[0].isalpha():
-            stem = f"object_{stem}" if stem else "object"
-        counts[stem] += 1
-        identified.append({**detection, "id": f"{stem}_{counts[stem]}"})
-    return identified
-

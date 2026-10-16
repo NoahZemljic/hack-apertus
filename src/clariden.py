@@ -25,6 +25,8 @@ import tomllib
 from typing import Any
 import urllib.request
 
+from .settings import QWEN_MODEL, output_root
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -44,9 +46,7 @@ class ServerConfig:
 @dataclass(frozen=True)
 class PerceptionConfig:
     gpu: int = 3
-    dino_model: str = "IDEA-Research/grounding-dino-base"
     sam_model: str = "facebook/sam2.1-hiera-small"
-    dino_revision: str = "main"
     sam_revision: str = "main"
 
 
@@ -116,6 +116,8 @@ def load_config(path: Path, environment: dict[str, str] | None = None) -> Deploy
                      "--max-model-len", "--gpu-memory-utilization", "--max-num-seqs", "--api-key"}
         if any(v.split("=", 1)[0] in protected for v in server.extra_args or []):
             raise ValueError("Configure host/port/model/GPU/context/memory through deployment fields")
+    if config.qwen.model != QWEN_MODEL:
+        raise ValueError(f"Perception requires {QWEN_MODEL}")
     if type(config.perception.gpu) is not int or config.perception.gpu < 0:
         raise ValueError("Perception GPU must be a nonnegative allocation position")
     slots.append(config.perception.gpu)
@@ -161,7 +163,7 @@ def child_environment(base: dict[str, str], devices: str, cache_name: str) -> di
 def engine_report() -> dict[str, Any]:
     """Resolve actual lazy model classes without downloading model checkpoints."""
     from transformers import (Apertus1p5ForConditionalGeneration, Qwen3VLForConditionalGeneration,
-                              GroundingDinoForObjectDetection, Sam2Model)
+                              Sam2Model)
     from vllm.model_executor.models import ModelRegistry
 
     names = ["Apertus1p5ForConditionalGeneration", "Qwen3VLForConditionalGeneration"]
@@ -173,7 +175,7 @@ def engine_report() -> dict[str, Any]:
         if getattr(importlib.import_module(f"vllm.model_executor.models.{module}"), name) is None:
             raise RuntimeError(f"vLLM could not import {name}")
     assert all(cls is not None for cls in (Apertus1p5ForConditionalGeneration,
-               Qwen3VLForConditionalGeneration, GroundingDinoForObjectDetection, Sam2Model))
+               Qwen3VLForConditionalGeneration, Sam2Model))
     return {"machine": platform.machine(), "architectures": names,
             "versions": {name: metadata.version(name) for name in ("vllm", "transformers", "torch", "torchvision")},
             "base_image": os.environ.get("HACK_APERTUS_BASE_IMAGE", "not recorded")}
@@ -244,19 +246,17 @@ def server_command(server: ServerConfig, model_path: str) -> list[str]:
 
 def pipeline_command(config: DeploymentConfig, extra: list[str], paths: dict[str, str] | None = None) -> list[str]:
     paths = paths or {}
-    output = Path(os.environ.get("HACK_APERTUS_OUTPUT", "outputs/clariden"))
+    output = output_root()
     command = [sys.executable, str(ROOT / "run_grounded.py"),
                "--data", os.environ.get("HACK_APERTUS_DATA", "dataset"),
                "--out", str(output / "results.json"),
                "--apertus-base-url", f"http://127.0.0.1:{config.apertus.port}/v1",
                "--apertus-model", config.apertus.model,
                "--qwen-base-url", f"http://127.0.0.1:{config.qwen.port}/v1",
-               "--qwen-model", config.qwen.model,
-               "--dino-model", paths.get("dino", config.perception.dino_model),
                "--sam-model", paths.get("sam", config.perception.sam_model),
-               "--dino-device", "cuda:0", "--sam-device", "cuda:0"]
-    protected = {"--apertus-base-url", "--apertus-model", "--model", "--qwen-base-url", "--qwen-model",
-                 "--dino-model", "--sam-model", "--dino-device", "--sam-device"}
+               "--sam-device", "cuda:0"]
+    protected = {"--apertus-base-url", "--apertus-model", "--model", "--qwen-base-url",
+                 "--sam-model", "--sam-device"}
     if any(arg.split("=", 1)[0] in protected for arg in extra):
         raise ValueError("Use deployment config/environment variables for models and devices")
     return command + extra
@@ -275,16 +275,12 @@ def validate_pipeline(command: list[str]) -> Any:
     args = parse_pipeline(command)
     if args.limit is not None and args.limit < 1 or args.timeout <= 0:
         raise ValueError("Pipeline limit and timeout must be positive")
-    if not 0 <= args.box_threshold <= 1 or not 0 <= args.text_threshold <= 1:
-        raise ValueError("Pipeline detection thresholds must lie in [0,1]")
     if args.qwen_box_retries < 0:
         raise ValueError("Qwen box retries must be nonnegative")
     if args.qwen_stacking_retries < 0:
         raise ValueError("Qwen stacking retries must be nonnegative")
     if args.refresh_stacking and (args.input is None or args.stacking_source != "qwen"):
         raise ValueError("--refresh-stacking requires --geometry-input and --stacking-source qwen")
-    if not args.input and args.box_detector == "qwen" and args.query_source != "qwen_objects":
-        raise ValueError("--query-source applies only to --box-detector dino")
     if args.base_dir and not args.input:
         raise ValueError("--base-dir requires --geometry-input")
     if not args.data.is_dir():
@@ -309,22 +305,16 @@ def needed_servers(args: Any, *, smoke: bool = False) -> list[str]:
     return names
 
 
-def perception_model_definitions(config: DeploymentConfig, box_detector: str) -> list[tuple[str, str, str]]:
-    """Qwen boxes use the existing server; only DINO needs local detector weights."""
-    if box_detector not in {"dino", "qwen"}:
-        raise ValueError(f"Unknown box detector: {box_detector}")
-    definitions = []
-    if box_detector == "dino":
-        definitions.append(("dino", config.perception.dino_model, config.perception.dino_revision))
-    definitions.append(("sam", config.perception.sam_model, config.perception.sam_revision))
-    return definitions
+def perception_model_definitions(config: DeploymentConfig) -> list[tuple[str, str, str]]:
+    """Qwen runs in its server; only SAM needs local perception weights."""
+    return [("sam", config.perception.sam_model, config.perception.sam_revision)]
 
 
 def model_definitions(config: DeploymentConfig, args: Any, *, smoke: bool = False) -> list[tuple[str, str, str]]:
     definitions = [(name, getattr(config, name).model, getattr(config, name).revision)
                    for name in needed_servers(args, smoke=smoke)]
     if args.input is None:
-        definitions += perception_model_definitions(config, args.box_detector)
+        definitions += perception_model_definitions(config)
     return definitions
 
 
@@ -558,7 +548,7 @@ def run(config: DeploymentConfig, extra: list[str], *, dry_run: bool = False,
             log("Smoke test passed: GPU/import/configuration/cache checks and both local server inventories; no full pipeline inference")
             return 0
         pipeline = supervisor.start("pipeline", command, child_environment(base, assignments["pipeline"], "pipeline"))
-        return supervisor.wait_pipeline(pipeline, [child for child, _ in servers])
+        status = supervisor.wait_pipeline(pipeline, [child for child, _ in servers])
     finally:
         supervisor.close()
         elapsed = time.monotonic() - started
@@ -567,9 +557,26 @@ def run(config: DeploymentConfig, extra: list[str], *, dry_run: bool = False,
                       "total_deployment_seconds": total_elapsed, "under_15_minutes": total_elapsed < 900}, indent=2) + "\n")
         log(f"Server startup + pipeline + shutdown elapsed: {elapsed:.1f}s (build/preflight excluded)")
         log(f"Total deployment elapsed including preflight: {total_elapsed:.1f}s (image build excluded)")
+    # Evaluation belongs to the container lifecycle, after inference has exited
+    # and all model servers have been stopped. Direct pipeline runs only plan.
+    return finish_run(status, args)
 
 
-def prepare_cache(config: DeploymentConfig, box_detector: str = "dino") -> None:
+def finish_run(pipeline_status: int, args: Any) -> int:
+    """Score completed submissions as the container's final step."""
+    if pipeline_status or args.build_only:
+        return pipeline_status
+    from src.evaluation import evaluate_submission
+
+    try:
+        evaluate_submission(args.out, args.data)
+    except (OSError, subprocess.CalledProcessError) as error:
+        log(f"Final submission saved, but evaluation failed: {error}")
+        return 1
+    return 0
+
+
+def prepare_cache(config: DeploymentConfig) -> None:
     """Explicit preparation operation, separate from offline startup/build."""
     if not os.environ.get("HF_HOME"):
         raise ValueError("Set HF_HOME to a persistent mounted directory before preparing models")
@@ -579,7 +586,7 @@ def prepare_cache(config: DeploymentConfig, box_detector: str = "dino") -> None:
     records = {}
     definitions = [("apertus", config.apertus.model, config.apertus.revision),
                    ("qwen", config.qwen.model, config.qwen.revision)]
-    definitions += perception_model_definitions(config, box_detector)
+    definitions += perception_model_definitions(config)
     for name, model, revision in definitions:
         log(f"Preparing {name}: {model}@{revision} into HF_HOME={os.environ['HF_HOME']}")
         records[name] = snapshot_metadata(resolve_snapshot(model, revision, download=True))
@@ -624,8 +631,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         config = load_config(args.config)
         if args.prepare_cache:
-            pipeline_args = parse_pipeline(pipeline_command(config, extra))
-            prepare_cache(config, pipeline_args.box_detector)
+            parse_pipeline(pipeline_command(config, extra))
+            prepare_cache(config)
             return 0
         for signum in (signal.SIGINT, signal.SIGTERM):
             old_handlers[signum] = signal.signal(signum, stop)

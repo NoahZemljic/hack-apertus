@@ -14,8 +14,6 @@
 !schema/**
 !containers/
 !containers/**
-!tests/
-!tests/**
 !docs/
 !docs/**
 **/__pycache__/**

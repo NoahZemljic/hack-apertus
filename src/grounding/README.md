@@ -1,60 +1,38 @@
-# DINO boxes and conservative cleanup
+# Qwen boxes and conservative cleanup
 
-Run from the repository root in the
-[shared project environment](../../docs/ENVIRONMENT.md). DINO, SAM, and the
-language stages share the root dependencies and container; no stage-specific
-installation is required:
+The supported pipeline uses Qwen3-VL-32B to identify visible objects and their
+bounding boxes, then cleans those boxes before SAM segmentation. Run it through
+[the project launcher](../../README.md#getting-started-on-clariden).
 
-```sh
-python -m src.grounding.grounding_dino
-```
+Artifacts are saved beside the submission under `$HOME/hack-apertus/outputs`
+by default:
 
-Each scene is cleaned immediately after detection. Outputs default to
-`outputs/grounded_pipeline/` (JSON names below are relative to that directory):
-
-- `grounding_detections.json`: raw DINO boxes and labels.
+- `grounding_detections.json`: raw Qwen boxes and labels.
 - `grounding_detections_clean.json`: cleaned boxes with source IDs and review flags.
-- `grounding_cleanup_report.json`: removed boxes, reasons, clipping/merge counts,
+- `grounding_cleanup_report.json`: dropped boxes, clipping and merge counts,
   and IDs needing review.
-- `outputs/grounded_pipeline/grounding_debug/<scene>_boxes.png`: raw boxes.
-- `outputs/grounded_pipeline/grounding_debug/<scene>_boxes_clean.png`: cleaned boxes.
-- `outputs/grounded_pipeline/grounding_debug/<scene>_comparison.png`: raw and cleaned panels with matching
-  colors. Dashed boxes and `?` mark unresolved labels or other review cases.
+- `grounding_debug/<scene>.png`: comparison plots when `--debug-visualizations` is set.
 
-Clean and plot an existing run without loading DINO or changing the input JSON:
+To clean saved detections without loading models:
 
-```sh
-python -m src.grounding.grounding_dino --input-detections outputs/grounded_pipeline/grounding_detections.json
+```bash
+python -m src.grounding.postprocess_grounding \
+  --input "$HOME/hack-apertus/outputs/final/grounding_detections.json" \
+  --output "$HOME/hack-apertus/outputs/final/grounding_detections_clean.json" \
+  --report "$HOME/hack-apertus/outputs/final/grounding_cleanup_report.json" \
+  --dataset dataset
 ```
 
-Add `--scene scene_06` to process one scene. Direct execution with
-`python src/grounding/grounding_dino.py` also works. See `--help` for paths and
-threshold overrides.
+Cleanup clips boxes to the image, removes invalid boxes, and merges nearly
+identical detections (IoU at least 0.90). Qwen confidence remains `null`; input
+order determines which duplicate is retained. Conflicting duplicate labels
+require review. Boxes covering over 35% of the image are removed only for gears,
+cubes, mandarins and components. Other oversized objects remain for review;
+trays, arms and hands are allowed. Cleanup preserves labels and cannot repair
+object identity from pixels.
 
-Cleanup clips boxes to the image, removes invalid boxes, and keeps the strongest
-box among nearly identical detections (IoU at least 0.90). It preserves that
-box's original label and records every merged label and source ID. Conflicting
-duplicate names require review. Huge boxes (over 35% of the image) are removed
-only for the small-object classes implicated in the current output: gears,
-cubes, mandarins, and components. Other oversized objects are retained for
-review; trays, arms, and hands are allowed.
+Check the project environment without GPU weights:
 
-Exact query labels and unknown names keep their original spelling. Repeated
-copies of one complete query can be collapsed (`red gear red gear` becomes
-`red gear`). Different concatenated queries, such as `mandarin red cube`, keep
-their raw label and require review. Neither another instance elsewhere in the
-scene nor the length of a query justifies guessing a new object name. Cleanup
-cannot identify objects from their pixels or repair a box spanning several
-objects.
-
-To give SAM the cleaned boxes:
-
-```sh
-python -m src.masking.sam --detections outputs/grounded_pipeline/grounding_detections_clean.json
-```
-
-Regression checks (Pillow and Matplotlib required; DINO weights are not needed):
-
-```sh
-python -m unittest discover -s tests -p 'test_grounding.py'
+```bash
+python -m src.check_environment --profile base
 ```

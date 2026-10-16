@@ -1,15 +1,13 @@
 # Clariden: full run, planning replay and benchmark comparison
 
-The supported pipeline is Apertus extraction → selectable object detector →
+The supported pipeline is Apertus extraction → Qwen3-VL-32B boxes →
 SAM 2 → geometry + separate Qwen stacking → Apertus planning.
 `run_grounded.py` is its only entry point.
-`--box-detector dino` (the default) uses Qwen category discovery and verification
-followed by Grounding DINO boxes. `--box-detector qwen` asks the existing Qwen
-server for all visible object instances and their boxes in one request per scene.
-Both detector modes then ask Qwen separately for directed physical support
-relationships between candidate objects; this enriches the existing graph.
+Qwen3-VL-32B finds all visible object instances and their boxes in one request
+per scene, then separately identifies directed physical support relationships
+between candidate objects to enrich the graph.
 The full build, cache and deployment instructions live in
-[docs/CLARIDEN.md](docs/CLARIDEN.md); prepare that image and its model caches first.
+[README.md](README.md#getting-started-on-clariden); prepare that image and its model caches first.
 
 ## 1. Open the four-GPU container
 
@@ -31,7 +29,7 @@ replace the image's Torch, Transformers or vLLM packages.
 
 Choose one of the following complete run blocks inside the container. Both use
 Qwen boxes and the separate Qwen stacking step, and save each run in a fresh
-scratch directory. Pass `--data` explicitly to select the examples.
+directory under `$HOME/hack-apertus/outputs`. Pass `--data` explicitly to select the examples.
 
 ### Dataset examples: run and evaluate
 
@@ -45,11 +43,9 @@ run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/dataset-$(date -u +%Y%m%dT%H%M%S)-XXX
 
 time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
   --data "$HOME/hack-apertus/dataset" \
-  --box-detector qwen --stacking-source qwen \
+  --stacking-source qwen \
   --debug-visualizations \
-  --out "$run_dir/results.json" &&
-python starter/evaluate.py "$run_dir/results.json" \
-  --data "$HOME/hack-apertus/dataset" --report "$run_dir/report.json"
+  --out "$run_dir/results.json"
 ```
 
 ### Held-out examples: run and save the submission
@@ -63,7 +59,7 @@ run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/heldout-$(date -u +%Y%m%dT%H%M%S)-XXX
 
 time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
   --data "$HOME/hack-apertus/heldout" \
-  --box-detector qwen --stacking-source qwen \
+  --stacking-source qwen \
   --debug-visualizations \
   --out "$run_dir/results_heldout.json"
 ```
@@ -71,23 +67,22 @@ time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_
 Submit `$run_dir/results_heldout.json`. The released held-out folder has no
 ground-truth answers or labeled masks, so local scoring is unavailable. The
 organizers evaluate it with the same script using their private annotations.
-The artifact-copy command in section 4 works after either run block.
+The artifacts described in section 4 are available after either run block.
 
 No `--limit` means all scenes and instructions. The launcher starts the local
 Apertus 70B and Qwen3-VL-32B servers, runs SAM on the fourth GPU, then stops the
-servers. The mounted checkout's code, schemas and prompts are used immediately;
-rebuild the image when changing dependencies.
+servers before evaluating the final submission. The mounted checkout's code,
+schemas and prompts are used immediately; rebuild the image when changing dependencies.
 
 The output folder contains intermediate detections, masks and geometry, one
 planner graph per scene, the submission and exact planning requests. Review
 `run_manifest.json`, `planning_policy.txt` and `results*.raw.jsonl`; dataset runs
-also produce `report.json`. Only the evaluator reads challenge ground truth.
+also produce `report.json` in the launcher's final evaluation step, after model
+shutdown. `evaluation.json` records whether scoring completed, failed, or was
+skipped because annotations are unavailable.
+Only the evaluator reads challenge ground truth.
 
-### Detector options and comparison
-
-Both run blocks select `--box-detector qwen` explicitly. Use
-`--box-detector dino` in either block to compare Grounding DINO boxes; that mode
-also loads DINO on the fourth GPU. The CLI default remains DINO.
+### Qwen perception
 
 This backend combines discovery and localization. Apertus's object terms guide
 attention; they do not restrict Qwen's inventory. Each visible instance gets one
@@ -101,10 +96,8 @@ and one format retry by default (`--qwen-stacking-retries 1`). An object can res
 on multiple supports. To compare with the previous geometry-only approach, run
 a fresh run with `--stacking-source geometry`.
 Qwen provides no calibrated detection score, so its confidence is saved as `null`.
-Both detectors share box cleanup, SAM masks and picking points, geometry, scene
-graphs and the Apertus planning policy. The Qwen option does not load or require
-DINO weights. It uses the existing server and dependencies, so these source changes
-do not require an image rebuild when running from the mounted checkout.
+Qwen boxes pass through cleanup, SAM masks and picking points, geometry, scene
+graphs and the Apertus planning policy. Detection uses the existing Qwen server.
 The command gives Qwen a 16384-token context to leave room for the full image,
 detection prompt and up to 4096 output tokens for the instance boxes.
 The detector prompt now follows `feature/qwen-only`'s object and box guidance:
@@ -112,30 +105,6 @@ region-by-region scanning, separate repeated instances, low-contrast tray conten
 snake_case labels and fruit names without color prefixes. Labels are normalized
 before SAM and graph construction; the flat black placement surface retains
 the instruction name `black tray`. Picking points still come from SAM.
-
-After a dataset run, compare against the latest DINO discovery run (39.35/65),
-if copied locally:
-
-```bash
-previous_report="$HOME/hack-apertus/outputs/discovery-20261014T191752-JeM4C7/report.json"
-python - "$previous_report" "$run_dir/report.json" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-for name, filename in zip(("DINO", "Qwen"), sys.argv[1:]):
-    report = json.loads(Path(filename).read_text())
-    refusals = sum(item["expected"] == "plan" and item["answer"] == "refuse"
-                   for item in report["instructions"])
-    print(f'{name}: grounding {35 * report["grounding"]:.2f}/35, '
-          f'safety {30 * report["safety"]:.2f}/30, '
-          f'total {report["automatic_score"]:.2f}/65, false refusals {refusals}')
-PY
-```
-
-For a comparison using the current checkout for both detectors, repeat the fresh
-run block with `--box-detector dino` and a separate `dino-boxes-...` directory.
-Changing the detector requires a full run; `--geometry-input` skips detection.
 
 ## 3. Add stacking to the latest saved run and replan
 
@@ -151,16 +120,14 @@ run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/qwen-stacking-$(date -u +%Y%m%dT%H%M%
 time APERTUS_MAX_MODEL_LEN=16384 QWEN_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
   --geometry-input "$previous_run/geometry_results.json" \
   --refresh-stacking --stacking-source qwen \
-  --out "$run_dir/results.json" &&
-python starter/evaluate.py "$run_dir/results.json" \
-  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
+  --out "$run_dir/results.json"
 ```
 
 Keep the previous mask PNGs and original dataset images accessible. If the run is
 still in scratch, set `previous_run` to that scratch folder instead. For copied
 checkpoints whose original scratch paths are unavailable, refresh reuses the
 accompanying `segmentation/<scene>/<object-id>.png` masks. It starts the existing
-Qwen server and Apertus; it needs neither DINO nor SAM model weights.
+Qwen server and Apertus; it needs no SAM model weights.
 Inspect `stacking_relations.json`, `qwen_stacking.raw.json` and the rebuilt graphs
 to see the added directed links. The new geometry saves those observations for
 future replay. These source and prompt changes use the mounted checkout and do
@@ -177,9 +144,7 @@ run_dir="$(mktemp -d "$HACK_APERTUS_OUTPUT/replan-XXXXXX")" || exit 1
 
 time APERTUS_MAX_MODEL_LEN=16384 bash containers/start_pipeline.sh -- \
   --geometry-input "$previous_run/geometry_results.json" \
-  --out "$run_dir/results.json" &&
-python starter/evaluate.py "$run_dir/results.json" \
-  --data "$HACK_APERTUS_DATA" --report "$run_dir/report.json"
+  --out "$run_dir/results.json"
 ```
 
 Keep the previous mask files in place. This rebuilds the planner graphs and
@@ -190,21 +155,16 @@ constant; that option disables legacy geometry guesses, not saved Qwen support.
 Planning makes one decision per instruction, with one retry only for
 malformed JSON or schema structure.
 
-## 4. Copy the artifacts for inspection
+## 4. Inspect the saved artifacts
 
-```bash
-mkdir -p "$HOME/hack-apertus/outputs"
-cp -r --no-preserve=mode,ownership "$run_dir" "$HOME/hack-apertus/outputs/"
-```
-
-This avoids preserving permissions and ACLs that some container home mounts
-reject. The original run remains in scratch.
+Run artifacts are already saved under `$HOME/hack-apertus/outputs`.
+Inspect the submission, reports and intermediate files in `$run_dir`.
 
 ## Optional: compare with the supplied benchmark
 
 `baseline/baseline.py` is the challenge's original Apertus-only benchmark. It
 is retained for score comparison and is separate from the supported pipeline.
-For its model setup and usage, see [JURY_README.md](JURY_README.md#quickstart-15-minutes).
+For its usage, run `python baseline/baseline.py --help`.
 The benchmark's `--mock` option checks file loading and scoring without models:
 
 ```bash

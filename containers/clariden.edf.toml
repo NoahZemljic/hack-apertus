@@ -1,4 +1,4 @@
-# Build/import once: see docs/CLARIDEN.md. No startup installs or downloads.
+# Build/import once: see README.md. No startup installs or downloads.
 image = "${SCRATCH}/hack-apertus/containers/pipeline-arm64.sqsh"
 mounts = ["${HOME}:${HOME}", "${SCRATCH}:${SCRATCH}"]
 workdir = "/opt/hack-apertus"
@@ -14,7 +14,7 @@ CUDA_CACHE_PATH = "${SCRATCH}/hack-apertus/cache/cuda"
 TORCHINDUCTOR_CACHE_DIR = "${SCRATCH}/hack-apertus/cache/torchinductor"
 TRITON_CACHE_DIR = "${SCRATCH}/hack-apertus/cache/triton"
 HACK_APERTUS_DATA = "${HOME}/hack-apertus/dataset"
-HACK_APERTUS_OUTPUT = "${SCRATCH}/hack-apertus/outputs"
+HACK_APERTUS_OUTPUT = "${HOME}/hack-apertus/outputs"
 HF_HUB_OFFLINE = "1"
 TRANSFORMERS_OFFLINE = "1"
 HF_HUB_DISABLE_TELEMETRY = "1"

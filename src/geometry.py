@@ -231,7 +231,7 @@ class GeometryReasoner:
             raise ValueError(f"{record['id']}: safe_pixel is outside mask")
         box = np.asarray(record["box"], dtype=float)
         if box.shape != (4,) or not np.isfinite(box).all() or box[2] <= box[0] or box[3] <= box[1]:
-            raise ValueError(f"{record['id']}: invalid DINO box")
+            raise ValueError(f"{record['id']}: invalid detection box")
         if not isinstance(record["label"], str) or not isinstance(record["aliases"], list) or any(
             not isinstance(alias, str) for alias in record["aliases"]
         ):

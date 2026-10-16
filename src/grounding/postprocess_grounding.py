@@ -10,7 +10,7 @@ from PIL import Image
 
 
 LARGE_SURFACE_HINTS = ("tray", "arm", "hand")
-# Only reject huge boxes for small objects implicated in the saved DINO output.
+# Only reject huge boxes for the established small-object classes.
 # A large plate, unknown object, or surface is not automatically a false positive.
 SMALL_OBJECT_HEADS = {"gear", "cube", "mandarin", "component"}
 
@@ -59,9 +59,9 @@ def box_area_ratio(box: list[float], width: int, height: int) -> float:
 
 
 def query_candidates(label: str, queries: Iterable[str]) -> list[str]:
-    """Return scene queries that plausibly occur inside DINO's returned phrase.
+    """Return scene queries that plausibly occur inside a returned phrase.
 
-    Grounding DINO sometimes concatenates adjacent prompt phrases, e.g.
+    Saved detections can contain concatenated query phrases, e.g.
     'mandarin red cube' or 'red gear yellow gear'. We keep every matching
     original query so later logic can resolve the phrase conservatively.
     """
@@ -267,7 +267,7 @@ def process_scene(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Conservative Grounding DINO post-processing")
+    parser = argparse.ArgumentParser(description="Conservative object detection post-processing")
     parser.add_argument("--input", type=Path, default=Path("outputs/grounded_pipeline/grounding_detections.json"))
     parser.add_argument("--dataset", type=Path, default=Path("dataset"))
     parser.add_argument("--output", type=Path, default=Path("outputs/grounded_pipeline/grounding_detections_clean.json"))
