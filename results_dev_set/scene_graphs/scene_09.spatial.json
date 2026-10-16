@@ -1,0 +1,647 @@
+{
+  "coordinate_reference": "mask centroids; pick points are for picking only",
+  "support_source": "qwen",
+  "centroids_2d": {
+    "black_tray_1": [
+      1856.6284973616748,
+      868.5335906514766
+    ],
+    "grey_tray_1": [
+      659.5814445349564,
+      951.934749514889
+    ],
+    "yellow_saucer_1": [
+      418.6850094291631,
+      558.804890832387
+    ],
+    "grey_industrial_component_1": [
+      869.6412192614849,
+      578.6694275322211
+    ],
+    "red_cube_1": [
+      950.8719224026222,
+      861.8231953655004
+    ],
+    "grey_metal_part_1": [
+      607.6563044961711,
+      822.9629615588748
+    ],
+    "red_gear_1": [
+      338.5865974309921,
+      1036.9036567368134
+    ],
+    "white_plate_1": [
+      1869.968854367742,
+      1302.095047689082
+    ],
+    "red_gear_2": [
+      833.0640156261517,
+      1171.6379572983465
+    ],
+    "mandarin_1": [
+      622.9868233457896,
+      1356.9023756997283
+    ],
+    "yellow_gear_1": [
+      826.2005275844817,
+      1458.1136580706782
+    ],
+    "red_gear_3": [
+      322.1798170712542,
+      1546.6002388760255
+    ]
+  },
+  "left_to_right": [
+    "red_gear_3",
+    "red_gear_1",
+    "yellow_saucer_1",
+    "grey_metal_part_1",
+    "mandarin_1",
+    "grey_tray_1",
+    "yellow_gear_1",
+    "red_gear_2",
+    "grey_industrial_component_1",
+    "red_cube_1",
+    "black_tray_1",
+    "white_plate_1"
+  ],
+  "pairwise_distances": [
+    {
+      "a": "red_gear_3",
+      "b": "red_gear_1",
+      "distance_px": 510.0
+    },
+    {
+      "a": "red_gear_3",
+      "b": "yellow_saucer_1",
+      "distance_px": 992.5
+    },
+    {
+      "a": "red_gear_3",
+      "b": "grey_metal_part_1",
+      "distance_px": 777.9
+    },
+    {
+      "a": "red_gear_3",
+      "b": "mandarin_1",
+      "distance_px": 355.6
+    },
+    {
+      "a": "red_gear_3",
+      "b": "grey_tray_1",
+      "distance_px": 683.7
+    },
+    {
+      "a": "red_gear_3",
+      "b": "yellow_gear_1",
+      "distance_px": 511.7
+    },
+    {
+      "a": "red_gear_3",
+      "b": "red_gear_2",
+      "distance_px": 633.7
+    },
+    {
+      "a": "red_gear_3",
+      "b": "grey_industrial_component_1",
+      "distance_px": 1112.0
+    },
+    {
+      "a": "red_gear_3",
+      "b": "red_cube_1",
+      "distance_px": 929.6
+    },
+    {
+      "a": "red_gear_3",
+      "b": "black_tray_1",
+      "distance_px": 1677.6
+    },
+    {
+      "a": "red_gear_3",
+      "b": "white_plate_1",
+      "distance_px": 1567.0
+    },
+    {
+      "a": "red_gear_1",
+      "b": "yellow_saucer_1",
+      "distance_px": 484.8
+    },
+    {
+      "a": "red_gear_1",
+      "b": "grey_metal_part_1",
+      "distance_px": 343.8
+    },
+    {
+      "a": "red_gear_1",
+      "b": "mandarin_1",
+      "distance_px": 428.1
+    },
+    {
+      "a": "red_gear_1",
+      "b": "grey_tray_1",
+      "distance_px": 332.1
+    },
+    {
+      "a": "red_gear_1",
+      "b": "yellow_gear_1",
+      "distance_px": 644.3
+    },
+    {
+      "a": "red_gear_1",
+      "b": "red_gear_2",
+      "distance_px": 512.5
+    },
+    {
+      "a": "red_gear_1",
+      "b": "grey_industrial_component_1",
+      "distance_px": 701.4
+    },
+    {
+      "a": "red_gear_1",
+      "b": "red_cube_1",
+      "distance_px": 636.8
+    },
+    {
+      "a": "red_gear_1",
+      "b": "black_tray_1",
+      "distance_px": 1527.4
+    },
+    {
+      "a": "red_gear_1",
+      "b": "white_plate_1",
+      "distance_px": 1554.2
+    },
+    {
+      "a": "yellow_saucer_1",
+      "b": "grey_metal_part_1",
+      "distance_px": 324.8
+    },
+    {
+      "a": "yellow_saucer_1",
+      "b": "mandarin_1",
+      "distance_px": 823.8
+    },
+    {
+      "a": "yellow_saucer_1",
+      "b": "grey_tray_1",
+      "distance_px": 461.1
+    },
+    {
+      "a": "yellow_saucer_1",
+      "b": "yellow_gear_1",
+      "distance_px": 987.3
+    },
+    {
+      "a": "yellow_saucer_1",
+      "b": "red_gear_2",
+      "distance_px": 739.8
+    },
+    {
+      "a": "yellow_saucer_1",
+      "b": "grey_industrial_component_1",
+      "distance_px": 451.4
+    },
+    {
+      "a": "yellow_saucer_1",
+      "b": "red_cube_1",
+      "distance_px": 612.4
+    },
+    {
+      "a": "yellow_saucer_1",
+      "b": "black_tray_1",
+      "distance_px": 1470.9
+    },
+    {
+      "a": "yellow_saucer_1",
+      "b": "white_plate_1",
+      "distance_px": 1630.6
+    },
+    {
+      "a": "grey_metal_part_1",
+      "b": "mandarin_1",
+      "distance_px": 534.2
+    },
+    {
+      "a": "grey_metal_part_1",
+      "b": "grey_tray_1",
+      "distance_px": 139.0
+    },
+    {
+      "a": "grey_metal_part_1",
+      "b": "yellow_gear_1",
+      "distance_px": 671.7
+    },
+    {
+      "a": "grey_metal_part_1",
+      "b": "red_gear_2",
+      "distance_px": 415.2
+    },
+    {
+      "a": "grey_metal_part_1",
+      "b": "grey_industrial_component_1",
+      "distance_px": 358.2
+    },
+    {
+      "a": "grey_metal_part_1",
+      "b": "red_cube_1",
+      "distance_px": 345.4
+    },
+    {
+      "a": "grey_metal_part_1",
+      "b": "black_tray_1",
+      "distance_px": 1249.8
+    },
+    {
+      "a": "grey_metal_part_1",
+      "b": "white_plate_1",
+      "distance_px": 1350.2
+    },
+    {
+      "a": "mandarin_1",
+      "b": "grey_tray_1",
+      "distance_px": 406.6
+    },
+    {
+      "a": "mandarin_1",
+      "b": "yellow_gear_1",
+      "distance_px": 227.0
+    },
+    {
+      "a": "mandarin_1",
+      "b": "red_gear_2",
+      "distance_px": 280.1
+    },
+    {
+      "a": "mandarin_1",
+      "b": "grey_industrial_component_1",
+      "distance_px": 816.4
+    },
+    {
+      "a": "mandarin_1",
+      "b": "red_cube_1",
+      "distance_px": 593.8
+    },
+    {
+      "a": "mandarin_1",
+      "b": "black_tray_1",
+      "distance_px": 1326.8
+    },
+    {
+      "a": "mandarin_1",
+      "b": "white_plate_1",
+      "distance_px": 1248.2
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "yellow_gear_1",
+      "distance_px": 532.9
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "red_gear_2",
+      "distance_px": 279.9
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "grey_industrial_component_1",
+      "distance_px": 428.3
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "red_cube_1",
+      "distance_px": 304.9
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "black_tray_1",
+      "distance_px": 1199.9
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "white_plate_1",
+      "distance_px": 1260.0
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "red_gear_2",
+      "distance_px": 286.6
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "grey_industrial_component_1",
+      "distance_px": 880.5
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "red_cube_1",
+      "distance_px": 609.2
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "black_tray_1",
+      "distance_px": 1187.2
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "white_plate_1",
+      "distance_px": 1055.4
+    },
+    {
+      "a": "red_gear_2",
+      "b": "grey_industrial_component_1",
+      "distance_px": 594.1
+    },
+    {
+      "a": "red_gear_2",
+      "b": "red_cube_1",
+      "distance_px": 331.5
+    },
+    {
+      "a": "red_gear_2",
+      "b": "black_tray_1",
+      "distance_px": 1067.5
+    },
+    {
+      "a": "red_gear_2",
+      "b": "white_plate_1",
+      "distance_px": 1045.1
+    },
+    {
+      "a": "grey_industrial_component_1",
+      "b": "red_cube_1",
+      "distance_px": 294.6
+    },
+    {
+      "a": "grey_industrial_component_1",
+      "b": "black_tray_1",
+      "distance_px": 1028.7
+    },
+    {
+      "a": "grey_industrial_component_1",
+      "b": "white_plate_1",
+      "distance_px": 1234.5
+    },
+    {
+      "a": "red_cube_1",
+      "b": "black_tray_1",
+      "distance_px": 905.8
+    },
+    {
+      "a": "red_cube_1",
+      "b": "white_plate_1",
+      "distance_px": 1019.1
+    },
+    {
+      "a": "black_tray_1",
+      "b": "white_plate_1",
+      "distance_px": 433.8
+    }
+  ],
+  "image_plane_relations": [
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "grey_industrial_component_1",
+      "type": "above",
+      "target": "grey_metal_part_1"
+    },
+    {
+      "source": "grey_industrial_component_1",
+      "type": "above",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "grey_industrial_component_1",
+      "type": "left_of",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "grey_industrial_component_1",
+      "type": "right_of",
+      "target": "yellow_saucer_1"
+    },
+    {
+      "source": "grey_metal_part_1",
+      "type": "above",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "grey_metal_part_1",
+      "type": "below",
+      "target": "grey_industrial_component_1"
+    },
+    {
+      "source": "grey_metal_part_1",
+      "type": "below",
+      "target": "yellow_saucer_1"
+    },
+    {
+      "source": "grey_metal_part_1",
+      "type": "left_of",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "grey_metal_part_1",
+      "type": "right_of",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "grey_metal_part_1",
+      "type": "right_of",
+      "target": "yellow_saucer_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "overlaps",
+      "target": "grey_metal_part_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "overlaps",
+      "target": "yellow_saucer_1"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "below",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "left_of",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "left_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "right_of",
+      "target": "red_gear_3"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "touching",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "above",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "below",
+      "target": "grey_industrial_component_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "left_of",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "right_of",
+      "target": "grey_industrial_component_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "right_of",
+      "target": "grey_metal_part_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "right_of",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "touching",
+      "target": "grey_metal_part_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "touching",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "above",
+      "target": "red_gear_3"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "below",
+      "target": "grey_metal_part_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "left_of",
+      "target": "grey_metal_part_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "above",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "above",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "below",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "left_of",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "right_of",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "touching",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "red_gear_3",
+      "type": "below",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "red_gear_3",
+      "type": "left_of",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "right_of",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "below",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "right_of",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "yellow_saucer_1",
+      "type": "above",
+      "target": "grey_metal_part_1"
+    },
+    {
+      "source": "yellow_saucer_1",
+      "type": "left_of",
+      "target": "grey_industrial_component_1"
+    },
+    {
+      "source": "yellow_saucer_1",
+      "type": "left_of",
+      "target": "grey_metal_part_1"
+    },
+    {
+      "source": "yellow_saucer_1",
+      "type": "touching",
+      "target": "grey_metal_part_1"
+    }
+  ]
+}

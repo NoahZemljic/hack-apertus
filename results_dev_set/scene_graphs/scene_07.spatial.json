@@ -1,0 +1,202 @@
+{
+  "coordinate_reference": "mask centroids; pick points are for picking only",
+  "support_source": "qwen",
+  "centroids_2d": {
+    "black_tray_1": [
+      1859.523656431226,
+      960.7316716213955
+    ],
+    "grey_tray_1": [
+      649.2675717898417,
+      969.0854099091645
+    ],
+    "red_gear_1": [
+      432.7485137813007,
+      508.40702576112415
+    ],
+    "green_mug_1": [
+      608.5086499118659,
+      702.7800633289997
+    ],
+    "red_cube_1": [
+      477.7004352079216,
+      1233.6210995987303
+    ],
+    "yellow_gear_1": [
+      858.2183413701724,
+      1407.2487510317565
+    ]
+  },
+  "left_to_right": [
+    "red_gear_1",
+    "red_cube_1",
+    "green_mug_1",
+    "grey_tray_1",
+    "yellow_gear_1",
+    "black_tray_1"
+  ],
+  "pairwise_distances": [
+    {
+      "a": "red_gear_1",
+      "b": "red_cube_1",
+      "distance_px": 726.6
+    },
+    {
+      "a": "red_gear_1",
+      "b": "green_mug_1",
+      "distance_px": 262.1
+    },
+    {
+      "a": "red_gear_1",
+      "b": "grey_tray_1",
+      "distance_px": 509.0
+    },
+    {
+      "a": "red_gear_1",
+      "b": "yellow_gear_1",
+      "distance_px": 994.5
+    },
+    {
+      "a": "red_gear_1",
+      "b": "black_tray_1",
+      "distance_px": 1496.8
+    },
+    {
+      "a": "red_cube_1",
+      "b": "green_mug_1",
+      "distance_px": 546.7
+    },
+    {
+      "a": "red_cube_1",
+      "b": "grey_tray_1",
+      "distance_px": 315.3
+    },
+    {
+      "a": "red_cube_1",
+      "b": "yellow_gear_1",
+      "distance_px": 418.3
+    },
+    {
+      "a": "red_cube_1",
+      "b": "black_tray_1",
+      "distance_px": 1408.5
+    },
+    {
+      "a": "green_mug_1",
+      "b": "grey_tray_1",
+      "distance_px": 269.4
+    },
+    {
+      "a": "green_mug_1",
+      "b": "yellow_gear_1",
+      "distance_px": 747.4
+    },
+    {
+      "a": "green_mug_1",
+      "b": "black_tray_1",
+      "distance_px": 1277.3
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "yellow_gear_1",
+      "distance_px": 485.4
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "black_tray_1",
+      "distance_px": 1210.3
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "black_tray_1",
+      "distance_px": 1096.4
+    }
+  ],
+  "image_plane_relations": [
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "above",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "above",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "below",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "right_of",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "below",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "left_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "above",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "left_of",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "touching",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "below",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "right_of",
+      "target": "red_cube_1"
+    }
+  ]
+}

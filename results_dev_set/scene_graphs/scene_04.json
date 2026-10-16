@@ -1,0 +1,152 @@
+{
+  "image": {
+    "width": 2448,
+    "height": 2048
+  },
+  "objects": [
+    {
+      "id": "black_tray_1",
+      "kind": "container",
+      "label": "black tray",
+      "color": "black",
+      "bbox_2d": [
+        1235,
+        0,
+        2447,
+        1911
+      ],
+      "pick_point_2d": [
+        1712,
+        1661
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_tray_1",
+      "kind": "container",
+      "label": "grey tray",
+      "color": "grey",
+      "bbox_2d": [
+        0,
+        80,
+        1283,
+        1833
+      ],
+      "pick_point_2d": [
+        579,
+        904
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_metal_part_1",
+      "kind": "movable",
+      "label": "grey metal part",
+      "color": "grey",
+      "bbox_2d": [
+        1424,
+        301,
+        1937,
+        553
+      ],
+      "pick_point_2d": [
+        1526,
+        462
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_metal_part_2",
+      "kind": "movable",
+      "label": "grey metal part",
+      "color": "grey",
+      "bbox_2d": [
+        2011,
+        359,
+        2240,
+        864
+      ],
+      "pick_point_2d": [
+        2107,
+        745
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "white_part_1",
+      "kind": "movable",
+      "label": "white part",
+      "color": "white",
+      "bbox_2d": [
+        1358,
+        836,
+        2011,
+        1435
+      ],
+      "pick_point_2d": [
+        1627,
+        1178
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "green_mug_1",
+      "kind": "movable",
+      "label": "green mug",
+      "color": "green",
+      "bbox_2d": [
+        1905,
+        1207,
+        2342,
+        1632
+      ],
+      "pick_point_2d": [
+        2137,
+        1436
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    }
+  ]
+}

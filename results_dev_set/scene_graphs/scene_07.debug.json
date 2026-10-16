@@ -1,0 +1,729 @@
+{
+  "scene": "scene_07",
+  "accept_support_candidates": true,
+  "support_source": "qwen",
+  "objects": [
+    {
+      "label": "black tray",
+      "aliases": [
+        "black tray"
+      ],
+      "raw_labels": [
+        "black tray"
+      ],
+      "source_ids": [
+        "black_tray_1"
+      ],
+      "box": [
+        1285.0,
+        0.0,
+        2446.0,
+        1915.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.44347,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "black_tray_1",
+      "detector_score": null,
+      "sam_score": 0.9948011636734009,
+      "mask_area": 2205637,
+      "mask_box": [
+        1236,
+        0,
+        2448,
+        1913
+      ],
+      "centroid": [
+        1859.523656431226,
+        960.7316716213955
+      ],
+      "safe_pixel": [
+        1862,
+        739
+      ],
+      "safe_pixel_clearance": 581.00341796875,
+      "box_mask_fraction": 0.9854289653063106,
+      "outside_box_fraction": 0.006672902204669218,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_07/black_tray_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "green_mug_1",
+          "grey_tray_1",
+          "yellow_gear_1"
+        ],
+        "above": [],
+        "below": [],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "grey tray",
+      "aliases": [
+        "grey tray"
+      ],
+      "raw_labels": [
+        "grey tray"
+      ],
+      "source_ids": [
+        "grey_tray_1"
+      ],
+      "box": [
+        0.0,
+        71.0,
+        1286.0,
+        1840.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.45376,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "grey_tray_1",
+      "detector_score": null,
+      "sam_score": 0.976718008518219,
+      "mask_area": 1897274,
+      "mask_box": [
+        0,
+        79,
+        1284,
+        1835
+      ],
+      "centroid": [
+        649.2675717898417,
+        969.0854099091645
+      ],
+      "safe_pixel": [
+        960,
+        357
+      ],
+      "safe_pixel_clearance": 268.33746337890625,
+      "box_mask_fraction": 0.8339907883041882,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_07/grey_tray_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "black_tray_1"
+        ],
+        "right_of": [],
+        "above": [],
+        "below": [],
+        "overlaps": [],
+        "inside": [],
+        "contains": [
+          "green_mug_1",
+          "red_cube_1",
+          "red_gear_1",
+          "yellow_gear_1"
+        ],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "red gear",
+      "aliases": [
+        "red gear"
+      ],
+      "raw_labels": [
+        "red gear"
+      ],
+      "source_ids": [
+        "red_gear_1"
+      ],
+      "box": [
+        276.0,
+        370.0,
+        635.0,
+        705.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.02399,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "red_gear_1",
+      "detector_score": null,
+      "sam_score": 0.9624248147010803,
+      "mask_area": 55510,
+      "mask_box": [
+        282,
+        373,
+        636,
+        707
+      ],
+      "centroid": [
+        432.7485137813007,
+        508.40702576112415
+      ],
+      "safe_pixel": [
+        421,
+        494
+      ],
+      "safe_pixel_clearance": 79.25907135009766,
+      "box_mask_fraction": 0.4615058412672016,
+      "outside_box_fraction": 0.00012610340479192938,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_07/red_gear_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "green_mug_1"
+        ],
+        "right_of": [],
+        "above": [
+          "green_mug_1"
+        ],
+        "below": [],
+        "overlaps": [],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": [
+          "green_mug_1"
+        ]
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "green mug",
+      "aliases": [
+        "green mug"
+      ],
+      "raw_labels": [
+        "green mug"
+      ],
+      "source_ids": [
+        "green_mug_1"
+      ],
+      "box": [
+        386.0,
+        514.0,
+        892.0,
+        910.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.03997,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "green_mug_1",
+      "detector_score": null,
+      "sam_score": 0.9694789052009583,
+      "mask_area": 125377,
+      "mask_box": [
+        395,
+        520,
+        880,
+        901
+      ],
+      "centroid": [
+        608.5086499118659,
+        702.7800633289997
+      ],
+      "safe_pixel": [
+        589,
+        706
+      ],
+      "safe_pixel_clearance": 186.0967559814453,
+      "box_mask_fraction": 0.6257086677047151,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_07/green_mug_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "black_tray_1"
+        ],
+        "right_of": [
+          "red_gear_1"
+        ],
+        "above": [
+          "red_cube_1",
+          "yellow_gear_1"
+        ],
+        "below": [
+          "red_gear_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": [
+          "red_gear_1"
+        ]
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "red cube",
+      "aliases": [
+        "red cube"
+      ],
+      "raw_labels": [
+        "red cube"
+      ],
+      "source_ids": [
+        "red_cube_1"
+      ],
+      "box": [
+        257.0,
+        1024.0,
+        696.0,
+        1444.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.03678,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "red_cube_1",
+      "detector_score": null,
+      "sam_score": 0.9818666577339172,
+      "mask_area": 100182,
+      "mask_box": [
+        265,
+        1026,
+        696,
+        1439
+      ],
+      "centroid": [
+        477.7004352079216,
+        1233.6210995987303
+      ],
+      "safe_pixel": [
+        470,
+        1229
+      ],
+      "safe_pixel_clearance": 154.0129852294922,
+      "box_mask_fraction": 0.5433452652131467,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_07/red_cube_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "yellow_gear_1"
+        ],
+        "right_of": [],
+        "above": [],
+        "below": [
+          "green_mug_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "yellow gear",
+      "aliases": [
+        "yellow gear"
+      ],
+      "raw_labels": [
+        "yellow gear"
+      ],
+      "source_ids": [
+        "yellow_gear_1"
+      ],
+      "box": [
+        753.0,
+        1304.0,
+        960.0,
+        1510.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.00851,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "yellow_gear_1",
+      "detector_score": null,
+      "sam_score": 0.964646577835083,
+      "mask_area": 23019,
+      "mask_box": [
+        760,
+        1307,
+        957,
+        1508
+      ],
+      "centroid": [
+        858.2183413701724,
+        1407.2487510317565
+      ],
+      "safe_pixel": [
+        859,
+        1407
+      ],
+      "safe_pixel_clearance": 64.8459701538086,
+      "box_mask_fraction": 0.5398198958773041,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_07/yellow_gear_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "black_tray_1"
+        ],
+        "right_of": [
+          "red_cube_1"
+        ],
+        "above": [],
+        "below": [
+          "green_mug_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    }
+  ],
+  "accepted_relations": [
+    {
+      "source": "green_mug_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 6,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "red_cube_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 7,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "red_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 5,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 8,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    }
+  ],
+  "rejected_relations": [],
+  "input_relations": [
+    {
+      "source": "black_tray_1",
+      "target": "green_mug_1",
+      "type": "right_of",
+      "measurements_index": 2,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 0,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "yellow_gear_1",
+      "type": "right_of",
+      "measurements_index": 4,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "red_cube_1",
+      "type": "above",
+      "measurements_index": 12,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "yellow_gear_1",
+      "type": "above",
+      "measurements_index": 13,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "red_gear_1",
+      "type": "below",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 6,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "black_tray_1",
+      "type": "left_of",
+      "measurements_index": 2,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "red_gear_1",
+      "type": "right_of",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "green_mug_1",
+      "type": "contains",
+      "measurements_index": 6,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "red_cube_1",
+      "type": "contains",
+      "measurements_index": 7,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "red_gear_1",
+      "type": "contains",
+      "measurements_index": 5,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "yellow_gear_1",
+      "type": "contains",
+      "measurements_index": 8,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "black_tray_1",
+      "type": "left_of",
+      "measurements_index": 0,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_cube_1",
+      "target": "green_mug_1",
+      "type": "below",
+      "measurements_index": 12,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_cube_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 7,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_cube_1",
+      "target": "yellow_gear_1",
+      "type": "left_of",
+      "measurements_index": 14,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "green_mug_1",
+      "type": "above",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 5,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "green_mug_1",
+      "type": "left_of",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "green_mug_1",
+      "type": "touching",
+      "measurements_index": 9,
+      "evidence": "external_contour_distance",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "green_mug_1",
+      "type": "below",
+      "measurements_index": 13,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 8,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "black_tray_1",
+      "type": "left_of",
+      "measurements_index": 4,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "red_cube_1",
+      "type": "right_of",
+      "measurements_index": 14,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    }
+  ],
+  "input_relation_candidates": [],
+  "input_visual_supports": {
+    "backend": "qwen",
+    "supports": []
+  }
+}

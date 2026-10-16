@@ -1,0 +1,128 @@
+{
+  "image": {
+    "width": 2448,
+    "height": 2048
+  },
+  "objects": [
+    {
+      "id": "black_tray_1",
+      "kind": "container",
+      "label": "black tray",
+      "color": "black",
+      "bbox_2d": [
+        1236,
+        0,
+        2447,
+        1912
+      ],
+      "pick_point_2d": [
+        1861,
+        646
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_tray_1",
+      "kind": "container",
+      "label": "grey tray",
+      "color": "grey",
+      "bbox_2d": [
+        0,
+        79,
+        1283,
+        1834
+      ],
+      "pick_point_2d": [
+        775,
+        1447
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "green_mug_1",
+      "kind": "movable",
+      "label": "green mug",
+      "color": "green",
+      "bbox_2d": [
+        628,
+        316,
+        1113,
+        708
+      ],
+      "pick_point_2d": [
+        819,
+        500
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "yellow_gear_1",
+      "kind": "movable",
+      "label": "yellow gear",
+      "color": "yellow",
+      "bbox_2d": [
+        703,
+        787,
+        899,
+        985
+      ],
+      "pick_point_2d": [
+        800,
+        886
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_cube_1",
+      "kind": "movable",
+      "label": "red cube",
+      "color": "red",
+      "bbox_2d": [
+        138,
+        860,
+        553,
+        1253
+      ],
+      "pick_point_2d": [
+        350,
+        1054
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    }
+  ]
+}

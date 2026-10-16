@@ -1,0 +1,727 @@
+{
+  "scene": "scene_02",
+  "accept_support_candidates": true,
+  "support_source": "qwen",
+  "objects": [
+    {
+      "label": "black tray",
+      "aliases": [
+        "black tray"
+      ],
+      "raw_labels": [
+        "black tray"
+      ],
+      "source_ids": [
+        "black_tray_1"
+      ],
+      "box": [
+        1268.0,
+        0.0,
+        2446.0,
+        1915.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.44996,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "black_tray_1",
+      "detector_score": null,
+      "sam_score": 0.9891217350959778,
+      "mask_area": 1422015,
+      "mask_box": [
+        1234,
+        0,
+        2448,
+        1913
+      ],
+      "centroid": [
+        1854.2071483071556,
+        936.1332883267758
+      ],
+      "safe_pixel": [
+        2237,
+        1699
+      ],
+      "safe_pixel_clearance": 210.78900146484375,
+      "box_mask_fraction": 0.6273242695722715,
+      "outside_box_fraction": 0.004819217800093529,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_02/black_tray_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "green_mug_1"
+        ],
+        "right_of": [
+          "grey_tray_1"
+        ],
+        "above": [],
+        "below": [
+          "green_mug_1"
+        ],
+        "overlaps": [],
+        "inside": [],
+        "contains": [
+          "mandarin_1",
+          "red_cube_1",
+          "white_plate_1"
+        ],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "grey tray",
+      "aliases": [
+        "grey tray"
+      ],
+      "raw_labels": [
+        "grey tray"
+      ],
+      "source_ids": [
+        "grey_tray_1"
+      ],
+      "box": [
+        0.0,
+        71.0,
+        1291.0,
+        1840.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.45553,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "grey_tray_1",
+      "detector_score": null,
+      "sam_score": 0.9948880076408386,
+      "mask_area": 2218204,
+      "mask_box": [
+        0,
+        79,
+        1285,
+        1834
+      ],
+      "centroid": [
+        637.5329834406574,
+        960.9580052150299
+      ],
+      "safe_pixel": [
+        579,
+        855
+      ],
+      "safe_pixel_clearance": 580.0,
+      "box_mask_fraction": 0.9712866262453591,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_02/grey_tray_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "black_tray_1",
+          "red_cube_1",
+          "white_plate_1"
+        ],
+        "right_of": [],
+        "above": [],
+        "below": [],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "green mug",
+      "aliases": [
+        "green mug"
+      ],
+      "raw_labels": [
+        "green mug"
+      ],
+      "source_ids": [
+        "green_mug_1"
+      ],
+      "box": [
+        1975.0,
+        165.0,
+        2434.0,
+        584.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.03836,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "green_mug_1",
+      "detector_score": null,
+      "sam_score": 0.9802291393280029,
+      "mask_area": 131307,
+      "mask_box": [
+        1984,
+        171,
+        2433,
+        581
+      ],
+      "centroid": [
+        2185.6926972667106,
+        379.3250321765024
+      ],
+      "safe_pixel": [
+        2181,
+        327
+      ],
+      "safe_pixel_clearance": 154.37940979003906,
+      "box_mask_fraction": 0.6827491537585599,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_02/green_mug_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "black_tray_1",
+          "red_cube_1"
+        ],
+        "above": [
+          "black_tray_1",
+          "mandarin_1"
+        ],
+        "below": [],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "red cube",
+      "aliases": [
+        "red cube"
+      ],
+      "raw_labels": [
+        "red cube"
+      ],
+      "source_ids": [
+        "red_cube_1"
+      ],
+      "box": [
+        1471.0,
+        243.0,
+        1885.0,
+        674.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.03559,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "red_cube_1",
+      "detector_score": null,
+      "sam_score": 0.9907711744308472,
+      "mask_area": 99172,
+      "mask_box": [
+        1479,
+        247,
+        1884,
+        670
+      ],
+      "centroid": [
+        1679.093393296495,
+        457.7093635300286
+      ],
+      "safe_pixel": [
+        1677,
+        458
+      ],
+      "safe_pixel_clearance": 155.20631408691406,
+      "box_mask_fraction": 0.5557909367048881,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_02/red_cube_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "green_mug_1"
+        ],
+        "right_of": [
+          "grey_tray_1"
+        ],
+        "above": [
+          "white_plate_1"
+        ],
+        "below": [],
+        "overlaps": [],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "mandarin",
+      "aliases": [
+        "mandarin"
+      ],
+      "raw_labels": [
+        "mandarin"
+      ],
+      "source_ids": [
+        "mandarin_1"
+      ],
+      "box": [
+        2002.0,
+        768.0,
+        2311.0,
+        1074.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.01886,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "mandarin_1",
+      "detector_score": null,
+      "sam_score": 0.9915145635604858,
+      "mask_area": 69803,
+      "mask_box": [
+        2009,
+        774,
+        2313,
+        1072
+      ],
+      "centroid": [
+        2161.224947351833,
+        923.1212985115253
+      ],
+      "safe_pixel": [
+        2161,
+        923
+      ],
+      "safe_pixel_clearance": 145.086181640625,
+      "box_mask_fraction": 0.7378006218668697,
+      "outside_box_fraction": 0.000587367305130152,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_02/mandarin_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "white_plate_1"
+        ],
+        "above": [
+          "white_plate_1"
+        ],
+        "below": [
+          "green_mug_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "white plate",
+      "aliases": [
+        "white plate"
+      ],
+      "raw_labels": [
+        "white plate"
+      ],
+      "source_ids": [
+        "white_plate_1"
+      ],
+      "box": [
+        1378.0,
+        933.0,
+        2147.0,
+        1711.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.11933,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "white_plate_1",
+      "detector_score": null,
+      "sam_score": 0.9913733601570129,
+      "mask_area": 459161,
+      "mask_box": [
+        1387,
+        938,
+        2154,
+        1703
+      ],
+      "centroid": [
+        1769.7801620782252,
+        1320.1125400458664
+      ],
+      "safe_pixel": [
+        1768,
+        1319
+      ],
+      "safe_pixel_clearance": 377.4824523925781,
+      "box_mask_fraction": 0.7665916741603458,
+      "outside_box_fraction": 0.0011390340207465355,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_02/white_plate_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "mandarin_1"
+        ],
+        "right_of": [
+          "grey_tray_1"
+        ],
+        "above": [],
+        "below": [
+          "mandarin_1",
+          "red_cube_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    }
+  ],
+  "accepted_relations": [
+    {
+      "source": "mandarin_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 3,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "red_cube_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 2,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "white_plate_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 4,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    }
+  ],
+  "rejected_relations": [],
+  "input_relations": [
+    {
+      "source": "black_tray_1",
+      "target": "green_mug_1",
+      "type": "below",
+      "measurements_index": 1,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "mandarin_1",
+      "type": "contains",
+      "measurements_index": 3,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "red_cube_1",
+      "type": "contains",
+      "measurements_index": 2,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "white_plate_1",
+      "type": "contains",
+      "measurements_index": 4,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "green_mug_1",
+      "type": "left_of",
+      "measurements_index": 1,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 0,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "black_tray_1",
+      "type": "above",
+      "measurements_index": 1,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "mandarin_1",
+      "type": "above",
+      "measurements_index": 10,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "black_tray_1",
+      "type": "right_of",
+      "measurements_index": 1,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "red_cube_1",
+      "type": "right_of",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "black_tray_1",
+      "type": "left_of",
+      "measurements_index": 0,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "red_cube_1",
+      "type": "left_of",
+      "measurements_index": 6,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "white_plate_1",
+      "type": "left_of",
+      "measurements_index": 8,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "mandarin_1",
+      "target": "white_plate_1",
+      "type": "above",
+      "measurements_index": 14,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "mandarin_1",
+      "target": "green_mug_1",
+      "type": "below",
+      "measurements_index": 10,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "mandarin_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 3,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "mandarin_1",
+      "target": "white_plate_1",
+      "type": "right_of",
+      "measurements_index": 14,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_cube_1",
+      "target": "white_plate_1",
+      "type": "above",
+      "measurements_index": 13,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_cube_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 2,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_cube_1",
+      "target": "green_mug_1",
+      "type": "left_of",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_cube_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 6,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "mandarin_1",
+      "type": "below",
+      "measurements_index": 14,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "red_cube_1",
+      "type": "below",
+      "measurements_index": 13,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 4,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "mandarin_1",
+      "type": "left_of",
+      "measurements_index": 14,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 8,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    }
+  ],
+  "input_relation_candidates": [],
+  "input_visual_supports": {
+    "backend": "qwen",
+    "supports": []
+  }
+}

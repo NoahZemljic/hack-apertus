@@ -1,0 +1,217 @@
+{
+  "coordinate_reference": "mask centroids; pick points are for picking only",
+  "support_source": "qwen",
+  "centroids_2d": {
+    "black_tray_1": [
+      1854.2071483071556,
+      936.1332883267758
+    ],
+    "grey_tray_1": [
+      637.5329834406574,
+      960.9580052150299
+    ],
+    "green_mug_1": [
+      2185.6926972667106,
+      379.3250321765024
+    ],
+    "red_cube_1": [
+      1679.093393296495,
+      457.7093635300286
+    ],
+    "mandarin_1": [
+      2161.224947351833,
+      923.1212985115253
+    ],
+    "white_plate_1": [
+      1769.7801620782252,
+      1320.1125400458664
+    ]
+  },
+  "left_to_right": [
+    "grey_tray_1",
+    "red_cube_1",
+    "white_plate_1",
+    "black_tray_1",
+    "mandarin_1",
+    "green_mug_1"
+  ],
+  "pairwise_distances": [
+    {
+      "a": "grey_tray_1",
+      "b": "red_cube_1",
+      "distance_px": 1156.8
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "white_plate_1",
+      "distance_px": 1187.8
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "black_tray_1",
+      "distance_px": 1216.9
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "mandarin_1",
+      "distance_px": 1524.2
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "green_mug_1",
+      "distance_px": 1653.8
+    },
+    {
+      "a": "red_cube_1",
+      "b": "white_plate_1",
+      "distance_px": 867.2
+    },
+    {
+      "a": "red_cube_1",
+      "b": "black_tray_1",
+      "distance_px": 509.5
+    },
+    {
+      "a": "red_cube_1",
+      "b": "mandarin_1",
+      "distance_px": 670.1
+    },
+    {
+      "a": "red_cube_1",
+      "b": "green_mug_1",
+      "distance_px": 512.6
+    },
+    {
+      "a": "white_plate_1",
+      "b": "black_tray_1",
+      "distance_px": 393.2
+    },
+    {
+      "a": "white_plate_1",
+      "b": "mandarin_1",
+      "distance_px": 557.5
+    },
+    {
+      "a": "white_plate_1",
+      "b": "green_mug_1",
+      "distance_px": 1028.6
+    },
+    {
+      "a": "black_tray_1",
+      "b": "mandarin_1",
+      "distance_px": 307.3
+    },
+    {
+      "a": "black_tray_1",
+      "b": "green_mug_1",
+      "distance_px": 648.0
+    },
+    {
+      "a": "mandarin_1",
+      "b": "green_mug_1",
+      "distance_px": 544.3
+    }
+  ],
+  "image_plane_relations": [
+    {
+      "source": "black_tray_1",
+      "type": "below",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "left_of",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "above",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "above",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "right_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "right_of",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "above",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "below",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "right_of",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "above",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "left_of",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "below",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "below",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "left_of",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    }
+  ]
+}

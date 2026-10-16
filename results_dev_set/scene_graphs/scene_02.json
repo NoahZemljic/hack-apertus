@@ -1,0 +1,152 @@
+{
+  "image": {
+    "width": 2448,
+    "height": 2048
+  },
+  "objects": [
+    {
+      "id": "black_tray_1",
+      "kind": "container",
+      "label": "black tray",
+      "color": "black",
+      "bbox_2d": [
+        1234,
+        0,
+        2447,
+        1912
+      ],
+      "pick_point_2d": [
+        2237,
+        1699
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_tray_1",
+      "kind": "container",
+      "label": "grey tray",
+      "color": "grey",
+      "bbox_2d": [
+        0,
+        79,
+        1284,
+        1833
+      ],
+      "pick_point_2d": [
+        579,
+        855
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "green_mug_1",
+      "kind": "movable",
+      "label": "green mug",
+      "color": "green",
+      "bbox_2d": [
+        1984,
+        171,
+        2432,
+        580
+      ],
+      "pick_point_2d": [
+        2181,
+        327
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_cube_1",
+      "kind": "movable",
+      "label": "red cube",
+      "color": "red",
+      "bbox_2d": [
+        1479,
+        247,
+        1883,
+        669
+      ],
+      "pick_point_2d": [
+        1677,
+        458
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "mandarin_1",
+      "kind": "movable",
+      "label": "mandarin",
+      "color": null,
+      "bbox_2d": [
+        2009,
+        774,
+        2312,
+        1071
+      ],
+      "pick_point_2d": [
+        2161,
+        923
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "white_plate_1",
+      "kind": "surface",
+      "label": "white plate",
+      "color": "white",
+      "bbox_2d": [
+        1387,
+        938,
+        2153,
+        1702
+      ],
+      "pick_point_2d": [
+        1768,
+        1319
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    }
+  ]
+}

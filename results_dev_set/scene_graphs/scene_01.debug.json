@@ -1,0 +1,562 @@
+{
+  "scene": "scene_01",
+  "accept_support_candidates": true,
+  "support_source": "qwen",
+  "objects": [
+    {
+      "label": "black tray",
+      "aliases": [
+        "black tray"
+      ],
+      "raw_labels": [
+        "black tray"
+      ],
+      "source_ids": [
+        "black_tray_1"
+      ],
+      "box": [
+        1285.0,
+        0.0,
+        2446.0,
+        1915.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.44347,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "black_tray_1",
+      "detector_score": null,
+      "sam_score": 0.994932234287262,
+      "mask_area": 2204457,
+      "mask_box": [
+        1236,
+        0,
+        2448,
+        1913
+      ],
+      "centroid": [
+        1859.6810266655236,
+        960.5942021096351
+      ],
+      "safe_pixel": [
+        1861,
+        646
+      ],
+      "safe_pixel_clearance": 580.086181640625,
+      "box_mask_fraction": 0.984872139125585,
+      "outside_box_fraction": 0.006702784404504148,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_01/black_tray_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "green_mug_1",
+          "grey_tray_1",
+          "yellow_gear_1"
+        ],
+        "above": [],
+        "below": [],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "grey tray",
+      "aliases": [
+        "grey tray"
+      ],
+      "raw_labels": [
+        "grey tray"
+      ],
+      "source_ids": [
+        "grey_tray_1"
+      ],
+      "box": [
+        0.0,
+        71.0,
+        1286.0,
+        1840.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.45376,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "grey_tray_1",
+      "detector_score": null,
+      "sam_score": 0.981069803237915,
+      "mask_area": 1970124,
+      "mask_box": [
+        0,
+        79,
+        1284,
+        1835
+      ],
+      "centroid": [
+        639.5830506100124,
+        983.6595031581768
+      ],
+      "safe_pixel": [
+        775,
+        1447
+      ],
+      "safe_pixel_clearance": 382.73358154296875,
+      "box_mask_fraction": 0.8660136953423704,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_01/grey_tray_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "black_tray_1"
+        ],
+        "right_of": [],
+        "above": [],
+        "below": [],
+        "overlaps": [
+          "green_mug_1"
+        ],
+        "inside": [],
+        "contains": [
+          "green_mug_1",
+          "red_cube_1",
+          "yellow_gear_1"
+        ],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "green mug",
+      "aliases": [
+        "green mug"
+      ],
+      "raw_labels": [
+        "green mug"
+      ],
+      "source_ids": [
+        "green_mug_1"
+      ],
+      "box": [
+        621.0,
+        311.0,
+        1119.0,
+        717.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.04033,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "green_mug_1",
+      "detector_score": null,
+      "sam_score": 0.9733638167381287,
+      "mask_area": 127668,
+      "mask_box": [
+        628,
+        316,
+        1114,
+        709
+      ],
+      "centroid": [
+        845.6215418115738,
+        511.68147068960116
+      ],
+      "safe_pixel": [
+        819,
+        500
+      ],
+      "safe_pixel_clearance": 183.70901489257812,
+      "box_mask_fraction": 0.6314321324707698,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_01/green_mug_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "black_tray_1"
+        ],
+        "right_of": [],
+        "above": [
+          "yellow_gear_1"
+        ],
+        "below": [],
+        "overlaps": [
+          "grey_tray_1"
+        ],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "yellow gear",
+      "aliases": [
+        "yellow gear"
+      ],
+      "raw_labels": [
+        "yellow gear"
+      ],
+      "source_ids": [
+        "yellow_gear_1"
+      ],
+      "box": [
+        697.0,
+        782.0,
+        899.0,
+        988.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.0083,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "yellow_gear_1",
+      "detector_score": null,
+      "sam_score": 0.9678444862365723,
+      "mask_area": 23747,
+      "mask_box": [
+        703,
+        787,
+        900,
+        986
+      ],
+      "centroid": [
+        801.4288962816356,
+        885.9289173369268
+      ],
+      "safe_pixel": [
+        800,
+        886
+      ],
+      "safe_pixel_clearance": 67.08203887939453,
+      "box_mask_fraction": 0.5705085071613958,
+      "outside_box_fraction": 0.0002947740767254811,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_01/yellow_gear_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "black_tray_1"
+        ],
+        "right_of": [
+          "red_cube_1"
+        ],
+        "above": [],
+        "below": [
+          "green_mug_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "red cube",
+      "aliases": [
+        "red cube"
+      ],
+      "raw_labels": [
+        "red cube"
+      ],
+      "source_ids": [
+        "red_cube_1"
+      ],
+      "box": [
+        134.0,
+        856.0,
+        554.0,
+        1258.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.03368,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "red_cube_1",
+      "detector_score": null,
+      "sam_score": 0.9872210621833801,
+      "mask_area": 102938,
+      "mask_box": [
+        138,
+        860,
+        554,
+        1254
+      ],
+      "centroid": [
+        343.63012687248636,
+        1052.2338495016418
+      ],
+      "safe_pixel": [
+        350,
+        1054
+      ],
+      "safe_pixel_clearance": 151.28781127929688,
+      "box_mask_fraction": 0.6096778014688462,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/iopsstor/scratch/cscs/noahzemljic/hack-apertus/outputs/verify-20261015-n8OEgG/round08-fresh/segmentation/scene_01/red_cube_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "yellow_gear_1"
+        ],
+        "right_of": [],
+        "above": [],
+        "below": [],
+        "overlaps": [],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    }
+  ],
+  "accepted_relations": [
+    {
+      "source": "green_mug_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 4,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "red_cube_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 6,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 5,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    }
+  ],
+  "rejected_relations": [],
+  "input_relations": [
+    {
+      "source": "black_tray_1",
+      "target": "green_mug_1",
+      "type": "right_of",
+      "measurements_index": 1,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 0,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "yellow_gear_1",
+      "type": "right_of",
+      "measurements_index": 2,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "yellow_gear_1",
+      "type": "above",
+      "measurements_index": 7,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 4,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "black_tray_1",
+      "type": "left_of",
+      "measurements_index": 1,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "green_mug_1",
+      "type": "contains",
+      "measurements_index": 4,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "red_cube_1",
+      "type": "contains",
+      "measurements_index": 6,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "yellow_gear_1",
+      "type": "contains",
+      "measurements_index": 5,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "black_tray_1",
+      "type": "left_of",
+      "measurements_index": 0,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "green_mug_1",
+      "type": "overlaps",
+      "measurements_index": 4,
+      "evidence": "actual_mask_intersection",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_cube_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 6,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_cube_1",
+      "target": "yellow_gear_1",
+      "type": "left_of",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "green_mug_1",
+      "type": "below",
+      "measurements_index": 7,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 5,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "black_tray_1",
+      "type": "left_of",
+      "measurements_index": 2,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "red_cube_1",
+      "type": "right_of",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    }
+  ],
+  "input_relation_candidates": [],
+  "input_visual_supports": {
+    "backend": "qwen",
+    "supports": []
+  }
+}

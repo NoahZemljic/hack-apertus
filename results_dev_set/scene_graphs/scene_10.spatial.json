@@ -1,0 +1,577 @@
+{
+  "coordinate_reference": "mask centroids; pick points are for picking only",
+  "support_source": "qwen",
+  "centroids_2d": {
+    "hand_1": [
+      1273.5206419698004,
+      235.26840656703874
+    ],
+    "black_tray_1": [
+      1882.0976038965941,
+      951.6961197093794
+    ],
+    "watch_1": [
+      1100.4986215989452,
+      249.2858683926645
+    ],
+    "grey_tray_1": [
+      594.6686436268823,
+      1084.7496860385843
+    ],
+    "yellow_plate_1": [
+      399.8611205625496,
+      552.0322785527958
+    ],
+    "green_mug_1": [
+      735.2095102311652,
+      729.2699826043292
+    ],
+    "red_gear_1": [
+      335.14680523227224,
+      1035.4286682184265
+    ],
+    "white_plate_1": [
+      1869.9604978414181,
+      1302.179285928409
+    ],
+    "red_gear_2": [
+      791.0728270854778,
+      1167.2182931013492
+    ],
+    "mandarin_1": [
+      465.69190414855365,
+      1410.3789513229217
+    ],
+    "yellow_gear_1": [
+      834.0394011716207,
+      1478.0753308743763
+    ]
+  },
+  "left_to_right": [
+    "red_gear_1",
+    "yellow_plate_1",
+    "mandarin_1",
+    "grey_tray_1",
+    "green_mug_1",
+    "red_gear_2",
+    "yellow_gear_1",
+    "watch_1",
+    "hand_1",
+    "white_plate_1",
+    "black_tray_1"
+  ],
+  "pairwise_distances": [
+    {
+      "a": "red_gear_1",
+      "b": "yellow_plate_1",
+      "distance_px": 487.7
+    },
+    {
+      "a": "red_gear_1",
+      "b": "mandarin_1",
+      "distance_px": 397.0
+    },
+    {
+      "a": "red_gear_1",
+      "b": "grey_tray_1",
+      "distance_px": 264.2
+    },
+    {
+      "a": "red_gear_1",
+      "b": "green_mug_1",
+      "distance_px": 503.8
+    },
+    {
+      "a": "red_gear_1",
+      "b": "red_gear_2",
+      "distance_px": 474.6
+    },
+    {
+      "a": "red_gear_1",
+      "b": "yellow_gear_1",
+      "distance_px": 667.0
+    },
+    {
+      "a": "red_gear_1",
+      "b": "watch_1",
+      "distance_px": 1097.2
+    },
+    {
+      "a": "red_gear_1",
+      "b": "hand_1",
+      "distance_px": 1233.2
+    },
+    {
+      "a": "red_gear_1",
+      "b": "white_plate_1",
+      "distance_px": 1557.8
+    },
+    {
+      "a": "red_gear_1",
+      "b": "black_tray_1",
+      "distance_px": 1549.2
+    },
+    {
+      "a": "yellow_plate_1",
+      "b": "mandarin_1",
+      "distance_px": 860.9
+    },
+    {
+      "a": "yellow_plate_1",
+      "b": "grey_tray_1",
+      "distance_px": 567.2
+    },
+    {
+      "a": "yellow_plate_1",
+      "b": "green_mug_1",
+      "distance_px": 379.3
+    },
+    {
+      "a": "yellow_plate_1",
+      "b": "red_gear_2",
+      "distance_px": 729.0
+    },
+    {
+      "a": "yellow_plate_1",
+      "b": "yellow_gear_1",
+      "distance_px": 1022.8
+    },
+    {
+      "a": "yellow_plate_1",
+      "b": "watch_1",
+      "distance_px": 763.2
+    },
+    {
+      "a": "yellow_plate_1",
+      "b": "hand_1",
+      "distance_px": 929.3
+    },
+    {
+      "a": "yellow_plate_1",
+      "b": "white_plate_1",
+      "distance_px": 1650.4
+    },
+    {
+      "a": "yellow_plate_1",
+      "b": "black_tray_1",
+      "distance_px": 1535.2
+    },
+    {
+      "a": "mandarin_1",
+      "b": "grey_tray_1",
+      "distance_px": 350.2
+    },
+    {
+      "a": "mandarin_1",
+      "b": "green_mug_1",
+      "distance_px": 732.5
+    },
+    {
+      "a": "mandarin_1",
+      "b": "red_gear_2",
+      "distance_px": 406.2
+    },
+    {
+      "a": "mandarin_1",
+      "b": "yellow_gear_1",
+      "distance_px": 374.5
+    },
+    {
+      "a": "mandarin_1",
+      "b": "watch_1",
+      "distance_px": 1323.3
+    },
+    {
+      "a": "mandarin_1",
+      "b": "hand_1",
+      "distance_px": 1426.0
+    },
+    {
+      "a": "mandarin_1",
+      "b": "white_plate_1",
+      "distance_px": 1408.4
+    },
+    {
+      "a": "mandarin_1",
+      "b": "black_tray_1",
+      "distance_px": 1488.8
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "green_mug_1",
+      "distance_px": 382.3
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "red_gear_2",
+      "distance_px": 213.0
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "yellow_gear_1",
+      "distance_px": 460.4
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "watch_1",
+      "distance_px": 976.7
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "hand_1",
+      "distance_px": 1087.4
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "white_plate_1",
+      "distance_px": 1293.7
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "black_tray_1",
+      "distance_px": 1294.3
+    },
+    {
+      "a": "green_mug_1",
+      "b": "red_gear_2",
+      "distance_px": 441.5
+    },
+    {
+      "a": "green_mug_1",
+      "b": "yellow_gear_1",
+      "distance_px": 755.3
+    },
+    {
+      "a": "green_mug_1",
+      "b": "watch_1",
+      "distance_px": 603.2
+    },
+    {
+      "a": "green_mug_1",
+      "b": "hand_1",
+      "distance_px": 730.6
+    },
+    {
+      "a": "green_mug_1",
+      "b": "white_plate_1",
+      "distance_px": 1271.2
+    },
+    {
+      "a": "green_mug_1",
+      "b": "black_tray_1",
+      "distance_px": 1168.3
+    },
+    {
+      "a": "red_gear_2",
+      "b": "yellow_gear_1",
+      "distance_px": 313.8
+    },
+    {
+      "a": "red_gear_2",
+      "b": "watch_1",
+      "distance_px": 968.7
+    },
+    {
+      "a": "red_gear_2",
+      "b": "hand_1",
+      "distance_px": 1049.4
+    },
+    {
+      "a": "red_gear_2",
+      "b": "white_plate_1",
+      "distance_px": 1087.3
+    },
+    {
+      "a": "red_gear_2",
+      "b": "black_tray_1",
+      "distance_px": 1112.1
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "watch_1",
+      "distance_px": 1257.3
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "hand_1",
+      "distance_px": 1318.2
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "white_plate_1",
+      "distance_px": 1050.7
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "black_tray_1",
+      "distance_px": 1172.8
+    },
+    {
+      "a": "watch_1",
+      "b": "hand_1",
+      "distance_px": 173.6
+    },
+    {
+      "a": "watch_1",
+      "b": "white_plate_1",
+      "distance_px": 1304.1
+    },
+    {
+      "a": "watch_1",
+      "b": "black_tray_1",
+      "distance_px": 1050.8
+    },
+    {
+      "a": "hand_1",
+      "b": "white_plate_1",
+      "distance_px": 1222.3
+    },
+    {
+      "a": "hand_1",
+      "b": "black_tray_1",
+      "distance_px": 940.0
+    },
+    {
+      "a": "white_plate_1",
+      "b": "black_tray_1",
+      "distance_px": 350.7
+    }
+  ],
+  "image_plane_relations": [
+    {
+      "source": "black_tray_1",
+      "type": "below",
+      "target": "hand_1"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "hand_1"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "watch_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "above",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "above",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "below",
+      "target": "hand_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "below",
+      "target": "yellow_plate_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "right_of",
+      "target": "yellow_plate_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "below",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "below",
+      "target": "watch_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "hand_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "watch_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "right_of",
+      "target": "yellow_plate_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "touching",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "touching",
+      "target": "yellow_plate_1"
+    },
+    {
+      "source": "hand_1",
+      "type": "above",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "hand_1",
+      "type": "above",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "hand_1",
+      "type": "above",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "hand_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "hand_1",
+      "type": "overlaps",
+      "target": "watch_1"
+    },
+    {
+      "source": "hand_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "below",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "left_of",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "mandarin_1",
+      "type": "left_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "above",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "below",
+      "target": "yellow_plate_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "left_of",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "above",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "below",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "left_of",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "right_of",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "right_of",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "watch_1",
+      "type": "above",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "watch_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "watch_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "below",
+      "target": "hand_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "right_of",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "right_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "below",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "left_of",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "right_of",
+      "target": "mandarin_1"
+    },
+    {
+      "source": "yellow_plate_1",
+      "type": "above",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "yellow_plate_1",
+      "type": "above",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "yellow_plate_1",
+      "type": "left_of",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "yellow_plate_1",
+      "type": "left_of",
+      "target": "grey_tray_1"
+    }
+  ]
+}

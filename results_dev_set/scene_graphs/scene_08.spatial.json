@@ -1,0 +1,307 @@
+{
+  "coordinate_reference": "mask centroids; pick points are for picking only",
+  "support_source": "qwen",
+  "centroids_2d": {
+    "black_tray_1": [
+      1867.454966621239,
+      917.3208586646366
+    ],
+    "grey_tray_1": [
+      638.4343121865722,
+      961.2265443703386
+    ],
+    "red_cube_1": [
+      1817.6221490922828,
+      538.9329899982104
+    ],
+    "red_gear_1": [
+      2052.4009758058623,
+      578.6224691177546
+    ],
+    "red_gear_2": [
+      1542.8850681491588,
+      577.9913489033719
+    ],
+    "small_white_part_1": [
+      840.9235249724248,
+      571.2183756797027
+    ],
+    "plate_1": [
+      1869.997069823117,
+      1302.2719484253855
+    ],
+    "yellow_gear_1": [
+      858.4070611765729,
+      1407.2607069872604
+    ]
+  },
+  "left_to_right": [
+    "grey_tray_1",
+    "small_white_part_1",
+    "yellow_gear_1",
+    "red_gear_2",
+    "red_cube_1",
+    "black_tray_1",
+    "plate_1",
+    "red_gear_1"
+  ],
+  "pairwise_distances": [
+    {
+      "a": "grey_tray_1",
+      "b": "small_white_part_1",
+      "distance_px": 439.4
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "yellow_gear_1",
+      "distance_px": 497.3
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "red_gear_2",
+      "distance_px": 982.3
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "red_cube_1",
+      "distance_px": 1252.5
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "black_tray_1",
+      "distance_px": 1229.8
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "plate_1",
+      "distance_px": 1277.9
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "red_gear_1",
+      "distance_px": 1464.8
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "yellow_gear_1",
+      "distance_px": 836.2
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "red_gear_2",
+      "distance_px": 702.0
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "red_cube_1",
+      "distance_px": 977.2
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "black_tray_1",
+      "distance_px": 1083.3
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "plate_1",
+      "distance_px": 1262.3
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "red_gear_1",
+      "distance_px": 1211.5
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "red_gear_2",
+      "distance_px": 1075.3
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "red_cube_1",
+      "distance_px": 1293.9
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "black_tray_1",
+      "distance_px": 1121.7
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "plate_1",
+      "distance_px": 1017.0
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "red_gear_1",
+      "distance_px": 1453.4
+    },
+    {
+      "a": "red_gear_2",
+      "b": "red_cube_1",
+      "distance_px": 277.5
+    },
+    {
+      "a": "red_gear_2",
+      "b": "black_tray_1",
+      "distance_px": 469.6
+    },
+    {
+      "a": "red_gear_2",
+      "b": "plate_1",
+      "distance_px": 794.7
+    },
+    {
+      "a": "red_gear_2",
+      "b": "red_gear_1",
+      "distance_px": 509.5
+    },
+    {
+      "a": "red_cube_1",
+      "b": "black_tray_1",
+      "distance_px": 381.7
+    },
+    {
+      "a": "red_cube_1",
+      "b": "plate_1",
+      "distance_px": 765.1
+    },
+    {
+      "a": "red_cube_1",
+      "b": "red_gear_1",
+      "distance_px": 238.1
+    },
+    {
+      "a": "black_tray_1",
+      "b": "plate_1",
+      "distance_px": 385.0
+    },
+    {
+      "a": "black_tray_1",
+      "b": "red_gear_1",
+      "distance_px": 385.9
+    },
+    {
+      "a": "plate_1",
+      "b": "red_gear_1",
+      "distance_px": 746.3
+    }
+  ],
+  "image_plane_relations": [
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "overlaps",
+      "target": "small_white_part_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "overlaps",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "plate_1",
+      "type": "below",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "plate_1",
+      "type": "below",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "plate_1",
+      "type": "below",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "plate_1",
+      "type": "right_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "above",
+      "target": "plate_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "left_of",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "overlaps",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "right_of",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "touching",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "red_cube_1",
+      "type": "touching",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "above",
+      "target": "plate_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "right_of",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "above",
+      "target": "plate_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "left_of",
+      "target": "red_cube_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "red_gear_2",
+      "type": "right_of",
+      "target": "small_white_part_1"
+    },
+    {
+      "source": "small_white_part_1",
+      "type": "left_of",
+      "target": "red_gear_2"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "left_of",
+      "target": "plate_1"
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "image": {
+    "width": 2448,
+    "height": 2048
+  },
+  "objects": [
+    {
+      "id": "black_tray_1",
+      "kind": "container",
+      "label": "black tray",
+      "color": "black",
+      "bbox_2d": [
+        1234,
+        0,
+        2447,
+        1912
+      ],
+      "pick_point_2d": [
+        1453,
+        184
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_tray_1",
+      "kind": "container",
+      "label": "grey tray",
+      "color": "grey",
+      "bbox_2d": [
+        0,
+        79,
+        1283,
+        1833
+      ],
+      "pick_point_2d": [
+        638,
+        784
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "yellow_saucer_1",
+      "kind": "surface",
+      "label": "yellow saucer",
+      "color": "yellow",
+      "bbox_2d": [
+        1775,
+        116,
+        2270,
+        595
+      ],
+      "pick_point_2d": [
+        2148,
+        404
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "green_mug_1",
+      "kind": "movable",
+      "label": "green mug",
+      "color": "green",
+      "bbox_2d": [
+        1429,
+        340,
+        1806,
+        802
+      ],
+      "pick_point_2d": [
+        1618,
+        600
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "orange_1",
+      "kind": "movable",
+      "label": "orange",
+      "color": null,
+      "bbox_2d": [
+        1973,
+        593,
+        2273,
+        884
+      ],
+      "pick_point_2d": [
+        2121,
+        737
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "banana_1",
+      "kind": "movable",
+      "label": "banana",
+      "color": null,
+      "bbox_2d": [
+        1462,
+        876,
+        1826,
+        1762
+      ],
+      "pick_point_2d": [
+        1544,
+        1149
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "white_plate_1",
+      "kind": "surface",
+      "label": "white plate",
+      "color": "white",
+      "bbox_2d": [
+        1699,
+        931,
+        2447,
+        1693
+      ],
+      "pick_point_2d": [
+        1869,
+        1366
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    }
+  ]
+}

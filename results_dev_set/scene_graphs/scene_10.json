@@ -1,0 +1,272 @@
+{
+  "image": {
+    "width": 2448,
+    "height": 2048
+  },
+  "objects": [
+    {
+      "id": "hand_1",
+      "kind": "human",
+      "label": "hand",
+      "color": null,
+      "bbox_2d": [
+        706,
+        0,
+        2295,
+        617
+      ],
+      "pick_point_2d": [
+        928,
+        423
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "black_tray_1",
+      "kind": "container",
+      "label": "black tray",
+      "color": "black",
+      "bbox_2d": [
+        1234,
+        11,
+        2447,
+        1913
+      ],
+      "pick_point_2d": [
+        2026,
+        529
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "watch_1",
+      "kind": "movable",
+      "label": "watch",
+      "color": null,
+      "bbox_2d": [
+        1006,
+        81,
+        1231,
+        397
+      ],
+      "pick_point_2d": [
+        1100,
+        261
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_tray_1",
+      "kind": "container",
+      "label": "grey tray",
+      "color": "grey",
+      "bbox_2d": [
+        0,
+        82,
+        1283,
+        1834
+      ],
+      "pick_point_2d": [
+        193,
+        1639
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "yellow_plate_1",
+      "kind": "surface",
+      "label": "yellow plate",
+      "color": "yellow",
+      "bbox_2d": [
+        168,
+        316,
+        667,
+        807
+      ],
+      "pick_point_2d": [
+        418,
+        489
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "green_mug_1",
+      "kind": "movable",
+      "label": "green mug",
+      "color": "green",
+      "bbox_2d": [
+        537,
+        547,
+        1004,
+        914
+      ],
+      "pick_point_2d": [
+        716,
+        743
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_gear_1",
+      "kind": "movable",
+      "label": "red gear",
+      "color": "red",
+      "bbox_2d": [
+        152,
+        856,
+        518,
+        1215
+      ],
+      "pick_point_2d": [
+        335,
+        1035
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "white_plate_1",
+      "kind": "surface",
+      "label": "white plate",
+      "color": "white",
+      "bbox_2d": [
+        1488,
+        922,
+        2252,
+        1683
+      ],
+      "pick_point_2d": [
+        1866,
+        1299
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_gear_2",
+      "kind": "movable",
+      "label": "red gear",
+      "color": "red",
+      "bbox_2d": [
+        605,
+        986,
+        973,
+        1349
+      ],
+      "pick_point_2d": [
+        791,
+        1166
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "mandarin_1",
+      "kind": "movable",
+      "label": "mandarin",
+      "color": null,
+      "bbox_2d": [
+        310,
+        1257,
+        622,
+        1561
+      ],
+      "pick_point_2d": [
+        467,
+        1410
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "yellow_gear_1",
+      "kind": "movable",
+      "label": "yellow gear",
+      "color": "yellow",
+      "bbox_2d": [
+        732,
+        1383,
+        936,
+        1574
+      ],
+      "pick_point_2d": [
+        834,
+        1478
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+{
+  "image": {
+    "width": 2448,
+    "height": 2048
+  },
+  "objects": [
+    {
+      "id": "black_tray_1",
+      "kind": "container",
+      "label": "black tray",
+      "color": "black",
+      "bbox_2d": [
+        1235,
+        0,
+        2447,
+        1912
+      ],
+      "pick_point_2d": [
+        2201,
+        223
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_tray_1",
+      "kind": "container",
+      "label": "grey tray",
+      "color": "grey",
+      "bbox_2d": [
+        0,
+        79,
+        1284,
+        1834
+      ],
+      "pick_point_2d": [
+        640,
+        1097
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_cube_1",
+      "kind": "movable",
+      "label": "red cube",
+      "color": "red",
+      "bbox_2d": [
+        1638,
+        342,
+        1997,
+        732
+      ],
+      "pick_point_2d": [
+        1821,
+        525
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [
+          "red_gear_1",
+          "red_gear_2"
+        ],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_gear_1",
+      "kind": "movable",
+      "label": "red gear",
+      "color": "red",
+      "bbox_2d": [
+        1921,
+        391,
+        2180,
+        742
+      ],
+      "pick_point_2d": [
+        2060,
+        583
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [
+          "red_cube_1"
+        ],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_gear_2",
+      "kind": "movable",
+      "label": "red gear",
+      "color": "red",
+      "bbox_2d": [
+        1397,
+        402,
+        1678,
+        757
+      ],
+      "pick_point_2d": [
+        1526,
+        572
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [
+          "red_cube_1"
+        ],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "small_white_part_1",
+      "kind": "movable",
+      "label": "small white part",
+      "color": "white",
+      "bbox_2d": [
+        701,
+        482,
+        1028,
+        709
+      ],
+      "pick_point_2d": [
+        780,
+        567
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "plate_1",
+      "kind": "surface",
+      "label": "plate",
+      "color": null,
+      "bbox_2d": [
+        1488,
+        922,
+        2252,
+        1684
+      ],
+      "pick_point_2d": [
+        1867,
+        1300
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "yellow_gear_1",
+      "kind": "movable",
+      "label": "yellow gear",
+      "color": "yellow",
+      "bbox_2d": [
+        760,
+        1307,
+        956,
+        1507
+      ],
+      "pick_point_2d": [
+        859,
+        1406
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    }
+  ]
+}
