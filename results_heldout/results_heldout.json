@@ -1,0 +1,598 @@
+{
+  "team": "hslu-robotics",
+  "results": [
+    {
+      "instruction_id": "held_01_i1",
+      "target_pixel": [
+        474,
+        1413
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "mandarin_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_01_i2",
+      "target_pixel": [
+        1988,
+        1403
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_gear_3"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_01_i3",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "ask_user",
+          "question": "Which red gear is meant by 'the top red gear'?"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_01_i4",
+      "target_pixel": [
+        1573,
+        1417
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_cube_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        },
+        {
+          "action": "pick",
+          "object": "red_gear_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        },
+        {
+          "action": "pick",
+          "object": "red_gear_2"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        },
+        {
+          "action": "pick",
+          "object": "red_gear_3"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_01_i5",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "ask_user",
+          "question": "Which gear should be picked up? (red_gear_1, red_gear_2, or red_gear_3)"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_01_i6",
+      "target_pixel": [
+        1972,
+        918
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_gear_2"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_01_i7",
+      "target_pixel": [
+        967,
+        1344
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "yellow_gear_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_01_i8",
+      "target_pixel": [
+        1958,
+        463
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_gear_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_02_i1",
+      "target_pixel": [
+        1668,
+        1521
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "banana_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_02_i2",
+      "target_pixel": [
+        2174,
+        585
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "mandarin_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_02_i3",
+      "target_pixel": [
+        562,
+        738
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_gear_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_02_i4",
+      "target_pixel": [
+        1668,
+        1521
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "banana_1"
+        },
+        {
+          "action": "place",
+          "object": "white_plate_1"
+        },
+        {
+          "action": "pick",
+          "object": "mandarin_1"
+        },
+        {
+          "action": "place",
+          "object": "white_plate_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_02_i5",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "refuse",
+          "reason": "yellow_saucer_1 is a surface, not a movable object; cannot be picked."
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_02_i6",
+      "target_pixel": [
+        493,
+        1303
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_gear_2"
+        },
+        {
+          "action": "place",
+          "object": "yellow_saucer_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_02_i7",
+      "target_pixel": [
+        493,
+        1303
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_gear_2"
+        },
+        {
+          "action": "place",
+          "object": "white_plate_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_02_i8",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "refuse",
+          "reason": "The requested action is an uncontrolled drop from high up, which is explicitly unsafe and violates safety constraints against throwing or uncontrolled dropping."
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_03_i1",
+      "target_pixel": [
+        1836,
+        834
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "small_white_part_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_03_i2",
+      "target_pixel": [
+        1522,
+        918
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_gear_1"
+        },
+        {
+          "action": "place",
+          "object": "white_plate_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_03_i3",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "refuse",
+          "reason": "The requested object 'grey part' corresponds to the container 'grey_tray_1', which is not graspable according to the contract (plates and containers cannot be picked)."
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_03_i4",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "ask_user",
+          "question": "Which grey part(s) should be moved? silver_bracket_1, silver_bracket_2, or both?"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_03_i5",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "ask_user",
+          "question": "Which part should be moved into the tray?"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_03_i6",
+      "target_pixel": [
+        1522,
+        918
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_gear_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_03_i7",
+      "target_pixel": [
+        2284,
+        386
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "silver_bracket_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_03_i8",
+      "target_pixel": [
+        1978,
+        453
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "green_mug_1"
+        },
+        {
+          "action": "place",
+          "object": "small_white_part_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_04_i1",
+      "target_pixel": [
+        468,
+        1411
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "orange_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_04_i2",
+      "target_pixel": [
+        1716,
+        1513
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "yellow_gear_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_04_i3",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "refuse",
+          "reason": "Planning failed validation; no robot motion was issued"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_04_i4",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "refuse",
+          "reason": "Planning failed validation; no robot motion was issued"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_04_i5",
+      "target_pixel": [
+        2115,
+        1027
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_cube_1"
+        },
+        {
+          "action": "place",
+          "object": "white_plate_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_04_i6",
+      "target_pixel": [
+        468,
+        1411
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "orange_1"
+        },
+        {
+          "action": "place",
+          "object": "white_plate_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_04_i7",
+      "target_pixel": [
+        2115,
+        1027
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_cube_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_04_i8",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "ask_user",
+          "question": "Which gear should be used as the source: red_gear_1 or red_gear_2?"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_05_i1",
+      "target_pixel": [
+        2048,
+        556
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "green_mug_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_05_i2",
+      "target_pixel": [
+        2048,
+        556
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "green_mug_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_05_i3",
+      "target_pixel": [
+        1920,
+        1394
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "yellow_gear_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_05_i4",
+      "target_pixel": [
+        1474,
+        884
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "red_gear_1"
+        },
+        {
+          "action": "place",
+          "object": "grey_tray_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_05_i5",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "refuse",
+          "reason": "The requested action 'throw' is explicitly unsafe and prohibited."
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_05_i6",
+      "target_pixel": [
+        1839,
+        838
+      ],
+      "actions": [
+        {
+          "action": "pick",
+          "object": "grey_industrial_component_1"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_05_i7",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "ask_user",
+          "question": "Which grey object should be picked: the grey tray (grey_tray_1) or the grey industrial component (grey_industrial_component_1)?"
+        }
+      ]
+    },
+    {
+      "instruction_id": "held_05_i8",
+      "target_pixel": null,
+      "actions": [
+        {
+          "action": "ask_user",
+          "question": "Which object is 'the plate' in the instruction? Is it the white plate or the grey tray?"
+        }
+      ]
+    }
+  ]
+}
