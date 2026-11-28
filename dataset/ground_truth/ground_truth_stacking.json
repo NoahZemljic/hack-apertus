@@ -1,0 +1,92 @@
+{
+  "scene_01": {
+    "on_top_of": []
+  },
+  "scene_02": {
+    "on_top_of": []
+  },
+  "scene_03": {
+    "on_top_of": []
+  },
+  "scene_04": {
+    "on_top_of": []
+  },
+  "scene_05": {
+    "on_top_of": []
+  },
+  "scene_06": {
+    "on_top_of": [
+      {
+        "upper": 113,
+        "lower": 112
+      }
+    ]
+  },
+  "scene_07": {
+    "on_top_of": []
+  },
+  "scene_08": {
+    "on_top_of": [
+      {
+        "upper": 17,
+        "lower": 15
+      },
+      {
+        "upper": 17,
+        "lower": 16
+      }
+    ]
+  },
+  "scene_09": {
+    "on_top_of": [
+      {
+        "upper": 52,
+        "lower": 58
+      },
+      {
+        "upper": 52,
+        "lower": 54
+      }
+    ]
+  },
+  "scene_10": {
+    "on_top_of": []
+  },
+  "scene_heldout_01": {
+    "on_top_of": []
+  },
+  "scene_heldout_02": {
+    "on_top_of": []
+  },
+  "scene_heldout_03": {
+    "on_top_of": []
+  },
+  "scene_heldout_04": {
+    "on_top_of": [
+      {
+        "upper": 9,
+        "lower": 10
+      },
+      {
+        "upper": 12,
+        "lower": 11
+      }
+    ]
+  },
+  "scene_heldout_05": {
+    "on_top_of": [
+      {
+        "upper": 48,
+        "lower": 45
+      },
+      {
+        "upper": 48,
+        "lower": 47
+      },
+      {
+        "upper": 46,
+        "lower": 47
+      }
+    ]
+  }
+}
