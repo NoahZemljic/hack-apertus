@@ -180,6 +180,7 @@ class QwenBoxDetector:
                 "label": label, "query": label,
                 "box": [math.floor(x1 * width / 1000), math.floor(y1 * height / 1000),
                         math.ceil(x2 * width / 1000), math.ceil(y2 * height / 1000)],
-                "score": None, "backend": "qwen",
+                "score": None, 
+                "backend": "qwen",
             })
         return assign_ids(detections)

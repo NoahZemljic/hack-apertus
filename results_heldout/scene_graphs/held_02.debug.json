@@ -1,0 +1,1003 @@
+{
+  "scene": "held_02",
+  "accept_support_candidates": true,
+  "support_source": "qwen",
+  "objects": [
+    {
+      "label": "green mug",
+      "aliases": [
+        "green mug"
+      ],
+      "raw_labels": [
+        "green mug"
+      ],
+      "source_ids": [
+        "green_mug_1"
+      ],
+      "box": [
+        1914.0,
+        0.0,
+        2314.0,
+        498.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.03973,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "green_mug_1",
+      "detector_score": null,
+      "sam_score": 0.9797247648239136,
+      "mask_area": 125266,
+      "mask_box": [
+        1923,
+        5,
+        2315,
+        493
+      ],
+      "centroid": [
+        2104.9227563744353,
+        203.31719700477385
+      ],
+      "safe_pixel": [
+        2116,
+        175
+      ],
+      "safe_pixel_clearance": 169.02662658691406,
+      "box_mask_fraction": 0.6287399598393574,
+      "outside_box_fraction": 0.00016764325515303434,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_02/green_mug_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "yellow_saucer_1"
+        ],
+        "above": [
+          "mandarin_1"
+        ],
+        "below": [],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "grey tray",
+      "aliases": [
+        "grey tray"
+      ],
+      "raw_labels": [
+        "grey tray"
+      ],
+      "source_ids": [
+        "grey_tray_1"
+      ],
+      "box": [
+        0.0,
+        71.0,
+        1286.0,
+        1840.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.45376,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "grey_tray_1",
+      "detector_score": null,
+      "sam_score": 0.9799859523773193,
+      "mask_area": 2219133,
+      "mask_box": [
+        0,
+        80,
+        1284,
+        1833
+      ],
+      "centroid": [
+        638.1062685291959,
+        961.5553745539362
+      ],
+      "safe_pixel": [
+        423,
+        1407
+      ],
+      "safe_pixel_clearance": 423.6708679199219,
+      "box_mask_fraction": 0.9754713763124556,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_02/grey_tray_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "yellow_saucer_1"
+        ],
+        "right_of": [],
+        "above": [],
+        "below": [],
+        "overlaps": [
+          "red_gear_1",
+          "red_gear_2",
+          "yellow_gear_1"
+        ],
+        "inside": [],
+        "contains": [
+          "red_gear_1",
+          "red_gear_2",
+          "yellow_gear_1"
+        ],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "yellow saucer",
+      "aliases": [
+        "yellow saucer"
+      ],
+      "raw_labels": [
+        "yellow saucer"
+      ],
+      "source_ids": [
+        "yellow_saucer_1"
+      ],
+      "box": [
+        1339.0,
+        194.0,
+        1851.0,
+        687.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.05035,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "yellow_saucer_1",
+      "detector_score": null,
+      "sam_score": 0.9896609783172607,
+      "mask_area": 190772,
+      "mask_box": [
+        1346,
+        199,
+        1850,
+        681
+      ],
+      "centroid": [
+        1596.95056926593,
+        439.2415186715032
+      ],
+      "safe_pixel": [
+        1701,
+        502
+      ],
+      "safe_pixel_clearance": 129.27490234375,
+      "box_mask_fraction": 0.7557841024340771,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_02/yellow_saucer_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "green_mug_1",
+          "mandarin_1"
+        ],
+        "right_of": [
+          "grey_tray_1",
+          "red_gear_1"
+        ],
+        "above": [
+          "white_plate_1"
+        ],
+        "below": [],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "mandarin",
+      "aliases": [
+        "mandarin"
+      ],
+      "raw_labels": [
+        "mandarin"
+      ],
+      "source_ids": [
+        "mandarin_1"
+      ],
+      "box": [
+        2019.0,
+        438.0,
+        2319.0,
+        732.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.01759,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "mandarin_1",
+      "detector_score": null,
+      "sam_score": 0.9932957291603088,
+      "mask_area": 66380,
+      "mask_box": [
+        2024,
+        442,
+        2322,
+        730
+      ],
+      "centroid": [
+        2172.1125037661945,
+        585.5578788791805
+      ],
+      "safe_pixel": [
+        2174,
+        585
+      ],
+      "safe_pixel_clearance": 141.94717407226562,
+      "box_mask_fraction": 0.7515192743764172,
+      "outside_box_fraction": 0.0014462187405845134,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_02/mandarin_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "yellow_saucer_1"
+        ],
+        "above": [
+          "white_plate_1"
+        ],
+        "below": [
+          "green_mug_1"
+        ],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "red gear",
+      "aliases": [
+        "red gear"
+      ],
+      "raw_labels": [
+        "red gear"
+      ],
+      "source_ids": [
+        "red_gear_2"
+      ],
+      "box": [
+        372.0,
+        552.0,
+        745.0,
+        922.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.02753,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "red_gear_1",
+      "detector_score": null,
+      "sam_score": 0.9793692231178284,
+      "mask_area": 89753,
+      "mask_box": [
+        379,
+        560,
+        743,
+        917
+      ],
+      "centroid": [
+        562.723106748521,
+        737.3233652357025
+      ],
+      "safe_pixel": [
+        562,
+        738
+      ],
+      "safe_pixel_clearance": 147.82760620117188,
+      "box_mask_fraction": 0.6503369321063691,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_02/red_gear_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "yellow_saucer_1"
+        ],
+        "right_of": [],
+        "above": [
+          "red_gear_2"
+        ],
+        "below": [],
+        "overlaps": [
+          "grey_tray_1"
+        ],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "white plate",
+      "aliases": [
+        "white plate"
+      ],
+      "raw_labels": [
+        "white plate"
+      ],
+      "source_ids": [
+        "white_plate_1"
+      ],
+      "box": [
+        1600.0,
+        737.0,
+        2368.0,
+        1500.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.11688,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "white_plate_1",
+      "detector_score": null,
+      "sam_score": 0.9912665486335754,
+      "mask_area": 442894,
+      "mask_box": [
+        1614,
+        742,
+        2368,
+        1495
+      ],
+      "centroid": [
+        1990.130699445014,
+        1118.1969365130258
+      ],
+      "safe_pixel": [
+        2186,
+        1068
+      ],
+      "safe_pixel_clearance": 172.2614288330078,
+      "box_mask_fraction": 0.7558124453910005,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_02/white_plate_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "banana_1"
+        ],
+        "above": [
+          "banana_1"
+        ],
+        "below": [
+          "mandarin_1",
+          "yellow_saucer_1"
+        ],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "yellow gear",
+      "aliases": [
+        "yellow gear"
+      ],
+      "raw_labels": [
+        "yellow gear"
+      ],
+      "source_ids": [
+        "yellow_gear_1"
+      ],
+      "box": [
+        702.0,
+        1050.0,
+        909.0,
+        1256.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.00851,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "yellow_gear_1",
+      "detector_score": null,
+      "sam_score": 0.9682535529136658,
+      "mask_area": 23111,
+      "mask_box": [
+        705,
+        1055,
+        909,
+        1251
+      ],
+      "centroid": [
+        807.8069750335338,
+        1152.552767080611
+      ],
+      "safe_pixel": [
+        808,
+        1152
+      ],
+      "safe_pixel_clearance": 65.19202423095703,
+      "box_mask_fraction": 0.5419773931804325,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_02/yellow_gear_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "banana_1"
+        ],
+        "right_of": [
+          "red_gear_2"
+        ],
+        "above": [],
+        "below": [],
+        "overlaps": [
+          "grey_tray_1"
+        ],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "red gear",
+      "aliases": [
+        "red gear"
+      ],
+      "raw_labels": [
+        "red gear"
+      ],
+      "source_ids": [
+        "red_gear_1"
+      ],
+      "box": [
+        306.0,
+        1118.0,
+        679.0,
+        1489.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.0276,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "red_gear_2",
+      "detector_score": null,
+      "sam_score": 0.9802467823028564,
+      "mask_area": 92751,
+      "mask_box": [
+        307,
+        1121,
+        678,
+        1483
+      ],
+      "centroid": [
+        492.99758493169884,
+        1302.779894556393
+      ],
+      "safe_pixel": [
+        495,
+        1301
+      ],
+      "safe_pixel_clearance": 149.91331481933594,
+      "box_mask_fraction": 0.6702485131844229,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_02/red_gear_2.png",
+      "geometric_relations": {
+        "left_of": [
+          "yellow_gear_1"
+        ],
+        "right_of": [],
+        "above": [],
+        "below": [
+          "red_gear_1"
+        ],
+        "overlaps": [
+          "grey_tray_1"
+        ],
+        "inside": [
+          "grey_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "banana",
+      "aliases": [
+        "banana"
+      ],
+      "raw_labels": [
+        "banana"
+      ],
+      "source_ids": [
+        "banana_1"
+      ],
+      "box": [
+        1321.0,
+        1155.0,
+        2140.0,
+        1741.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.09573,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "banana_1",
+      "detector_score": null,
+      "sam_score": 0.988064706325531,
+      "mask_area": 132832,
+      "mask_box": [
+        1330,
+        1162,
+        2144,
+        1739
+      ],
+      "centroid": [
+        1688.700584196579,
+        1495.3351677306673
+      ],
+      "safe_pixel": [
+        1668,
+        1521
+      ],
+      "safe_pixel_clearance": 81.32035064697266,
+      "box_mask_fraction": 0.2765859472344114,
+      "outside_box_fraction": 0.0006700192724644663,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_02/banana_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "white_plate_1"
+        ],
+        "right_of": [
+          "yellow_gear_1"
+        ],
+        "above": [],
+        "below": [
+          "white_plate_1"
+        ],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    }
+  ],
+  "accepted_relations": [
+    {
+      "source": "red_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 10,
+      "evidence": "actual_mask",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "red_gear_2",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 13,
+      "evidence": "actual_mask",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 12,
+      "evidence": "actual_mask",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    }
+  ],
+  "rejected_relations": [],
+  "input_relations": [
+    {
+      "source": "banana_1",
+      "target": "white_plate_1",
+      "type": "below",
+      "measurements_index": 32,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "banana_1",
+      "target": "white_plate_1",
+      "type": "left_of",
+      "measurements_index": 32,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "banana_1",
+      "target": "yellow_gear_1",
+      "type": "right_of",
+      "measurements_index": 34,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "mandarin_1",
+      "type": "above",
+      "measurements_index": 2,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "yellow_saucer_1",
+      "type": "right_of",
+      "measurements_index": 1,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "red_gear_1",
+      "type": "contains",
+      "measurements_index": 10,
+      "evidence": "actual_mask",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "red_gear_2",
+      "type": "contains",
+      "measurements_index": 13,
+      "evidence": "actual_mask",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "yellow_gear_1",
+      "type": "contains",
+      "measurements_index": 12,
+      "evidence": "actual_mask",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "yellow_saucer_1",
+      "type": "left_of",
+      "measurements_index": 8,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "red_gear_1",
+      "type": "overlaps",
+      "measurements_index": 10,
+      "evidence": "actual_mask_intersection",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "red_gear_2",
+      "type": "overlaps",
+      "measurements_index": 13,
+      "evidence": "actual_mask_intersection",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "yellow_gear_1",
+      "type": "overlaps",
+      "measurements_index": 12,
+      "evidence": "actual_mask_intersection",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "mandarin_1",
+      "target": "white_plate_1",
+      "type": "above",
+      "measurements_index": 22,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "mandarin_1",
+      "target": "green_mug_1",
+      "type": "below",
+      "measurements_index": 2,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "mandarin_1",
+      "target": "yellow_saucer_1",
+      "type": "right_of",
+      "measurements_index": 15,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "red_gear_2",
+      "type": "above",
+      "measurements_index": 28,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 10,
+      "evidence": "actual_mask",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "yellow_saucer_1",
+      "type": "left_of",
+      "measurements_index": 16,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_2",
+      "target": "red_gear_1",
+      "type": "below",
+      "measurements_index": 28,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_2",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 13,
+      "evidence": "actual_mask",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_2",
+      "target": "yellow_gear_1",
+      "type": "left_of",
+      "measurements_index": 33,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "banana_1",
+      "type": "above",
+      "measurements_index": 32,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "mandarin_1",
+      "type": "below",
+      "measurements_index": 22,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "yellow_saucer_1",
+      "type": "below",
+      "measurements_index": 17,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "banana_1",
+      "type": "right_of",
+      "measurements_index": 32,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "grey_tray_1",
+      "type": "inside",
+      "measurements_index": 12,
+      "evidence": "actual_mask",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "banana_1",
+      "type": "left_of",
+      "measurements_index": 34,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "red_gear_2",
+      "type": "right_of",
+      "measurements_index": 33,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_saucer_1",
+      "target": "white_plate_1",
+      "type": "above",
+      "measurements_index": 17,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_saucer_1",
+      "target": "green_mug_1",
+      "type": "left_of",
+      "measurements_index": 1,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_saucer_1",
+      "target": "mandarin_1",
+      "type": "left_of",
+      "measurements_index": 15,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_saucer_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 8,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_saucer_1",
+      "target": "red_gear_1",
+      "type": "right_of",
+      "measurements_index": 16,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    }
+  ],
+  "input_relation_candidates": [],
+  "input_visual_supports": {
+    "backend": "qwen",
+    "supports": []
+  }
+}

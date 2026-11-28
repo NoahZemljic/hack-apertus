@@ -1,0 +1,417 @@
+{
+  "coordinate_reference": "mask centroids; pick points are for picking only",
+  "support_source": "qwen",
+  "centroids_2d": {
+    "black_tray_1": [
+      1790.3289459453106,
+      899.8456686495341
+    ],
+    "grey_tray_1": [
+      637.0925735733282,
+      960.6018338650618
+    ],
+    "silver_bracket_1": [
+      2154.4181151217276,
+      291.9865591012653
+    ],
+    "green_mug_1": [
+      1949.3894513613354,
+      469.11519283683737
+    ],
+    "silver_bracket_2": [
+      2277.0059400615055,
+      824.3291355339625
+    ],
+    "red_gear_1": [
+      1521.0614351360905,
+      918.4911629551078
+    ],
+    "small_white_part_1": [
+      1898.1663364798198,
+      845.6648020821194
+    ],
+    "white_plate_1": [
+      1992.9420511994288,
+      1391.5448876773887
+    ],
+    "yellow_gear_1": [
+      1458.079470807111,
+      1420.375120584317
+    ]
+  },
+  "left_to_right": [
+    "grey_tray_1",
+    "yellow_gear_1",
+    "red_gear_1",
+    "black_tray_1",
+    "small_white_part_1",
+    "green_mug_1",
+    "white_plate_1",
+    "silver_bracket_1",
+    "silver_bracket_2"
+  ],
+  "pairwise_distances": [
+    {
+      "a": "grey_tray_1",
+      "b": "yellow_gear_1",
+      "distance_px": 941.0
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "red_gear_1",
+      "distance_px": 885.0
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "black_tray_1",
+      "distance_px": 1154.8
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "small_white_part_1",
+      "distance_px": 1266.3
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "green_mug_1",
+      "distance_px": 1401.3
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "white_plate_1",
+      "distance_px": 1422.7
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "silver_bracket_1",
+      "distance_px": 1658.1
+    },
+    {
+      "a": "grey_tray_1",
+      "b": "silver_bracket_2",
+      "distance_px": 1645.6
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "red_gear_1",
+      "distance_px": 505.8
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "black_tray_1",
+      "distance_px": 617.5
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "small_white_part_1",
+      "distance_px": 723.9
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "green_mug_1",
+      "distance_px": 1070.6
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "white_plate_1",
+      "distance_px": 535.6
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "silver_bracket_1",
+      "distance_px": 1326.0
+    },
+    {
+      "a": "yellow_gear_1",
+      "b": "silver_bracket_2",
+      "distance_px": 1012.9
+    },
+    {
+      "a": "red_gear_1",
+      "b": "black_tray_1",
+      "distance_px": 269.9
+    },
+    {
+      "a": "red_gear_1",
+      "b": "small_white_part_1",
+      "distance_px": 384.1
+    },
+    {
+      "a": "red_gear_1",
+      "b": "green_mug_1",
+      "distance_px": 620.8
+    },
+    {
+      "a": "red_gear_1",
+      "b": "white_plate_1",
+      "distance_px": 668.2
+    },
+    {
+      "a": "red_gear_1",
+      "b": "silver_bracket_1",
+      "distance_px": 890.9
+    },
+    {
+      "a": "red_gear_1",
+      "b": "silver_bracket_2",
+      "distance_px": 761.8
+    },
+    {
+      "a": "black_tray_1",
+      "b": "small_white_part_1",
+      "distance_px": 120.7
+    },
+    {
+      "a": "black_tray_1",
+      "b": "green_mug_1",
+      "distance_px": 459.2
+    },
+    {
+      "a": "black_tray_1",
+      "b": "white_plate_1",
+      "distance_px": 531.8
+    },
+    {
+      "a": "black_tray_1",
+      "b": "silver_bracket_1",
+      "distance_px": 708.6
+    },
+    {
+      "a": "black_tray_1",
+      "b": "silver_bracket_2",
+      "distance_px": 492.5
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "green_mug_1",
+      "distance_px": 380.0
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "white_plate_1",
+      "distance_px": 554.0
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "silver_bracket_1",
+      "distance_px": 610.1
+    },
+    {
+      "a": "small_white_part_1",
+      "b": "silver_bracket_2",
+      "distance_px": 379.4
+    },
+    {
+      "a": "green_mug_1",
+      "b": "white_plate_1",
+      "distance_px": 923.5
+    },
+    {
+      "a": "green_mug_1",
+      "b": "silver_bracket_1",
+      "distance_px": 270.9
+    },
+    {
+      "a": "green_mug_1",
+      "b": "silver_bracket_2",
+      "distance_px": 483.2
+    },
+    {
+      "a": "white_plate_1",
+      "b": "silver_bracket_1",
+      "distance_px": 1111.4
+    },
+    {
+      "a": "white_plate_1",
+      "b": "silver_bracket_2",
+      "distance_px": 634.4
+    },
+    {
+      "a": "silver_bracket_1",
+      "b": "silver_bracket_2",
+      "distance_px": 546.3
+    }
+  ],
+  "image_plane_relations": [
+    {
+      "source": "black_tray_1",
+      "type": "overlaps",
+      "target": "silver_bracket_2"
+    },
+    {
+      "source": "black_tray_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "above",
+      "target": "small_white_part_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "below",
+      "target": "silver_bracket_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "left_of",
+      "target": "silver_bracket_1"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "left_of",
+      "target": "silver_bracket_2"
+    },
+    {
+      "source": "green_mug_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "black_tray_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "grey_tray_1",
+      "type": "left_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "above",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "above",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "left_of",
+      "target": "small_white_part_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "left_of",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "red_gear_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    },
+    {
+      "source": "silver_bracket_1",
+      "type": "above",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "silver_bracket_1",
+      "type": "above",
+      "target": "silver_bracket_2"
+    },
+    {
+      "source": "silver_bracket_1",
+      "type": "right_of",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "silver_bracket_1",
+      "type": "touching",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "silver_bracket_2",
+      "type": "above",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "silver_bracket_2",
+      "type": "below",
+      "target": "silver_bracket_1"
+    },
+    {
+      "source": "silver_bracket_2",
+      "type": "right_of",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "silver_bracket_2",
+      "type": "right_of",
+      "target": "small_white_part_1"
+    },
+    {
+      "source": "small_white_part_1",
+      "type": "above",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "small_white_part_1",
+      "type": "below",
+      "target": "green_mug_1"
+    },
+    {
+      "source": "small_white_part_1",
+      "type": "left_of",
+      "target": "silver_bracket_2"
+    },
+    {
+      "source": "small_white_part_1",
+      "type": "right_of",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "below",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "below",
+      "target": "silver_bracket_2"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "below",
+      "target": "small_white_part_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "right_of",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "white_plate_1",
+      "type": "right_of",
+      "target": "yellow_gear_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "below",
+      "target": "red_gear_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "left_of",
+      "target": "white_plate_1"
+    },
+    {
+      "source": "yellow_gear_1",
+      "type": "right_of",
+      "target": "grey_tray_1"
+    }
+  ]
+}

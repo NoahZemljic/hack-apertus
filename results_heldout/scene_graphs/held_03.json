@@ -1,0 +1,224 @@
+{
+  "image": {
+    "width": 2448,
+    "height": 2048
+  },
+  "objects": [
+    {
+      "id": "black_tray_1",
+      "kind": "container",
+      "label": "black tray",
+      "color": "black",
+      "bbox_2d": [
+        1234,
+        0,
+        2447,
+        1911
+      ],
+      "pick_point_2d": [
+        1537,
+        264
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_tray_1",
+      "kind": "container",
+      "label": "grey tray",
+      "color": "grey",
+      "bbox_2d": [
+        0,
+        80,
+        1283,
+        1833
+      ],
+      "pick_point_2d": [
+        577,
+        887
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "silver_bracket_1",
+      "kind": "movable",
+      "label": "silver bracket",
+      "color": null,
+      "bbox_2d": [
+        1909,
+        118,
+        2377,
+        475
+      ],
+      "pick_point_2d": [
+        2284,
+        386
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "green_mug_1",
+      "kind": "movable",
+      "label": "green mug",
+      "color": "green",
+      "bbox_2d": [
+        1661,
+        269,
+        2175,
+        663
+      ],
+      "pick_point_2d": [
+        1978,
+        453
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "silver_bracket_2",
+      "kind": "movable",
+      "label": "silver bracket",
+      "color": null,
+      "bbox_2d": [
+        2157,
+        564,
+        2398,
+        1084
+      ],
+      "pick_point_2d": [
+        2299,
+        957
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_gear_1",
+      "kind": "movable",
+      "label": "red gear",
+      "color": "red",
+      "bbox_2d": [
+        1343,
+        739,
+        1701,
+        1099
+      ],
+      "pick_point_2d": [
+        1522,
+        918
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "small_white_part_1",
+      "kind": "movable",
+      "label": "small white part",
+      "color": "white",
+      "bbox_2d": [
+        1754,
+        757,
+        2085,
+        987
+      ],
+      "pick_point_2d": [
+        1836,
+        834
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "white_plate_1",
+      "kind": "surface",
+      "label": "white plate",
+      "color": "white",
+      "bbox_2d": [
+        1612,
+        1008,
+        2374,
+        1775
+      ],
+      "pick_point_2d": [
+        2007,
+        1561
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "yellow_gear_1",
+      "kind": "movable",
+      "label": "yellow gear",
+      "color": "yellow",
+      "bbox_2d": [
+        1361,
+        1321,
+        1555,
+        1520
+      ],
+      "pick_point_2d": [
+        1458,
+        1420
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    }
+  ]
+}

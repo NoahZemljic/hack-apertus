@@ -1,0 +1,1239 @@
+{
+  "scene": "held_03",
+  "accept_support_candidates": true,
+  "support_source": "qwen",
+  "objects": [
+    {
+      "label": "black tray",
+      "aliases": [
+        "black tray"
+      ],
+      "raw_labels": [
+        "black tray"
+      ],
+      "source_ids": [
+        "black_tray_1"
+      ],
+      "box": [
+        1265.0,
+        0.0,
+        2446.0,
+        1915.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.4511,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "black_tray_1",
+      "detector_score": null,
+      "sam_score": 0.9721795916557312,
+      "mask_area": 1275930,
+      "mask_box": [
+        1234,
+        0,
+        2448,
+        1912
+      ],
+      "centroid": [
+        1790.3289459453106,
+        899.8456686495341
+      ],
+      "safe_pixel": [
+        1537,
+        264
+      ],
+      "safe_pixel_clearance": 258.6426086425781,
+      "box_mask_fraction": 0.5614452504073416,
+      "outside_box_fraction": 0.004825499831495458,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_03/black_tray_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "grey_tray_1"
+        ],
+        "above": [],
+        "below": [],
+        "overlaps": [
+          "silver_bracket_2"
+        ],
+        "inside": [],
+        "contains": [
+          "green_mug_1",
+          "red_gear_1",
+          "silver_bracket_1",
+          "silver_bracket_2",
+          "small_white_part_1",
+          "white_plate_1",
+          "yellow_gear_1"
+        ],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "grey tray",
+      "aliases": [
+        "grey tray"
+      ],
+      "raw_labels": [
+        "grey tray"
+      ],
+      "source_ids": [
+        "grey_tray_1"
+      ],
+      "box": [
+        0.0,
+        71.0,
+        1281.0,
+        1840.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.452,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "grey_tray_1",
+      "detector_score": null,
+      "sam_score": 0.9947728514671326,
+      "mask_area": 2215103,
+      "mask_box": [
+        0,
+        80,
+        1284,
+        1834
+      ],
+      "centroid": [
+        637.0925735733282,
+        960.6018338650618
+      ],
+      "safe_pixel": [
+        577,
+        887
+      ],
+      "safe_pixel_clearance": 578.0,
+      "box_mask_fraction": 0.9771783014700658,
+      "outside_box_fraction": 0.00032955578137901486,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_03/grey_tray_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "black_tray_1",
+          "green_mug_1",
+          "red_gear_1",
+          "yellow_gear_1"
+        ],
+        "right_of": [],
+        "above": [],
+        "below": [],
+        "overlaps": [],
+        "inside": [],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "silver bracket",
+      "aliases": [
+        "silver bracket"
+      ],
+      "raw_labels": [
+        "silver bracket"
+      ],
+      "source_ids": [
+        "silver_bracket_1"
+      ],
+      "box": [
+        1902.0,
+        112.0,
+        2375.0,
+        482.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.03491,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "silver_bracket_1",
+      "detector_score": null,
+      "sam_score": 0.9879574179649353,
+      "mask_area": 69787,
+      "mask_box": [
+        1909,
+        118,
+        2378,
+        476
+      ],
+      "centroid": [
+        2154.4181151217276,
+        291.9865591012653
+      ],
+      "safe_pixel": [
+        2284,
+        386
+      ],
+      "safe_pixel_clearance": 87.61849212646484,
+      "box_mask_fraction": 0.39818296097365863,
+      "outside_box_fraction": 0.0014472609511800192,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_03/silver_bracket_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "green_mug_1"
+        ],
+        "above": [
+          "green_mug_1",
+          "silver_bracket_2"
+        ],
+        "below": [],
+        "overlaps": [],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": [
+          "green_mug_1"
+        ]
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "green mug",
+      "aliases": [
+        "green mug"
+      ],
+      "raw_labels": [
+        "green mug"
+      ],
+      "source_ids": [
+        "green_mug_1"
+      ],
+      "box": [
+        1649.0,
+        264.0,
+        2169.0,
+        672.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.04232,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "green_mug_1",
+      "detector_score": null,
+      "sam_score": 0.9837772846221924,
+      "mask_area": 131562,
+      "mask_box": [
+        1661,
+        269,
+        2176,
+        664
+      ],
+      "centroid": [
+        1949.3894513613354,
+        469.11519283683737
+      ],
+      "safe_pixel": [
+        1978,
+        453
+      ],
+      "safe_pixel_clearance": 182.48561096191406,
+      "box_mask_fraction": 0.6182126696832579,
+      "outside_box_fraction": 0.0030555935604505862,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_03/green_mug_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "silver_bracket_1",
+          "silver_bracket_2"
+        ],
+        "right_of": [
+          "grey_tray_1"
+        ],
+        "above": [
+          "small_white_part_1"
+        ],
+        "below": [
+          "silver_bracket_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": [
+          "silver_bracket_1"
+        ]
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "silver bracket",
+      "aliases": [
+        "silver bracket"
+      ],
+      "raw_labels": [
+        "silver bracket"
+      ],
+      "source_ids": [
+        "silver_bracket_2"
+      ],
+      "box": [
+        2142.0,
+        557.0,
+        2395.0,
+        1086.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.0267,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "silver_bracket_2",
+      "detector_score": null,
+      "sam_score": 0.9936926364898682,
+      "mask_area": 85521,
+      "mask_box": [
+        2157,
+        564,
+        2399,
+        1085
+      ],
+      "centroid": [
+        2277.0059400615055,
+        824.3291355339625
+      ],
+      "safe_pixel": [
+        2299,
+        957
+      ],
+      "safe_pixel_clearance": 93.38094329833984,
+      "box_mask_fraction": 0.638126975350613,
+      "outside_box_fraction": 0.0013563919972872161,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_03/silver_bracket_2.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "green_mug_1",
+          "small_white_part_1"
+        ],
+        "above": [
+          "white_plate_1"
+        ],
+        "below": [
+          "silver_bracket_1"
+        ],
+        "overlaps": [
+          "black_tray_1"
+        ],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "red gear",
+      "aliases": [
+        "red gear"
+      ],
+      "raw_labels": [
+        "red gear"
+      ],
+      "source_ids": [
+        "red_gear_1"
+      ],
+      "box": [
+        1334.0,
+        735.0,
+        1702.0,
+        1100.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.02679,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "red_gear_1",
+      "detector_score": null,
+      "sam_score": 0.9765865802764893,
+      "mask_area": 84870,
+      "mask_box": [
+        1343,
+        739,
+        1702,
+        1100
+      ],
+      "centroid": [
+        1521.0614351360905,
+        918.4911629551078
+      ],
+      "safe_pixel": [
+        1522,
+        918
+      ],
+      "safe_pixel_clearance": 143.6001434326172,
+      "box_mask_fraction": 0.6318493150684932,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_03/red_gear_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "small_white_part_1",
+          "white_plate_1"
+        ],
+        "right_of": [
+          "grey_tray_1"
+        ],
+        "above": [
+          "white_plate_1",
+          "yellow_gear_1"
+        ],
+        "below": [],
+        "overlaps": [],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "small white part",
+      "aliases": [
+        "small white part"
+      ],
+      "raw_labels": [
+        "small white part"
+      ],
+      "source_ids": [
+        "small_white_part_1"
+      ],
+      "box": [
+        1742.0,
+        749.0,
+        2084.0,
+        990.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.01644,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "small_white_part_1",
+      "detector_score": null,
+      "sam_score": 0.9730919003486633,
+      "mask_area": 51486,
+      "mask_box": [
+        1754,
+        757,
+        2086,
+        988
+      ],
+      "centroid": [
+        1898.1663364798198,
+        845.6648020821194
+      ],
+      "safe_pixel": [
+        1836,
+        834
+      ],
+      "safe_pixel_clearance": 74.63243103027344,
+      "box_mask_fraction": 0.6229283443740748,
+      "outside_box_fraction": 0.002777454065182768,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_03/small_white_part_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "silver_bracket_2"
+        ],
+        "right_of": [
+          "red_gear_1"
+        ],
+        "above": [
+          "white_plate_1"
+        ],
+        "below": [
+          "green_mug_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "white plate",
+      "aliases": [
+        "white plate"
+      ],
+      "raw_labels": [
+        "white plate"
+      ],
+      "source_ids": [
+        "white_plate_1"
+      ],
+      "box": [
+        1600.0,
+        1003.0,
+        2375.0,
+        1776.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.11949,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "white_plate_1",
+      "detector_score": null,
+      "sam_score": 0.9920629858970642,
+      "mask_area": 459302,
+      "mask_box": [
+        1612,
+        1008,
+        2375,
+        1776
+      ],
+      "centroid": [
+        1992.9420511994288,
+        1391.5448876773887
+      ],
+      "safe_pixel": [
+        2007,
+        1561
+      ],
+      "safe_pixel_clearance": 213.4595947265625,
+      "box_mask_fraction": 0.7666853065142094,
+      "outside_box_fraction": 0.0,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_03/white_plate_1.png",
+      "geometric_relations": {
+        "left_of": [],
+        "right_of": [
+          "red_gear_1",
+          "yellow_gear_1"
+        ],
+        "above": [],
+        "below": [
+          "red_gear_1",
+          "silver_bracket_2",
+          "small_white_part_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    },
+    {
+      "label": "yellow gear",
+      "aliases": [
+        "yellow gear"
+      ],
+      "raw_labels": [
+        "yellow gear"
+      ],
+      "source_ids": [
+        "yellow_gear_1"
+      ],
+      "box": [
+        1353.0,
+        1316.0,
+        1555.0,
+        1522.0
+      ],
+      "score": null,
+      "backend": "qwen",
+      "area_ratio": 0.0083,
+      "merged_count": 1,
+      "needs_review": false,
+      "review_reasons": [],
+      "id": "yellow_gear_1",
+      "detector_score": null,
+      "sam_score": 0.9658850431442261,
+      "mask_area": 21769,
+      "mask_box": [
+        1361,
+        1321,
+        1556,
+        1521
+      ],
+      "centroid": [
+        1458.079470807111,
+        1420.375120584317
+      ],
+      "safe_pixel": [
+        1458,
+        1420
+      ],
+      "safe_pixel_clearance": 64.53681182861328,
+      "box_mask_fraction": 0.5230702681918677,
+      "outside_box_fraction": 0.00013781064816941523,
+      "far_outside_box_fraction": 0.0,
+      "validation_warnings": [],
+      "mask_path": "/users/iaryser/hack-apertus/outputs/evaluation/segmentation/held_03/yellow_gear_1.png",
+      "geometric_relations": {
+        "left_of": [
+          "white_plate_1"
+        ],
+        "right_of": [
+          "grey_tray_1"
+        ],
+        "above": [],
+        "below": [
+          "red_gear_1"
+        ],
+        "overlaps": [],
+        "inside": [
+          "black_tray_1"
+        ],
+        "contains": [],
+        "touching": []
+      },
+      "geometric_candidates": {
+        "on": [],
+        "under": []
+      }
+    }
+  ],
+  "accepted_relations": [
+    {
+      "source": "green_mug_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 2,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "red_gear_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 4,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "silver_bracket_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 1,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "silver_bracket_2",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 3,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "small_white_part_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 5,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "white_plate_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 6,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 7,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false,
+      "evidence_source": "geometry"
+    }
+  ],
+  "rejected_relations": [],
+  "input_relations": [
+    {
+      "source": "black_tray_1",
+      "target": "green_mug_1",
+      "type": "contains",
+      "measurements_index": 2,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "red_gear_1",
+      "type": "contains",
+      "measurements_index": 4,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "silver_bracket_1",
+      "type": "contains",
+      "measurements_index": 1,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "silver_bracket_2",
+      "type": "contains",
+      "measurements_index": 3,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "small_white_part_1",
+      "type": "contains",
+      "measurements_index": 5,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "white_plate_1",
+      "type": "contains",
+      "measurements_index": 6,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "yellow_gear_1",
+      "type": "contains",
+      "measurements_index": 7,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "silver_bracket_2",
+      "type": "overlaps",
+      "measurements_index": 3,
+      "evidence": "actual_mask_intersection",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "black_tray_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 0,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "small_white_part_1",
+      "type": "above",
+      "measurements_index": 23,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "silver_bracket_1",
+      "type": "below",
+      "measurements_index": 15,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 2,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "silver_bracket_1",
+      "type": "left_of",
+      "measurements_index": 15,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "silver_bracket_2",
+      "type": "left_of",
+      "measurements_index": 21,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "green_mug_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "black_tray_1",
+      "type": "left_of",
+      "measurements_index": 0,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "green_mug_1",
+      "type": "left_of",
+      "measurements_index": 9,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "red_gear_1",
+      "type": "left_of",
+      "measurements_index": 11,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "grey_tray_1",
+      "target": "yellow_gear_1",
+      "type": "left_of",
+      "measurements_index": 14,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "white_plate_1",
+      "type": "above",
+      "measurements_index": 31,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "yellow_gear_1",
+      "type": "above",
+      "measurements_index": 32,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 4,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "small_white_part_1",
+      "type": "left_of",
+      "measurements_index": 30,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "white_plate_1",
+      "type": "left_of",
+      "measurements_index": 31,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "red_gear_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 11,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_1",
+      "target": "green_mug_1",
+      "type": "above",
+      "measurements_index": 15,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_1",
+      "target": "silver_bracket_2",
+      "type": "above",
+      "measurements_index": 16,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 1,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_1",
+      "target": "green_mug_1",
+      "type": "right_of",
+      "measurements_index": 15,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_1",
+      "target": "green_mug_1",
+      "type": "touching",
+      "measurements_index": 15,
+      "evidence": "external_contour_distance",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_2",
+      "target": "white_plate_1",
+      "type": "above",
+      "measurements_index": 28,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_2",
+      "target": "silver_bracket_1",
+      "type": "below",
+      "measurements_index": 16,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_2",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 3,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_2",
+      "target": "green_mug_1",
+      "type": "right_of",
+      "measurements_index": 21,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "silver_bracket_2",
+      "target": "small_white_part_1",
+      "type": "right_of",
+      "measurements_index": 27,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "small_white_part_1",
+      "target": "white_plate_1",
+      "type": "above",
+      "measurements_index": 33,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "small_white_part_1",
+      "target": "green_mug_1",
+      "type": "below",
+      "measurements_index": 23,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "small_white_part_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 5,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "small_white_part_1",
+      "target": "silver_bracket_2",
+      "type": "left_of",
+      "measurements_index": 27,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "small_white_part_1",
+      "target": "red_gear_1",
+      "type": "right_of",
+      "measurements_index": 30,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "red_gear_1",
+      "type": "below",
+      "measurements_index": 31,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "silver_bracket_2",
+      "type": "below",
+      "measurements_index": 28,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "small_white_part_1",
+      "type": "below",
+      "measurements_index": 33,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 6,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "red_gear_1",
+      "type": "right_of",
+      "measurements_index": 31,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "white_plate_1",
+      "target": "yellow_gear_1",
+      "type": "right_of",
+      "measurements_index": 35,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "red_gear_1",
+      "type": "below",
+      "measurements_index": 32,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "black_tray_1",
+      "type": "inside",
+      "measurements_index": 7,
+      "evidence": "enclosed_mask_region",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "white_plate_1",
+      "type": "left_of",
+      "measurements_index": 35,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    },
+    {
+      "source": "yellow_gear_1",
+      "target": "grey_tray_1",
+      "type": "right_of",
+      "measurements_index": 14,
+      "evidence": "nearest_aligned_centroid",
+      "scope": "image_plane",
+      "needs_review": false,
+      "input_needs_review": false
+    }
+  ],
+  "input_relation_candidates": [],
+  "input_visual_supports": {
+    "backend": "qwen",
+    "supports": []
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "image": {
+    "width": 2448,
+    "height": 2048
+  },
+  "objects": [
+    {
+      "id": "grey_tray_1",
+      "kind": "container",
+      "label": "grey tray",
+      "color": "grey",
+      "bbox_2d": [
+        0,
+        79,
+        1283,
+        1833
+      ],
+      "pick_point_2d": [
+        585,
+        678
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "white_plate_1",
+      "kind": "surface",
+      "label": "white plate",
+      "color": "white",
+      "bbox_2d": [
+        1384,
+        114,
+        2120,
+        827
+      ],
+      "pick_point_2d": [
+        1751,
+        469
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_cube_1",
+      "kind": "movable",
+      "label": "red cube",
+      "color": "red",
+      "bbox_2d": [
+        1944,
+        847,
+        2302,
+        1244
+      ],
+      "pick_point_2d": [
+        2115,
+        1027
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [
+          "red_gear_1"
+        ],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_gear_1",
+      "kind": "movable",
+      "label": "red gear",
+      "color": "red",
+      "bbox_2d": [
+        2105,
+        888,
+        2406,
+        1248
+      ],
+      "pick_point_2d": [
+        2324,
+        1052
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [
+          "red_cube_1"
+        ],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_gear_2",
+      "kind": "movable",
+      "label": "red gear",
+      "color": "red",
+      "bbox_2d": [
+        1612,
+        1255,
+        1981,
+        1616
+      ],
+      "pick_point_2d": [
+        1788,
+        1378
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [
+          "yellow_gear_1"
+        ],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "orange_1",
+      "kind": "movable",
+      "label": "orange",
+      "color": null,
+      "bbox_2d": [
+        308,
+        1259,
+        623,
+        1562
+      ],
+      "pick_point_2d": [
+        468,
+        1411
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "grey_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "yellow_gear_1",
+      "kind": "movable",
+      "label": "yellow gear",
+      "color": "yellow",
+      "bbox_2d": [
+        1613,
+        1402,
+        1840,
+        1613
+      ],
+      "pick_point_2d": [
+        1716,
+        1512
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [
+          "red_gear_2"
+        ],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    }
+  ]
+}

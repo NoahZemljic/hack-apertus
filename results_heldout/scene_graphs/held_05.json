@@ -1,0 +1,211 @@
+{
+  "image": {
+    "width": 2448,
+    "height": 2048
+  },
+  "objects": [
+    {
+      "id": "black_tray_1",
+      "kind": "container",
+      "label": "black tray",
+      "color": "black",
+      "bbox_2d": [
+        1234,
+        0,
+        2447,
+        1911
+      ],
+      "pick_point_2d": [
+        1567,
+        294
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_tray_1",
+      "kind": "container",
+      "label": "grey tray",
+      "color": "grey",
+      "bbox_2d": [
+        0,
+        80,
+        1282,
+        1833
+      ],
+      "pick_point_2d": [
+        579,
+        904
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": null,
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "green_mug_1",
+      "kind": "movable",
+      "label": "green mug",
+      "color": "green",
+      "bbox_2d": [
+        1720,
+        371,
+        2247,
+        759
+      ],
+      "pick_point_2d": [
+        2048,
+        556
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "red_gear_1",
+      "kind": "movable",
+      "label": "red gear",
+      "color": "red",
+      "bbox_2d": [
+        1343,
+        739,
+        1693,
+        1100
+      ],
+      "pick_point_2d": [
+        1474,
+        884
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [
+          "silver_bracket_1"
+        ],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "grey_industrial_component_1",
+      "kind": "movable",
+      "label": "grey industrial component",
+      "color": "grey",
+      "bbox_2d": [
+        1759,
+        758,
+        2086,
+        931
+      ],
+      "pick_point_2d": [
+        1839,
+        838
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "silver_bracket_1",
+      "kind": "movable",
+      "label": "silver bracket",
+      "color": null,
+      "bbox_2d": [
+        1527,
+        903,
+        2075,
+        1132
+      ],
+      "pick_point_2d": [
+        1652,
+        1001
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [
+          "white_plate_1"
+        ],
+        "supports": [
+          "red_gear_1"
+        ],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "white_plate_1",
+      "kind": "surface",
+      "label": "white plate",
+      "color": "white",
+      "bbox_2d": [
+        1612,
+        1023,
+        2374,
+        1775
+      ],
+      "pick_point_2d": [
+        2195,
+        1392
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [],
+        "supports": [
+          "silver_bracket_1",
+          "yellow_gear_1"
+        ],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    },
+    {
+      "id": "yellow_gear_1",
+      "kind": "movable",
+      "label": "yellow gear",
+      "color": "yellow",
+      "bbox_2d": [
+        1819,
+        1283,
+        2042,
+        1496
+      ],
+      "pick_point_2d": [
+        1920,
+        1394
+      ],
+      "confidence": null,
+      "relations": {
+        "inside": "black_tray_1",
+        "on_top_of": [
+          "white_plate_1"
+        ],
+        "supports": [],
+        "held_by_human": false,
+        "partially_occluded": false
+      }
+    }
+  ]
+}
