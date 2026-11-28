@@ -35,8 +35,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument("--apertus-base-url", default="http://localhost:8000/v1")
     parser.add_argument("--apertus-model", "--model", default="swiss-ai/Apertus-v1.5-70B")
     parser.add_argument("--qwen-base-url", default="http://127.0.0.1:8001/v1")
-    parser.add_argument("--qwen-box-retries", type=int, default=1,
-                        help="Format-only retries for Qwen boxes after the initial visual request")
+    parser.add_argument("--qwen-box-retries", type=int, default=3,
+                        help="Retries for malformed Qwen output or missing tray labels after the initial request")
     parser.add_argument("--stacking-source", choices=("qwen", "geometry"), default="qwen",
                         help="Fresh runs: visual Qwen support relations, or legacy geometry hypotheses")
     parser.add_argument("--qwen-stacking-retries", type=int, default=1,

@@ -32,7 +32,7 @@ class QwenBoxGenerationError(ValueError):
 
 
 class QwenBoxDetector:
-    """Use an existing Qwen HTTP server; retry only malformed detector output."""
+    """Use an existing Qwen HTTP server; retry invalid or incomplete output."""
 
     def __init__(
         self,
@@ -56,9 +56,8 @@ class QwenBoxDetector:
     def detect(self, image_path: Path, hints: Iterable[str]) -> list[dict]:
         """Return independent instances in source-image, half-open xyxy pixels.
 
-        Qwen is asked to discover beyond hints. Unknown confidence is represented
-        by None, rather than a fabricated detection probability. A valid empty inventory
-        succeeds; neither missing categories nor scene semantics trigger a retry.
+        Qwen is asked to discover beyond hints and include both permanent trays.
+        Unknown confidence is represented by None, rather than a fabricated probability.
         """
         self.last_trace = []
         self.replies = []
@@ -84,7 +83,7 @@ class QwenBoxDetector:
             request_prompt = prompt
             if self.errors:
                 request_prompt += (
-                    "\nCorrect the JSON format or coordinate error in your previous "
+                    "\nCorrect the validation error in your previous "
                     f"response: {self.errors[-1]}. Return the complete objects JSON."
                 )
             body = {
@@ -148,6 +147,10 @@ class QwenBoxDetector:
                     raise ValueError("Qwen response content must be a JSON string")
                 result = validate_structure(parse_json_object(reply), schema, "Qwen boxes")
                 detections = self._to_detections(result, width, height)
+                missing = {"black tray", "grey tray"} - {obj["label"] for obj in detections}
+                if missing:
+                    raise ValueError("Missing required tray labels: " + ", ".join(
+                        label.replace(" ", "_") for label in sorted(missing)))
             except ValueError as error:
                 self.errors.append(str(error))
                 trace["validation_error"] = str(error)
